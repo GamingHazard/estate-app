@@ -1,5 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 
@@ -9,17 +10,23 @@ import DealsScreen from "../screens/DealsScreen";
 import SavedScreen from "../screens/SavedScreen";
 import MessagesScreen from "../screens/MessagesScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import AccountScreen from "../screens/AccountScreens/Account";
+import GeneralSettings from "../screens/SettingsScreens/ApplicationSettings";
+import UserManual from "../screens/OtherScreens/UserManual";
+import TermsAndConditions from "../screens/SettingsScreens/Terms&Conditions";
+import History from "../screens/OtherScreens/History";
+import CustomerCare from "../screens/OtherScreens/CustomerCare";
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
-const Navigation = () => {
+const TabNavigator = () => {
   const { colors } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
 
@@ -31,7 +38,7 @@ const Navigation = () => {
               iconName = focused ? "pricetag" : "pricetag-outline";
               break;
             case "Saved":
-              iconName = focused ? "heart" : "heart-outline";
+              iconName = focused ? "bookmark" : "bookmark-outline";
               break;
             case "Messages":
               iconName = focused ? "chatbox" : "chatbox-outline";
@@ -43,7 +50,7 @@ const Navigation = () => {
               iconName = "alert-circle";
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={30} color={color} />;
         },
         tabBarActiveTintColor: colors.text,
 
@@ -76,6 +83,24 @@ const Navigation = () => {
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
+  );
+};
+
+const Navigation = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="MainTabs"
+        component={TabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen name="account" component={AccountScreen} />
+      <Stack.Screen name="app-settings" component={GeneralSettings} />
+      <Stack.Screen name="manual" component={UserManual} />
+      <Stack.Screen name="t&cs" component={TermsAndConditions} />
+      <Stack.Screen name="history" component={History} />
+      <Stack.Screen name="customer-care" component={CustomerCare} />
+    </Stack.Navigator>
   );
 };
 

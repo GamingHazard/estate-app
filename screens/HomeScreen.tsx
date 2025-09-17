@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -8,15 +14,34 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Top Tab */}
       <View
         style={{
           height: 70,
           backgroundColor: colors.card,
-          justifyContent: "center",
           paddingHorizontal: 16,
           elevation: 4,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
+        <Text
+          style={{
+            color: colors.text,
+            fontSize: 20,
+            fontWeight: "bold",
+            flex: 1,
+          }}
+        >
+          <Ionicons
+            name="home"
+            size={24}
+            color={colors.text}
+            style={[styles.icon, { marginRight: 10 }]}
+          />
+          Property Consultants
+        </Text>
         <TouchableOpacity
           style={[styles.themeToggle, { backgroundColor: colors.background }]}
           onPress={toggleTheme}
@@ -32,6 +57,8 @@ const HomeScreen = () => {
           </Text>
         </TouchableOpacity>
       </View>
+      {/* Main Content */}
+      <View style={{ flex: 1, padding: 16, position: "relative" }}></View>
     </View>
   );
 };
