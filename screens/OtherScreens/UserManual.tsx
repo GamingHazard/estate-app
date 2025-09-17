@@ -8,7 +8,7 @@ interface UserManualProps {
 const UserManual: React.FC<UserManualProps> = () => {
   return (
     <View style={styles.container}>
-      <Text>Account Screen</Text>
+      <Text>User Guide Screen</Text>
     </View>
   );
 };

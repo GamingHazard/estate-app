@@ -1,10 +1,26 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Modal,
+  Animated,
+} from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import ProfileEditForm from "../components/ProfileEditForm";
 
 const SettingsScreen = ({ navigation }) => {
   const { colors, theme, toggleTheme } = useTheme();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const handleSaveProfile = (profileData) => {
+    // Handle saving profile data here
+    console.log("Profile data to save:", profileData);
+    // You would typically send this data to your backend or store it locally
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -69,18 +85,43 @@ const SettingsScreen = ({ navigation }) => {
               borderRadius: 20,
             }}
           >
-            <Text
-              style={[
-                styles.buttonText,
-                {
-                  color: theme === "dark" ? "White" : "white",
-                  alignSelf: "center",
-                  fontSize: 25,
-                },
-              ]}
+            <View
+              style={{
+                flexDirection: "row",
+                width: "100%",
+                padding: 10,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 10,
+              }}
             >
-              Profile
-            </Text>
+              <Text
+                style={[
+                  styles.buttonText,
+                  {
+                    color: theme === "dark" ? "White" : "white",
+
+                    fontSize: 30,
+
+                    fontWeight: "bold",
+                    textShadowColor: "rgba(0, 0, 0, 0.75)",
+                    textShadowOffset: { width: -1, height: 1 },
+                    textShadowRadius: 10,
+
+                    textAlign: "center",
+                  },
+                ]}
+              >
+                Profile
+              </Text>
+              <TouchableOpacity onPress={() => setIsModalVisible(true)}>
+                <Ionicons
+                  name={theme === "dark" ? "pencil" : "pencil-outline"}
+                  size={24}
+                  color="white"
+                />
+              </TouchableOpacity>
+            </View>
             <Image
               source={{
                 uri: "https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg",
@@ -116,7 +157,7 @@ const SettingsScreen = ({ navigation }) => {
                 borderTopRightRadius: 15,
               },
             ]}
-            onPress={() => navigation.navigate("account")} // Navigate to Account screen
+            onPress={() => navigation.navigate("Account")} // Navigate to Account screen
           >
             <Ionicons
               name={theme === "dark" ? "person" : "person-outline"}
@@ -143,7 +184,7 @@ const SettingsScreen = ({ navigation }) => {
                 backgroundColor: colors.card,
               },
             ]}
-            onPress={() => navigation.navigate("app-settings")} // Navigate to App Settings screen
+            onPress={() => navigation.navigate("General settings")} // Navigate to App Settings screen
           >
             <Ionicons
               name={theme === "dark" ? "settings" : "settings-outline"}
@@ -152,7 +193,7 @@ const SettingsScreen = ({ navigation }) => {
               style={styles.buttonIcon}
             />
             <Text style={[styles.buttonText, { color: colors.text }]}>
-              Settings
+              General Settings
             </Text>
             <Ionicons
               name="chevron-forward"
@@ -165,7 +206,7 @@ const SettingsScreen = ({ navigation }) => {
           {/* Customer Care Btn */}
           <TouchableOpacity
             style={[styles.btns, { backgroundColor: colors.card }]}
-            onPress={() => navigation.navigate("customer-care")} // Navigate to Customer Care screen
+            onPress={() => navigation.navigate("Customer Care")} // Navigate to Customer Care screen
           >
             <Ionicons
               name={theme === "dark" ? "help-circle" : "help-circle-outline"}
@@ -187,7 +228,7 @@ const SettingsScreen = ({ navigation }) => {
           {/* History Btn */}
           <TouchableOpacity
             style={[styles.btns, { backgroundColor: colors.card }]}
-            onPress={() => navigation.navigate("history")} // Navigate to History screen
+            onPress={() => navigation.navigate("History")} // Navigate to History screen
           >
             <Ionicons
               name={theme === "dark" ? "hourglass" : "hourglass-outline"}
@@ -216,7 +257,7 @@ const SettingsScreen = ({ navigation }) => {
                 borderBottomRightRadius: 15,
               },
             ]}
-            onPress={() => navigation.navigate("manual")} // Navigate to User Manual screen
+            onPress={() => navigation.navigate("User Guide")} // Navigate to User Manual screen
           >
             <Ionicons
               name={
@@ -244,6 +285,27 @@ const SettingsScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Profile Edit Modal */}
+        <Modal
+          visible={isModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setIsModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setIsModalVisible(false)}
+          >
+            <View style={styles.modalContainer}>
+              <ProfileEditForm
+                onClose={() => setIsModalVisible(false)}
+                onSave={handleSaveProfile}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </View>
   );
@@ -267,7 +329,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 15,
-
     width: "100%",
     elevation: 3,
     marginVertical: 5,
@@ -280,6 +341,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    height: "80%",
+    width: "100%",
   },
 });
 

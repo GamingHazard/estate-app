@@ -94,12 +94,15 @@ const Navigation = () => {
         component={TabNavigator}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="account" component={AccountScreen} />
-      <Stack.Screen name="app-settings" component={GeneralSettings} />
-      <Stack.Screen name="manual" component={UserManual} />
-      <Stack.Screen name="t&cs" component={TermsAndConditions} />
-      <Stack.Screen name="history" component={History} />
-      <Stack.Screen name="customer-care" component={CustomerCare} />
+      <Stack.Screen name="Account" component={AccountScreen} />
+      <Stack.Screen name="General settings" component={GeneralSettings} />
+      <Stack.Screen name="User Guide" component={UserManual} />
+      <Stack.Screen
+        name="Terms-and-Conditions"
+        component={TermsAndConditions}
+      />
+      <Stack.Screen name="History" component={History} />
+      <Stack.Screen name="Customer Care" component={CustomerCare} />
     </Stack.Navigator>
   );
 };

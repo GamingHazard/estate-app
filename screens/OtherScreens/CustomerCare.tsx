@@ -8,7 +8,7 @@ interface CustomerCareProps {
 const CustomerCare: React.FC<CustomerCareProps> = () => {
   return (
     <View style={styles.container}>
-      <Text>Account Screen</Text>
+      <Text>Customer Care Screen</Text>
     </View>
   );
 };

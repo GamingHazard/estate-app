@@ -8,7 +8,7 @@ interface HistoryProps {
 const History: React.FC<HistoryProps> = () => {
   return (
     <View style={styles.container}>
-      <Text>Account Screen</Text>
+      <Text>History Screen</Text>
     </View>
   );
 };
