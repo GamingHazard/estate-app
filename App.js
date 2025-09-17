@@ -1,20 +1,22 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from "expo-status-bar";
+import { StatusBar as RNStatusBar, useColorScheme } from "react-native";
+import Navigation from "./components/Navigation";
+import { NavigationContainer } from "@react-navigation/native";
+import { ThemeProvider } from "./context/ThemeContext";
 
 export default function App() {
+  const colorScheme = useColorScheme();
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Navigation />
+        <RNStatusBar
+          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        />
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+// Removed unnecessary styles for navigation
