@@ -66,7 +66,7 @@ export const mockProperties = [
     location: 'Countryside, USA',
     coordinates: { latitude: 36.7783, longitude: -119.4179 },
     area: 435600, // 10 acres in sqft
-    thumbnail: 'https://images.pexels.com/photos/1112048/pexels-photo-1112048.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+    thumbnail: 'https://st.depositphotos.com/3418487/61471/i/450/depositphotos_614716758-stock-photo-land-plot-aerial-view-gps.jpg',
     amenities: ['Water Access', 'Electricity Nearby'],
     status: 'For Sale',
     gallery: [

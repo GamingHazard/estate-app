@@ -16,6 +16,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { mockProperties } from "../data/mockData";
+import { mockAdverts } from "../data/mockAdverts";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -29,11 +30,21 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const latestProperties = mockProperties.slice(6);
 
+  // Slideshow state
+  const [currentAdvertIndex, setCurrentAdvertIndex] = useState(0);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
     }, 2000);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentAdvertIndex((prev) => (prev + 1) % mockAdverts.length);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -324,13 +335,43 @@ const HomeScreen = () => {
             </View>
 
             {/* advert tab */}
+
             <View
               style={{
-                width: "100%", height: 140, backgroundColor: colors.card,
+                width: "100%", height: 200, backgroundColor: colors.text,
                 marginVertical: 10,
-                borderRadius:8
+                borderRadius: 12,
+                overflow: 'hidden',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}>
-
+              <Image
+                source={{ uri: mockAdverts[currentAdvertIndex].url }}
+                style={{ width: '100%', height: '100%', resizeMode: 'cover', position: 'absolute' }}
+                resizeMode="cover"
+              />
+              {/* Gradient overlay */}
+              <LinearGradient
+                colors={["rgba(0,0,0,0.9)", "rgba(0,0,0,0.0)"]}
+                start={{ x: 0.5, y: 1 }}
+                end={{ x: 0.5, y: 0 }}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  top: 0,
+                  width: '100%',
+                  height: '100%',
+                  justifyContent: 'flex-end',
+                  alignItems: 'flex-start',
+                  padding: 16,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>
+                  {mockAdverts[currentAdvertIndex].description}
+                </Text>
+              </LinearGradient>
             </View>
 
 
