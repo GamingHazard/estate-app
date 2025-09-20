@@ -16,9 +16,14 @@ import UserManual from "../screens/OtherScreens/UserManual";
 import TermsAndConditions from "../screens/SettingsScreens/Terms&Conditions";
 import History from "../screens/OtherScreens/History";
 import CustomerCare from "../screens/OtherScreens/CustomerCare";
+import PropertyDetailsScreen from "../screens/PropertyDetailsScreen";
+
+import { RootStackParamList } from '../types';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Stack = createStackNavigator<RootStackParamList>();
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TabNavigator = () => {
   const { colors } = useTheme();
@@ -94,6 +99,7 @@ const Navigation = () => {
         component={TabNavigator}
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
       <Stack.Screen name="Account" component={AccountScreen} />
       <Stack.Screen name="General settings" component={GeneralSettings} />
       <Stack.Screen name="User Guide" component={UserManual} />

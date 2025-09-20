@@ -13,6 +13,7 @@ interface ThemeColors {
   tabActive: string;
   tabInactive: string;
   bg: string;
+  textMuted: string;
 }
 
 export const lightTheme: ThemeColors = {
@@ -25,6 +26,7 @@ export const lightTheme: ThemeColors = {
   tabActive: "#2563eb",
   tabInactive: "#64748b",
   bg: "#1F2937",
+  textMuted: "#6B7280",
 };
 
 export const darkTheme: ThemeColors = {
@@ -37,6 +39,7 @@ export const darkTheme: ThemeColors = {
   tabActive: "#3b82f6",
   tabInactive: "#94a3b8",
   bg: "#4B5563",
+  textMuted: "#9CA3AF",
 };
 
 interface ThemeContextType {
