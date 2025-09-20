@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { Dimensions } from "react-native";
 import {
   Ionicons,
   FontAwesome5,
@@ -16,9 +17,12 @@ import {
 
 const HomeScreen = () => {
   const { colors, theme, toggleTheme } = useTheme();
+  const { width } = Dimensions.get("window");
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Top Tab */}
       <View
         style={{
@@ -69,14 +73,11 @@ const HomeScreen = () => {
       </View>
 
       {/* Main Content */}
-      <ScrollView
-        contentContainerStyle={{
+      <View
+        style={{
           paddingTop: 80,
           paddingHorizontal: 16,
           paddingBottom: 16,
-
-          alignItems: "center",
-          flex: 1,
         }}
       >
         {/* Search Bar */}
@@ -148,17 +149,17 @@ const HomeScreen = () => {
               style={{
                 backgroundColor: colors.card,
                 borderRadius: 40,
-                padding: 10,
-                height: 70,
-                width: 70,
+                padding: 5,
+                height: 50,
+                width: 50,
 
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
-              <FontAwesome5 name="home" size={30} color={colors.text} />
+              <FontAwesome5 name="home" size={23} color={colors.text} />
             </TouchableOpacity>
-            <Text style={{ color: colors.text }}>Residents</Text>
+            <Text style={{ color: colors.text,fontSize:11 }}>Residents</Text>
           </View>
 
           {/* Commercial Btn */}
@@ -175,17 +176,17 @@ const HomeScreen = () => {
               style={{
                 backgroundColor: colors.card,
                 borderRadius: 40,
-                padding: 10,
-                height: 70,
-                width: 70,
+                padding: 5,
+                height: 50,
+                width: 50,
 
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
-              <FontAwesome5 name="building" size={30} color={colors.text} />
+              <FontAwesome5 name="building" size={23} color={colors.text} />
             </TouchableOpacity>
-            <Text style={{ color: colors.text }}>Commercial</Text>
+            <Text style={{ color: colors.text,fontSize:11 }}>Commercial</Text>
           </View>
 
           {/* Industrial Btn */}
@@ -202,9 +203,9 @@ const HomeScreen = () => {
               style={{
                 backgroundColor: colors.card,
                 borderRadius: 40,
-                padding: 10,
-                height: 70,
-                width: 70,
+                padding: 5,
+                height: 50,
+                width: 50,
 
                 justifyContent: "center",
                 alignItems: "center",
@@ -212,11 +213,11 @@ const HomeScreen = () => {
             >
               <MaterialCommunityIcons
                 name="factory"
-                size={30}
+                size={23}
                 color={colors.text}
               />
             </TouchableOpacity>
-            <Text style={{ color: colors.text }}>Industrial</Text>
+            <Text style={{ color: colors.text,fontSize:11 }}>Industrial</Text>
           </View>
 
           {/* Agricultural Btn */}
@@ -233,20 +234,20 @@ const HomeScreen = () => {
               style={{
                 backgroundColor: colors.card,
                 borderRadius: 40,
-                padding: 10,
-                height: 70,
-                width: 70,
+                padding: 5,
+                height: 50,
+                width: 50,
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
               <MaterialCommunityIcons
                 name="barn"
-                size={30}
+                size={23}
                 color={colors.text}
               />
             </TouchableOpacity>
-            <Text style={{ color: colors.text }}>Agricultural</Text>
+            <Text style={{ color: colors.text,fontSize:11 }}>Agricultural</Text>
           </View>
 
           {/* land Btn */}
@@ -263,32 +264,138 @@ const HomeScreen = () => {
               style={{
                 backgroundColor: colors.card,
                 borderRadius: 40,
-                padding: 10,
-                height: 70,
-                width: 70,
+                padding: 5,
+                height: 50,
+                width: 50,
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
               <MaterialCommunityIcons
                 name="beach"
-                size={30}
+                size={23}
                 color={colors.text}
               />
             </TouchableOpacity>
-            <Text style={{ color: colors.text }}>Land</Text>
+            <Text style={{ color: colors.text,fontSize:11 }}>Land</Text>
           </View>
         </View>
 
-        <View style={{ height: 100 }}></View>
-      </ScrollView>
-    </View>
+        {/* advert tab */}
+        <View
+          style={{
+            width: "100%", height: 140, backgroundColor: colors.card,
+            marginVertical: 10,
+            borderRadius:8
+          }}>
+
+        </View>
+
+
+        {/* Sorting options */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent:"flex-start",
+          height: 50,
+          width: '100%',
+          backgroundColor: "transparent",
+          alignItems: 'center',
+        
+        }}>
+
+          <View style={{flex:1,flexDirection:"row",gap:10}}>
+              {/* Rent button */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              borderRadius: 25,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: colors.card,
+              paddingHorizontal: 15,
+              height:35
+              
+            }}>
+           <Text style={{color:colors.text}}>For Rent</Text>
+          </TouchableOpacity>
+
+          {/* Sale Btn */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              borderRadius: 25,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: colors.card,
+              paddingHorizontal: 15,
+              height:35
+              
+            }}>
+           <Text style={{color:colors.text}}>For Sale</Text>
+          </TouchableOpacity>
+        </View>
+
+
+          {/* sort Btn */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              borderRadius: 25,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: colors.card,
+              paddingHorizontal: 15,
+              height:35,
+             
+              
+              
+              
+            }}>
+            <Ionicons name='swap-vertical-outline' size={16} style={{marginRight:5}} color={colors.text} />
+           <Text style={{color:colors.text}}>Sort</Text>
+          </TouchableOpacity>
+
+        </View>
+
+        {/* Hozirontal Scroll */}
+
+       <ScrollView
+  horizontal = {true}
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={{
+    paddingVertical: 5,
+    backgroundColor: "transparent",
+    flexDirection: "row",
+    alignItems: "center",
+     
+  }}
+        >
+          
+          {/* Property card 1 */}
+  <View
+    style={[styles.card,{width: width * 0.8,backgroundColor: colors.card,}]}
+  />
+
+           {/* Property card 2 */}
+  <View
+    style={[styles.card,{width: width * 0.8,backgroundColor: colors.card,}]}
+  />
+</ScrollView>
+
+<View style={{ height: 100 }} />
+
+
+
+        {/* <View style={{ height: 100 }}></View> */}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+
   },
   themeToggle: {
     flexDirection: "row",
@@ -305,6 +412,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
+  card:{   // ✅ each card 70% of screen width
+      height: 280,
+      
+      marginRight: 10,
+      borderRadius: 8,}
 });
 
 export default HomeScreen;
