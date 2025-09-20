@@ -52,13 +52,13 @@ const TabNavigator = () => {
 
           return <Ionicons name={iconName} size={30} color={color} />;
         },
+        // tabBarShowLabel: false,
         tabBarActiveTintColor: colors.text,
-
         tabBarInactiveTintColor: "gray",
         tabBarStyle: {
           paddingBottom: 5,
           paddingTop: 5,
-          height: 80,
+          height: 60,
           marginVertical: 5,
           marginHorizontal: 10,
           borderRadius: 15,

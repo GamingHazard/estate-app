@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Image,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Dimensions } from "react-native";
@@ -14,10 +15,13 @@ import {
   FontAwesome5,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
+import { mockProperties } from "../data/mockData";
+import { LinearGradient } from 'expo-linear-gradient';
 
 const HomeScreen = () => {
   const { colors, theme, toggleTheme } = useTheme();
   const { width } = Dimensions.get("window");
+  const latestProperties = mockProperties.slice(6);
 
   return (
     <ScrollView
@@ -151,6 +155,7 @@ const HomeScreen = () => {
                 borderRadius: 40,
                 padding: 5,
                 height: 50,
+                elevation: 5,
                 width: 50,
 
                 justifyContent: "center",
@@ -178,6 +183,7 @@ const HomeScreen = () => {
                 borderRadius: 40,
                 padding: 5,
                 height: 50,
+                elevation: 5,
                 width: 50,
 
                 justifyContent: "center",
@@ -205,6 +211,7 @@ const HomeScreen = () => {
                 borderRadius: 40,
                 padding: 5,
                 height: 50,
+                elevation: 5,
                 width: 50,
 
                 justifyContent: "center",
@@ -236,6 +243,7 @@ const HomeScreen = () => {
                 borderRadius: 40,
                 padding: 5,
                 height: 50,
+                elevation: 5,
                 width: 50,
                 justifyContent: "center",
                 alignItems: "center",
@@ -266,6 +274,7 @@ const HomeScreen = () => {
                 borderRadius: 40,
                 padding: 5,
                 height: 50,
+                elevation: 5,
                 width: 50,
                 justifyContent: "center",
                 alignItems: "center",
@@ -313,10 +322,11 @@ const HomeScreen = () => {
               alignItems: 'center',
               backgroundColor: colors.card,
               paddingHorizontal: 15,
-              height:35
+              height:35,
+              elevation:3
               
             }}>
-           <Text style={{color:colors.text}}>For Rent</Text>
+           <Text style={{color: colors.text }}>For Rent</Text>
           </TouchableOpacity>
 
           {/* Sale Btn */}
@@ -328,7 +338,8 @@ const HomeScreen = () => {
               alignItems: 'center',
               backgroundColor: colors.card,
               paddingHorizontal: 15,
-              height:35
+              height:35,
+              elevation:3
               
             }}>
            <Text style={{color:colors.text}}>For Sale</Text>
@@ -346,6 +357,7 @@ const HomeScreen = () => {
               backgroundColor: colors.card,
               paddingHorizontal: 15,
               height:35,
+              elevation:3
              
               
               
@@ -357,32 +369,83 @@ const HomeScreen = () => {
 
         </View>
 
-        {/* Hozirontal Scroll */}
-
-       <ScrollView
-  horizontal = {true}
-  showsHorizontalScrollIndicator={false}
-  contentContainerStyle={{
+        {/* Featured Properties */}
+        <View style={{ marginVertical: 16 }}>
+          <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.text, marginBottom: 16 }}>
+            Featured Properties
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
     paddingVertical: 5,
-    backgroundColor: "transparent",
     flexDirection: "row",
-    alignItems: "center",
-     
+              alignItems: "center",
+    paddingHorizontal: 5,
   }}
-        >
-          
-          {/* Property card 1 */}
-  <View
-    style={[styles.card,{width: width * 0.8,backgroundColor: colors.card,}]}
-  />
+          >
+            
+            {mockProperties.map((property) => (
+              <View key={property.id} style={[styles.card, { backgroundColor: colors.card, width: width * 0.7 }]}>
+                <Image source={{ uri: property.image }} style={{ width: '100%', height: "100%", borderRadius: 8 }} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.9)']}
+                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '50%', borderRadius: 8 }}
+                />
+                <Text style={{ position: "absolute", top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>{property.status}</Text>
+                <Text style={{ position: "absolute", top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>{property.status}</Text>
+                <Text style={{ position: "absolute", top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>{property.status}</Text>
+                <View style={{ position: 'absolute', bottom: 10, left: 10, right: 10 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#fff' }}>{property.title}</Text>
+                  <Text style={{ fontSize: 12, color: '#fff', marginVertical: 4 }}>
+                    <Ionicons name="location-sharp" size={12} color="#fff" />
+                    {property.type} in {property.location}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color:"white", marginTop: 8 }}>
+                    {property.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    {property.type === 'Apartment' || property.type === 'Co-working Space' || property.type === 'Office Space' ? ' / month' : ''}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
 
-           {/* Property card 2 */}
-  <View
-    style={[styles.card,{width: width * 0.8,backgroundColor: colors.card,}]}
-  />
-</ScrollView>
+        {/* Latest Property */}
+        <View style={{ flexDirection: 'row', justifyContent: "space-between", alignItems: "center", marginVertical: 15 }}>
+          <Text style={{
+            color: colors.text,
+            fontSize: 18, fontWeight: "bold"
+          }}>
+            Latest Properties
+          </Text>
+          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: '#007BFF', fontSize: 14, fontWeight: '500' }}>See All</Text>
+            <Ionicons style={{ marginLeft: 10 }} name="arrow-forward" size={16} color={'#007BFF'} />
+          </TouchableOpacity>
+        </View>
 
-<View style={{ height: 100 }} />
+        {/* Property tabs */}
+        {latestProperties.map((property) => (
+          <TouchableOpacity key={property.id} style={{ width: "100%", height: 200, backgroundColor: colors.card, borderRadius: 10, marginBottom: 10, flexDirection: "row", position: "relative", overflow: "hidden", elevation: 3 }}>
+            <Text style={{ position: "absolute", top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>{property.status}</Text>
+            <Image
+              source={{ uri: property.image }}
+              style={{ width: "50%", height: "100%" }}
+              resizeMode="cover"
+            />
+            <View style={{ flex: 1, padding: 10, justifyContent: "space-between" }}>
+              <View>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: "bold" }}>{property.title}</Text>
+                <Text style={{ color: colors.text, fontSize: 14, marginVertical: 5 }}>{property.description}</Text>
+                {property.bedrooms && <Text style={{ color: colors.text, fontSize: 14, marginVertical: 5 }}>{property.bedrooms} Beds • {property.bathrooms} Baths</Text>}
+                <Text style={{ color: colors.text, fontSize: 14 }}>{property.location}</Text>
+              </View>
+              <Text style={{ color: '#007BFF', fontSize: 16, fontWeight: "bold" }}>
+                {property.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                {property.type === 'Apartment' || property.type === 'Co-working Space' || property.type === 'Office Space' || property.type === 'Commercial' ? ' / month' : ''}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+        <View style={{ height: 100 }} />
 
 
 
@@ -416,7 +479,8 @@ const styles = StyleSheet.create({
       height: 280,
       
       marginRight: 10,
-      borderRadius: 8,}
+    borderRadius: 8,
+      elevation: 3,}
 });
 
 export default HomeScreen;
