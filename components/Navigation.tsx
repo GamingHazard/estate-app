@@ -1,7 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons,MaterialCommunityIcons,MaterialIcons,FontAwesome5 } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 
 // Import your screen components here
@@ -30,8 +30,10 @@ const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+       
       screenOptions={({ route }) => ({
         headerShown: false,
+        
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
 
@@ -40,13 +42,13 @@ const TabNavigator = () => {
               iconName = focused ? "home" : "home-outline";
               break;
             case "Deals":
-              iconName = focused ? "pricetag" : "pricetag-outline";
+              iconName = focused ? "pricetags" : "pricetags-outline";
               break;
             case "Saved":
               iconName = focused ? "bookmark" : "bookmark-outline";
               break;
             case "Messages":
-              iconName = focused ? "chatbox" : "chatbox-outline";
+              iconName = focused ? "chatbox-ellipses" : "chatbox-ellipses-outline";
               break;
             case "Settings":
               iconName = focused ? "settings" : "settings-outline";
@@ -54,10 +56,11 @@ const TabNavigator = () => {
             default:
               iconName = "alert-circle";
           }
+          
 
           return <Ionicons name={iconName} size={30} color={color} />;
         },
-        // tabBarShowLabel: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: "gray",
         tabBarStyle: {
@@ -67,11 +70,6 @@ const TabNavigator = () => {
           marginVertical: 5,
           marginHorizontal: 10,
           borderRadius: 15,
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 10,
-          zIndex: 10,
           backgroundColor: colors.card,
         },
       })}
@@ -92,8 +90,19 @@ const TabNavigator = () => {
 };
 
 const Navigation = () => {
+  const { colors, theme } = useTheme();
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+       screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.card, // background
+          },
+          headerTintColor:theme==="dark"?"white":colors.text, // text color
+          headerTitleStyle: {
+            fontWeight: "bold",
+          },
+        }}
+    >
       <Stack.Screen
         name="MainTabs"
         component={TabNavigator}

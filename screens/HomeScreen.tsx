@@ -537,7 +537,7 @@ const HomeScreen = () => {
                     {property.bedrooms &&
                       <Text style={{ color: colors.text, fontSize: 14, marginVertical: 5 }}>{property.bedrooms} Beds • {property.bathrooms} Baths</Text>}
                     
-                    <Text style={{ color: colors.text, fontSize: 12,marginVertical:10 }}><Ionicons style={{marginRight:10}} name="location" size={16} color={colors.text}/>{property.location}</Text>
+                    <Text style={{ color: colors.text, fontSize: 12,marginVertical:3 }}><Ionicons style={{marginRight:10}} name="location" size={16} color={colors.text}/>{property.location}</Text>
                   </View>
                   <Text style={{ color: '#007BFF', fontSize: 16, fontWeight: "bold" }}>
                     {property.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
@@ -547,7 +547,7 @@ const HomeScreen = () => {
               </TouchableOpacity>
             ))}
          
- <View style={{ height: 100 }} />
+ <View style={{ height: 100 ,backgroundColor:'transparent'}} />
 
 
         {/* <View style={{ height: 100 }}></View> */}

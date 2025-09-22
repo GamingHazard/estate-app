@@ -1,22 +1,25 @@
 import { StatusBar } from "expo-status-bar";
-import { StatusBar as RNStatusBar, useColorScheme } from "react-native";
+import { StatusBar as RNStatusBar, useColorScheme, View } from "react-native";
 import Navigation from "./components/Navigation";
 import { NavigationContainer } from "@react-navigation/native";
-import { ThemeProvider } from "./context/ThemeContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
+
+function ThemedNavigation() {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Navigation />
+    </View>
+  );
+}
 
 export default function App() {
-  const colorScheme = useColorScheme();
-
   return (
     <ThemeProvider>
       <NavigationContainer>
-        <Navigation />
-        <RNStatusBar
-          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        />
+        <ThemedNavigation />
+        <StatusBar hidden={true} />
       </NavigationContainer>
     </ThemeProvider>
   );
 }
-
-// Removed unnecessary styles for navigation

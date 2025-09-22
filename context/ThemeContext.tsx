@@ -21,7 +21,7 @@ export const lightTheme: ThemeColors = {
   text: "#1F2937",
   primary: "#2563eb",
   secondary: "#64748b",
-  card: "#FFFFFF",
+  card: "whitesmoke", // Match background
   border: "#e2e8f0",
   tabActive: "#2563eb",
   tabInactive: "#64748b",
@@ -34,7 +34,7 @@ export const darkTheme: ThemeColors = {
   text: "#FFFFFF",
   primary: "#3b82f6",
   secondary: "#94a3b8",
-  card: "#262626",
+  card: "#1a1a1a", // Match background
   border: "#404040",
   tabActive: "#3b82f6",
   tabInactive: "#94a3b8",
