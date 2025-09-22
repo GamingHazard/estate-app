@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity, Modal } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
+
 
 const { width } = Dimensions.get('window');
 
@@ -89,27 +89,22 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           ))}
         </View>
 
-        <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: property.coordinates.latitude,
-              longitude: property.coordinates.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-          >
-            <UrlTile
-              urlTemplate="http://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-            />
-            <Marker
-              coordinate={property.coordinates}
-              title={property.title}
-              description={property.location}
-            />
-          </MapView>
-        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 6 ,width: '100%',marginVertical:15}}>
+        <TouchableOpacity style={{ flexDirection: 'row', backgroundColor: colors.background, borderRadius: 30, justifyContent: 'center', alignItems: 'center', padding: 10 ,gap:10,elevation:8}}>
+          
+          <Image source={{uri:'https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg'}} style={{ width: 40, height: 40, borderRadius:50 }} />
+        <Text style={{ color: colors.textMuted }}>
+          Contact Agent
+        </Text>
+        </TouchableOpacity>
+        
+      </View>
+      <View>
+        <Text style={{ textAlign: 'center', color: colors.textMuted, marginBottom: 20 }}>
+          © 2024 Real Estate App. All rights reserved.
+        </Text>
       </View>
 
       <Modal
@@ -130,6 +125,8 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           )}
         </View>
       </Modal>
+
+
     </ScrollView>
   );
 };
@@ -222,15 +219,6 @@ const styles = StyleSheet.create({
   otherImageName: {
     marginTop: 5,
     textAlign: 'center',
-  },
-  mapContainer: {
-    height: 200,
-    marginVertical: 20,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
   },
   modalContainer: {
     flex: 1,
