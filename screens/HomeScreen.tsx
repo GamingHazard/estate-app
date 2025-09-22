@@ -7,7 +7,9 @@ import {
   ScrollView,
   TextInput,
   Image,
+  RefreshControl,
 } from "react-native";
+import { useInternetConnection } from '../hooks/useInternetConnection';
 import { useTheme } from "../context/ThemeContext";
 import { Dimensions } from "react-native";
 import {
@@ -28,10 +30,20 @@ const HomeScreen = () => {
   const { colors, theme, toggleTheme } = useTheme();
   const { width } = Dimensions.get("window");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const latestProperties = mockProperties.slice(6);
+  const isConnected = useInternetConnection();
 
   // Slideshow state
   const [currentAdvertIndex, setCurrentAdvertIndex] = useState(0);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Simulate a data refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -50,7 +62,17 @@ const HomeScreen = () => {
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      style={[styles.container, { backgroundColor: colors.background }]}>
+      style={[styles.container, { backgroundColor: colors.background }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+          titleColor={colors.primary}
+          title="Pull to refresh"
+          progressBackgroundColor={theme === "dark" ? "#fff" : "#fff"}
+        />
+      }>
       {/* Top Tab */}
       <View
         style={{
@@ -108,6 +130,11 @@ const HomeScreen = () => {
           paddingBottom: 16,
         }}
       >
+        {!isConnected && (
+          <View style={{ alignItems: 'center', marginVertical: 10 }}>
+            <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
+          </View>
+        )}
         {loading ? (
           <View>
             <SkeletonLoader style={{ width: '100%', height: 60, borderRadius: 8, marginBottom: 16 }} />
@@ -533,7 +560,7 @@ const HomeScreen = () => {
                 <View style={{ flex: 1, padding: 10, justifyContent: "space-between" }}>
                   <View>
                     <Text style={{ color: colors.text, fontSize: 16, fontWeight: "bold" }}>{property.title}</Text>
-                    <Text numberOfLines={3} style={{ color: colors.text, fontSize: 14, marginVertical: 5 }}>{property.description}</Text>
+                    <Text numberOfLines={2} style={{ color: colors.text, fontSize: 14, marginVertical: 5 }}>{property.description}</Text>
                     {property.bedrooms &&
                       <Text style={{ color: colors.text, fontSize: 14, marginVertical: 5 }}>{property.bedrooms} Beds • {property.bathrooms} Baths</Text>}
                     

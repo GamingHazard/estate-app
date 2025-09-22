@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { mockProperties } from "../data/mockData";
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,8 +11,17 @@ const DealsScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const discountedProperties = mockProperties.filter(p => p.price < 300000);
   const hotDeals = mockProperties.filter(p => p.status === "For Rent");
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Simulate a data refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -22,7 +31,18 @@ const DealsScreen = () => {
   }, []);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.text}
+          titleColor={colors.text}
+          title="Pull to refresh"
+          progressBackgroundColor={colors.card}
+        />
+      }>
       <View style={styles.header}>
         <Text style={[styles.headerText, { color: colors.text }]}>Deals and Discounts</Text>
       </View>

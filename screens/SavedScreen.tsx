@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useInternetConnection } from '../hooks/useInternetConnection';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { mockProperties } from "../data/mockData";
@@ -11,7 +12,8 @@ const SavedScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const [loading, setLoading] = useState(true);
-  const savedProperties = mockProperties.filter(p => p.saved);
+  const isConnected = useInternetConnection();
+  const savedProperties = mockProperties.filter(property => property.saved);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,6 +27,11 @@ const SavedScreen = () => {
       <View style={styles.header}>
         <Text style={[styles.headerText, { color: colors.text }]}>Saved Properties</Text>
       </View>
+      {!isConnected && (
+        <View style={{ alignItems: 'center', marginVertical: 10 }}>
+          <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.content}>

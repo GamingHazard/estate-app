@@ -1,19 +1,10 @@
+import React from 'react';
 import { StatusBar } from "expo-status-bar";
-import { StatusBar as RNStatusBar, useColorScheme, View } from "react-native";
-import Navigation from "./components/Navigation";
 import { NavigationContainer } from "@react-navigation/native";
-import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import ThemedNavigation from './components/ThemedNavigation';
 
-function ThemedNavigation() {
-  const { colors } = useTheme();
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Navigation />
-    </View>
-  );
-}
-
-export default function App() {
+const App = () => {
   return (
     <ThemeProvider>
       <NavigationContainer>
@@ -22,4 +13,6 @@ export default function App() {
       </NavigationContainer>
     </ThemeProvider>
   );
-}
+};
+
+export default App;

@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import { useInternetConnection } from '../hooks/useInternetConnection';
 import { useTheme } from "../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import ProfileEditForm from "../components/ProfileEditForm";
@@ -20,6 +21,7 @@ const SettingsScreen = ({ navigation }) => {
   const [profileImage, setProfileImage] = useState(
     "https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg"
   );
+  const isConnected = useInternetConnection();
 
   useEffect(() => {
     (async () => {
@@ -330,6 +332,11 @@ const SettingsScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
       </Modal>
+      {!isConnected && (
+        <View style={{ alignItems: 'center', marginVertical: 10 }}>
+          <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
+        </View>
+      )}
     </ScrollView>
   );
 };

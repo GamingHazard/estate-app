@@ -19,6 +19,8 @@ import CustomerCare from "../screens/OtherScreens/CustomerCare";
 import PropertyDetailsScreen from "../screens/PropertyDetailsScreen";
 
 import { RootStackParamList } from '../types';
+import { useInternetConnection } from '../hooks/useInternetConnection';
+import NoInternetScreen from '../screens/NoInternetScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -91,6 +93,12 @@ const TabNavigator = () => {
 
 const Navigation = () => {
   const { colors, theme } = useTheme();
+  const isConnected = useInternetConnection();
+
+  if (!isConnected) {
+    return <NoInternetScreen />;
+  }
+
   return (
     <Stack.Navigator
        screenOptions={{

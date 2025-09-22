@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { useInternetConnection } from '../../hooks/useInternetConnection';
 
 interface AccountScreenProps {
   // Add props here if needed
@@ -8,8 +9,15 @@ interface AccountScreenProps {
 
 const AccountScreen: React.FC<AccountScreenProps> = () => {
   const { colors, theme } = useTheme();
+  const isConnected = useInternetConnection();
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      {!isConnected && (
+        <View style={[styles.warningContainer]}>
+          <Text style={styles.warningText}>No internet connection detected. Some features may be unavailable.</Text>
+        </View>
+      )}
       <Text style={{color:"lightgrey", fontSize: 20, fontWeight: 'bold',marginVertical:10}}>Profile</Text>
       <View
         style={{width: '100%' ,borderRadius:8,backgroundColor:colors.card,padding:10}}
@@ -80,13 +88,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10
-  
   },
   input: {
     width: '100%',
     height: 40,
-    borderRadius: 8, marginVertical: 10,
-    paddingHorizontal:6
+    borderRadius: 8,
+    marginVertical: 10,
+    paddingHorizontal: 6
+  },
+  warningContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+    padding: 10,
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    borderRadius: 8
+  },
+  warningText: {
+    color: 'red',
+    fontSize: 14,
+    textAlign: 'center'
   }
 });
 

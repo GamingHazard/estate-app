@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useInternetConnection } from '../hooks/useInternetConnection';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, FlatList } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { mockMessages } from "../data/mockMessages";
@@ -7,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 const MessagesScreen = () => {
   const { colors } = useTheme();
   const [messages, setMessages] = useState(mockMessages);
+  const isConnected = useInternetConnection();
 
   const markAllAsRead = () => {
     const updatedMessages = messages.map(msg => ({ ...msg, unread: false }));
@@ -36,6 +38,11 @@ const MessagesScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {!isConnected && (
+        <View style={{ alignItems: 'center', marginVertical: 10 }}>
+          <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
+        </View>
+      )}
       {messages.length > 0 ? (
         <FlatList
           data={messages}

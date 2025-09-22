@@ -34,7 +34,7 @@ export const darkTheme: ThemeColors = {
   text: "#FFFFFF",
   primary: "#3b82f6",
   secondary: "#94a3b8",
-  card: "#1a1a1a", // Match background
+  card: "#404040", // Match background
   border: "#404040",
   tabActive: "#3b82f6",
   tabInactive: "#94a3b8",

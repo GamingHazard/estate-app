@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useInternetConnection } from '../../hooks/useInternetConnection';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from "react-native";
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from "../../context/ThemeContext";
@@ -33,6 +34,7 @@ const faqs = [
 ];
 
 const CustomerCare: React.FC = () => {
+  const isConnected = useInternetConnection();
   const { colors } = useTheme();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [subject, setSubject] = useState("");
@@ -65,6 +67,11 @@ const CustomerCare: React.FC = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}> 
+      {!isConnected && (
+        <View style={{ alignItems: 'center', marginVertical: 10 }}>
+          <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
+        </View>
+      )}
       <Text style={[styles.header, { color: colors.primary }]}>Customer Care Services</Text>
       <Text style={[styles.subHeader, { color: colors.text }]}>We're here to help you with any questions or issues.</Text>
 

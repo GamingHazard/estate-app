@@ -1,6 +1,7 @@
 export const mockProperties = [
   {
     id: '1',
+    saved: true,
     type: 'House',
     title: 'Spacious Family Home',
     description: 'A beautiful and spacious family home in a quiet suburban neighborhood. Features a large backyard, modern kitchen, and a two-car garage.',
