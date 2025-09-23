@@ -57,7 +57,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           onScroll={handleScroll}
           scrollEventThrottle={16}
         >
-          {property.gallery.map((image, index) => (
+          {property.gallery.slice(0, 3).map((image, index) => (
             <TouchableOpacity key={index} onPress={() => openImageModal(image)}>
               <View style={styles.galleryImageContainer}>
                 <Image source={{ uri: image.url }} style={styles.galleryImage} />
@@ -74,7 +74,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
         </TouchableOpacity>
 
         <View style={styles.paginationDots}>
-          {property.gallery.map((_, index) => (
+          {property.gallery.slice(0, 3).map((_, index) => (
             <View
               key={index}
               style={[

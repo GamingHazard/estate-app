@@ -25,20 +25,74 @@ import SkeletonLoader from '../components/SkeletonLoader';
 
 import { NavigationProp } from '../types';
 
+// Add these helper functions before the HomeScreen component
+const sortProperties = (properties: any[], sortBy: string) => {
+  switch (sortBy) {
+    case 'price':
+      return [...properties].sort((a, b) => a.price - b.price);
+    case 'verified':
+      return [...properties].sort((a, b) => (b.verified ? 1 : -1));
+    case 'new':
+      return [...properties].sort((a, b) => 
+        new Date(b.listedDate).getTime() - new Date(a.listedDate).getTime()
+      );
+    case 'used':
+      return [...properties].sort((a, b) => 
+        new Date(a.listedDate).getTime() - new Date(b.listedDate).getTime()
+      );
+    case 'nearMe':
+      // This would typically use the user's location and calculate distances
+      // For now, we'll just return the original array
+      return properties;
+    default:
+      return properties;
+  }
+};
+
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, theme, toggleTheme } = useTheme();
   const { width } = Dimensions.get("window");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const latestProperties = mockProperties.slice(6);
   const isConnected = useInternetConnection();
+  const [activeBtn, setActiveBtn] = useState("All");
+  const [status, setStatus] = useState("All");
+  const [filteredProperties, setFilteredProperties] = useState(mockProperties);
 
   // Slideshow state
   const [currentAdvertIndex, setCurrentAdvertIndex] = useState(0);
 
+  // Sort modal state
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [selectedSort, setSelectedSort] = useState("");
+
+  const sortOptions = [
+    { label: "Price", value: "price" },
+    { label: "Verified", value: "verified" },
+    { label: "New", value: "new" },
+    { label: "Used", value: "used" },
+    { label: "Near Me", value: "nearMe" },
+  ];
+
+  const handleSortSelect = (option: string) => {
+    setSelectedSort(option);
+    setShowSortModal(false);
+    
+    let propertiesForSorting = [...filteredProperties];
+    
+    // If no properties are filtered (showing all), use mockProperties
+    if (activeBtn === "All" && status === "All") {
+      propertiesForSorting = [...mockProperties];
+    }
+    
+    const sortedProperties = sortProperties(propertiesForSorting, option);
+    setFilteredProperties(sortedProperties);
+  };
+
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
+    clearFilters();
     // Simulate a data refresh
     setTimeout(() => {
       setRefreshing(false);
@@ -59,6 +113,37 @@ const HomeScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
+
+  // clear all filters on refresh
+const clearFilters = () => {
+    setFilteredProperties(mockProperties);
+    setActiveBtn("All");
+    setStatus("All");
+    setSelectedSort("");
+  }
+
+
+  // filter properties by type
+  const filterProperties = (type: string,) => {
+
+    if (status !== "All") {
+      return mockProperties.filter(property => property.type === type && property.status === status)
+    } else {
+      return mockProperties.filter(property => property.type === type);
+    }
+  }
+
+  // filter properties by status
+  const propertyStatus = (option: string,) => {
+
+    if (activeBtn !== "All") {
+      return mockProperties.filter(property => property.status === option && property.type === activeBtn)
+    } else {
+      return mockProperties.filter(property => property.status === option);
+    }
+     
+  }
+   
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -135,7 +220,7 @@ const HomeScreen = () => {
             <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
           </View>
         )}
-        {loading ? (
+        {loading || refreshing ? (
           <View>
             <SkeletonLoader style={{ width: '100%', height: 60, borderRadius: 8, marginBottom: 16 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 16 }}>
@@ -220,9 +305,15 @@ const HomeScreen = () => {
                   elevation: 5,
                 }}
               >
-                <TouchableOpacity
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActiveBtn("Residential");
+                          
+                        setFilteredProperties(filterProperties("Residential"));
+                         
+                    }}
                   style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: activeBtn === "Residential"  ?  colors.text : colors.card,
                     borderRadius: 40,
                     padding: 5,
                     height: 50,
@@ -233,9 +324,13 @@ const HomeScreen = () => {
                     alignItems: "center",
                   }}
                 >
-                  <FontAwesome5 name="home" size={23} color={colors.text} />
+                    <Ionicons name="home-outline" size={23}
+                      color={activeBtn === "Residential" ? colors.card :colors.text} />
                 </TouchableOpacity>
-                <Text style={{ color: colors.text,fontSize:11 }}>Residents</Text>
+                  <Text
+                    style={{ color: colors.text,
+                     fontSize: 11 }}>
+                    Residents</Text>
               </View>
 
               {/* Commercial Btn */}
@@ -248,9 +343,15 @@ const HomeScreen = () => {
                   elevation: 5,
                 }}
               >
-                <TouchableOpacity
+                  <TouchableOpacity
+                     onPress={() => {
+                      setActiveBtn("Commercial");
+                          
+                        setFilteredProperties(filterProperties("Commercial"));
+                         
+                    }}
                   style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: activeBtn === "Commercial"  ?  colors.text : colors.card,
                     borderRadius: 40,
                     padding: 5,
                     height: 50,
@@ -261,7 +362,9 @@ const HomeScreen = () => {
                     alignItems: "center",
                   }}
                 >
-                  <FontAwesome5 name="building" size={23} color={colors.text} />
+                    <FontAwesome5 name="building" size={23} color={
+                      activeBtn === "Commercial"  ?  colors.card : colors.text
+                  } />
                 </TouchableOpacity>
                 <Text style={{ color: colors.text,fontSize:11 }}>Commercial</Text>
               </View>
@@ -276,15 +379,20 @@ const HomeScreen = () => {
                   elevation: 5,
                 }}
               >
-                <TouchableOpacity
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActiveBtn("Industrial");
+                          
+                        setFilteredProperties(filterProperties("Industrial"));
+                         
+                    }}
                   style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: activeBtn === "Industrial"  ?  colors.text : colors.card,
                     borderRadius: 40,
                     padding: 5,
                     height: 50,
                     elevation: 5,
                     width: 50,
-
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -292,7 +400,7 @@ const HomeScreen = () => {
                   <MaterialCommunityIcons
                     name="factory"
                     size={23}
-                    color={colors.text}
+                    color={activeBtn === "Industrial"  ?  colors.card : colors.text}
                   />
                 </TouchableOpacity>
                 <Text style={{ color: colors.text,fontSize:11 }}>Industrial</Text>
@@ -308,9 +416,15 @@ const HomeScreen = () => {
                   elevation: 5,
                 }}
               >
-                <TouchableOpacity
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActiveBtn("Agricultural");
+                          
+                        setFilteredProperties(filterProperties("Agricultural"));
+                         
+                    }}
                   style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: activeBtn === "Agricultural"  ?  colors.text : colors.card,
                     borderRadius: 40,
                     padding: 5,
                     height: 50,
@@ -323,7 +437,7 @@ const HomeScreen = () => {
                   <MaterialCommunityIcons
                     name="barn"
                     size={23}
-                    color={colors.text}
+                    color={activeBtn === "Agricultural"  ?  colors.card : colors.text}
                   />
                 </TouchableOpacity>
                 <Text style={{ color: colors.text,fontSize:11 }}>Agricultural</Text>
@@ -339,9 +453,15 @@ const HomeScreen = () => {
                   elevation: 5,
                 }}
               >
-                <TouchableOpacity
+                  <TouchableOpacity
+                     onPress={() => {
+                      setActiveBtn("Land");
+                          
+                        setFilteredProperties(filterProperties("Land"));
+                         
+                    }}
                   style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: activeBtn === "Land"  ?  colors.text : colors.card,
                     borderRadius: 40,
                     padding: 5,
                     height: 50,
@@ -354,7 +474,7 @@ const HomeScreen = () => {
                   <MaterialCommunityIcons
                     name="beach"
                     size={23}
-                    color={colors.text}
+                    color={activeBtn === "Land"  ?  colors.card : colors.text}
                   />
                 </TouchableOpacity>
                 <Text style={{ color: colors.text,fontSize:11 }}>Land</Text>
@@ -415,76 +535,124 @@ const HomeScreen = () => {
 
               <View style={{flex:1,flexDirection:"row",gap:10}}>
                   {/* Rent button */}
-              <TouchableOpacity
+                  <TouchableOpacity
+                    onPress={() => {
+                      setStatus("For Rent");
+                      setFilteredProperties(propertyStatus("For Rent"));
+                    }}
                 style={{
                   flexDirection: 'row',
                   borderRadius: 25,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: colors.card,
+                  backgroundColor: status === "For Rent" ? colors.text : colors.card,
                   paddingHorizontal: 15,
                   height:35,
                   elevation:3
                   
                 }}>
-               <Text style={{color: colors.text }}>For Rent</Text>
+               <Text style={{color: status === "For Rent" ? colors.card : colors.text, }}>For Rent</Text>
               </TouchableOpacity>
 
               {/* Sale Btn */}
-              <TouchableOpacity
+                  <TouchableOpacity
+                    onPress={() => {
+                      setStatus("For Sale");
+                      setFilteredProperties(propertyStatus("For Sale"));
+                    }}
                 style={{
                   flexDirection: 'row',
                   borderRadius: 25,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: colors.card,
+                  backgroundColor: status === "For Sale" ? colors.text : colors.card,
                   paddingHorizontal: 15,
                   height:35,
                   elevation:3
                   
                 }}>
-               <Text style={{color:colors.text}}>For Sale</Text>
+               <Text style={{color:status === "For Sale" ? colors.card : colors.text,}}>For Sale</Text>
               </TouchableOpacity>
             </View>
+
 
 
               {/* sort Btn */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  borderRadius: 25,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  backgroundColor: colors.card,
-                  paddingHorizontal: 15,
-                  height:35,
-                  elevation:3
-                 
-                  
-                  
-                  
-                }}>
-                <Ionicons name='swap-vertical-outline' size={16} style={{marginRight:5}} color={colors.text} />
-               <Text style={{color:colors.text}}>Sort</Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    borderRadius: 25,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: selectedSort ? colors.text : colors.card,
+                    paddingHorizontal: 15,
+                    height:35,
+                    elevation:3 
+                  }}
+                  onPress={() => setShowSortModal((prev) => !prev)}
+                >
+                  <Ionicons name='swap-vertical-outline' size={16} style={{marginRight:5}} color={selectedSort ? colors.card : colors.text} />
+                    <Text style={{ color: selectedSort ? colors.card : colors.text }}>{selectedSort || "Sort"}</Text>
+                </TouchableOpacity>
+
+                
+              </View>
 
             </View>
-
-            {/* Featured Properties */}
-            <View style={{ marginVertical: 16 }}>
-              <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.text, marginBottom: 16 }}>
+               {showSortModal && (
+                  <View style={{
+                    position: 'absolute',
+                    top:510,
+                    right: 0,
+                    backgroundColor: colors.card,
+                    borderRadius: 10,
+                    padding: 10,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 5,
+                      zIndex: 100,
+                  width: 200,
+                    marginHorizontal:10
+                  }}>
+                    {sortOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={{
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: 6,
+                          backgroundColor: selectedSort === option.value ? colors.text : 'transparent',
+                          marginBottom: 4,
+                        }}
+                        onPress={() => handleSortSelect(option.value)}
+                      >
+                        <Text style={{ color: selectedSort === option.value ? colors.card : colors.text }}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              {/* Featured Properties */}
+               <Text style={{ fontSize: 20, fontWeight: "bold", color: colors.text, marginVertical: 16 }}>
                 Featured Properties
               </Text>
+           {filteredProperties.length > 0 ?( <View style={{ marginVertical: 16 }}>
+             
               <ScrollView horizontal showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{
       paddingVertical: 5,
       flexDirection: "row",
                 alignItems: "center",
-      paddingHorizontal: 5,
+                  paddingHorizontal: 5,
+      position: "relative",
     }}
               >
                 
-                {mockProperties.map((property) => (
+                {filteredProperties.slice(0, 4).map((property) => (
                   <TouchableOpacity 
                     key={property.id} 
                     style={[styles.card, { backgroundColor: colors.card, width: width * 0.7 }]}
@@ -528,7 +696,11 @@ const HomeScreen = () => {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </View>
+            </View>):(
+              <View style={{alignItems:'center',justifyContent:'center',marginVertical:50}}>
+                <Text style={{color:colors.textMuted}}>No properties found for the selected category.</Text>
+              </View>
+            )}
 
             {/* Latest Property */}
             <View style={{ flexDirection: 'row', justifyContent: "space-between", alignItems: "center", marginVertical: 15 }}>
@@ -545,10 +717,10 @@ const HomeScreen = () => {
             </View>
 
             {/* Property tabs */}
-            {latestProperties.map((property) => (
+            {filteredProperties.length> 0 ? (filteredProperties.map((property) => (
               <TouchableOpacity 
                 key={property.id} 
-                style={{ width: "100%", height: 200, backgroundColor: colors.card, borderRadius: 10, marginBottom: 10, flexDirection: "row", position: "relative", overflow: "hidden", elevation: 3 }}
+                style={{ width: "100%", backgroundColor: colors.card, borderRadius: 10, marginBottom: 10, flexDirection: "row", position: "relative", overflow: "hidden", elevation: 3 }}
                 onPress={() => navigation.navigate('PropertyDetails', { property })}
               >
                 <Text style={{ position: "absolute", top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>{property.status}</Text>
@@ -572,12 +744,13 @@ const HomeScreen = () => {
                   </Text>
                 </View>
               </TouchableOpacity>
-            ))}
+            ))):(
+              <View style={{alignItems:'center',justifyContent:'center',marginVertical:50}}>
+                <Text style={{color:colors.textMuted}}>No properties found for the selected category.</Text>
+              </View>
+            )}
          
- <View style={{ height: 100 ,backgroundColor:'transparent'}} />
-
-
-        {/* <View style={{ height: 100 }}></View> */}
+  
      
           </>
         )}

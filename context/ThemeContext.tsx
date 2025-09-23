@@ -31,7 +31,7 @@ export const lightTheme: ThemeColors = {
 
 export const darkTheme: ThemeColors = {
   background: "#1a1a1a",
-  text: "#white",
+  text: "white",
   primary: "#3b82f6",
   secondary: "#94a3b8",
   card: "#404040", // Match background
