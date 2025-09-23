@@ -742,6 +742,8 @@ const clearFilters = () => {
                     {property.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                     {property.type === 'Apartment' || property.type === 'Co-working Space' || property.type === 'Office Space' || property.type === 'Commercial' ? ' / month' : ''}
                   </Text>
+                  {property.verified && (<Text style={{ position: "absolute", bottom: 5, right: 1, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>Verified</Text>)}
+
                 </View>
               </TouchableOpacity>
             ))):(

@@ -3,11 +3,12 @@ import { useInternetConnection } from '../hooks/useInternetConnection';
 import { View, Text, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity, Modal } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
-
+import { mockAgents } from '../data/mockAgents';
 
 const { width } = Dimensions.get('window');
 
@@ -18,6 +19,7 @@ type Props = {
 };
 
 const PropertyDetailsScreen = ({ route }: Props) => {
+  const navigation = useNavigation();
   const { colors } = useTheme();
   const { property } = route.params;
   const [modalVisible, setModalVisible] = useState(false);
@@ -44,6 +46,12 @@ const PropertyDetailsScreen = ({ route }: Props) => {
     const offset = event.nativeEvent.contentOffset.x;
     const index = Math.round(offset / slideSize);
     setCurrentImageIndex(index);
+  };
+
+  // Add this function
+  const handleAgentPress = () => {
+    const agent = mockAgents[0]; // For demo, linking to first agent
+    navigation.navigate('Agent', { agent });
   };
 
   return (
@@ -96,6 +104,8 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           {property.type.includes('Apartment') || property.type.includes('Space') ? ' / month' : ''}
         </Text>
 
+        {/* Amenities section  */}
+
         <View style={styles.amenitiesContainer}>
           {property.bedrooms && (
             <View style={styles.amenity}>
@@ -116,7 +126,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
             </View>
           )}
         </View>
-
+{/* Description */}
         <Text style={[styles.description, { color: colors.text }]}>{property.description}</Text>
 
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Features</Text>
@@ -131,7 +141,11 @@ const PropertyDetailsScreen = ({ route }: Props) => {
 
       </View>
 {/* Agent tab */}
-      <View style={[styles.agentContainer, { backgroundColor: colors.card }]}>
+      <TouchableOpacity 
+        style={[styles.agentContainer, { backgroundColor: colors.card }]}
+        onPress={handleAgentPress}
+      >
+        <Text style={{ color: colors.primary, position: 'absolute', right: 10, top: 5 }}>View Profile</Text>
         <View style={styles.agentInfo}>
           <View style={[styles.agentImageContainer, { borderColor: colors.primary }]}>
             <Image
@@ -161,7 +175,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           <Ionicons name="chatbubble-ellipses" size={20} color="white" />
           <Text style={styles.contactButtonText}>Contact</Text>
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
       {!isConnected && (
         <View style={{ alignItems: 'center', marginVertical: 10 }}>
@@ -182,7 +196,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
       >
         <View style={styles.modalContainer}>
           <TouchableOpacity style={styles.closeButton} onPress={closeImageModal}>
-            <Ionicons name="close-circle" size={30} color="white" />
+            <Ionicons name="close" size={30} color="white" />
           </TouchableOpacity>
           {selectedImage && (
             <View style={styles.modalContent}>
@@ -307,7 +321,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   modalContent: {
-    width: '90%',
+    width: '100%',
     height: '80%',
     alignItems: 'center',
   },
@@ -325,7 +339,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 15,
     borderRadius: 12,
-  
     padding: 15,
     elevation: 2,
     shadowColor: '#000',
@@ -333,6 +346,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     gap: 15,
+    position: 'relative',
   },
   agentInfo: {
     flexDirection: 'row',

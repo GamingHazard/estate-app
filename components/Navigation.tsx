@@ -17,10 +17,13 @@ import TermsAndConditions from "../screens/SettingsScreens/Terms&Conditions";
 import History from "../screens/OtherScreens/History";
 import CustomerCare from "../screens/OtherScreens/CustomerCare";
 import PropertyDetailsScreen from "../screens/PropertyDetailsScreen";
+import { PropertiesManagement } from "../screens/AdminScreens/PropertiesManagement";
+import { PropertyDetails } from "../screens/AdminScreens/PropertyDetails";
 
 import { RootStackParamList } from '../types';
 import { useInternetConnection } from '../hooks/useInternetConnection';
 import NoInternetScreen from '../screens/NoInternetScreen';
+import AgentProfileScreen from "../screens/AgentProfileScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -38,6 +41,7 @@ const TabNavigator = () => {
         
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
+          let iconSize = 24; // Default icon size
 
           switch (route.name) {
             case "Home":
@@ -55,12 +59,16 @@ const TabNavigator = () => {
             case "Settings":
               iconName = focused ? "settings" : "settings-outline";
               break;
+            case "Admin":
+              iconName = focused ? "shield" : "shield-outline";
+              iconSize = 22; // Slightly smaller shield icon
+              color = focused ? colors.primary : color; // Use primary color for active state
+              break;
             default:
               iconName = "alert-circle";
           }
-          
 
-          return <Ionicons name={iconName} size={30} color={color} />;
+          return <Ionicons name={iconName} size={iconSize} color={color} />;
         },
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.text,
@@ -87,7 +95,42 @@ const TabNavigator = () => {
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen 
+        name="Admin" 
+        component={AdminNavigator}
+        options={{
+          unmountOnBlur: true // Reset state when navigating away
+        }}
+      />
     </Tab.Navigator>
+  );
+};
+
+const AdminStack = createStackNavigator<RootStackParamList>();
+
+const AdminNavigator = () => {
+  const { colors } = useTheme();
+  
+  return (
+    <AdminStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.card,
+        },
+        headerTintColor: colors.text,
+      }}
+    >
+      <AdminStack.Screen 
+        name="PropertiesManagement" 
+        component={PropertiesManagement}
+        options={{ title: "Property Management" }}
+      />
+      <AdminStack.Screen 
+        name="PropertyDetails"
+        component={PropertyDetails}
+        options={{ title: "Property Details" }}
+      />
+    </AdminStack.Navigator>
   );
 };
 
@@ -126,6 +169,7 @@ const Navigation = () => {
       />
       <Stack.Screen name="History" component={History} />
       <Stack.Screen name="Customer Care" component={CustomerCare} />
+      <Stack.Screen name="AgentProfile" component={AgentProfileScreen} />
     </Stack.Navigator>
   );
 };
