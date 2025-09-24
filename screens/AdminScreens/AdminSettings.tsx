@@ -50,7 +50,7 @@ export function AdminSettings() {
   });
 
   return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>General</Text>
           <View style={styles.settingItem}>

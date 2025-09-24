@@ -57,7 +57,7 @@ export function AdminManual() {
   });
 
   return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Welcome to the Admin Dashboard</Text>
           <Text style={styles.text}>

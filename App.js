@@ -9,6 +9,7 @@ const App = () => {
     <ThemeProvider>
       <NavigationContainer>
         <ThemedNavigation />
+        
         <StatusBar hidden={true} />
       </NavigationContainer>
     </ThemeProvider>

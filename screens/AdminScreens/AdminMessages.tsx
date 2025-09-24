@@ -98,7 +98,7 @@ export function AdminMessages() {
 
   return (
       <FlatList
-        style={styles.container}
+        style={[  styles.container, { backgroundColor: colors.background }]}
         data={mockMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}

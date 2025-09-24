@@ -101,7 +101,7 @@ export function AdminNotifications() {
 
   return (
       <FlatList
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         data={mockNotifications}
         renderItem={renderNotification}
         keyExtractor={(item) => item.id}

@@ -67,7 +67,7 @@ export function Analytics() {
   });
 
   return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.statsGrid}>

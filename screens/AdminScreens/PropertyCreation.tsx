@@ -69,7 +69,7 @@ export function PropertyCreation() {
   });
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
           <TextInput
