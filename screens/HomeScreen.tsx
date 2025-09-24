@@ -143,6 +143,8 @@ const clearFilters = () => {
     }
      
   }
+
+  const noImage ='https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png';
    
   return (
     <ScrollView
@@ -493,7 +495,7 @@ const clearFilters = () => {
                 alignItems: 'center',
               }}>
               <Image
-                source={{ uri: mockAdverts[currentAdvertIndex].url }}
+                source={{ uri: mockAdverts[currentAdvertIndex].url|| noImage }}
                 style={{ width: '100%', height: '100%', resizeMode: 'cover', position: 'absolute' }}
                 resizeMode="cover"
               />
@@ -658,7 +660,7 @@ const clearFilters = () => {
                     style={[styles.card, { backgroundColor: colors.card, width: width * 0.7 }]}
                     onPress={() => navigation.navigate('PropertyDetails', { property })}
                   >
-                    <Image source={{ uri: property.thumbnail }} style={{ width: '100%', height: "100%", borderRadius: 8 }} />
+                    <Image source={{ uri: property.thumbnail || noImage }} style={{ width: '100%', height: "100%", borderRadius: 8 }} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.9)']}
                       style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '50%', borderRadius: 8 }}
@@ -725,7 +727,7 @@ const clearFilters = () => {
               >
                 <Text style={{ position: "absolute", top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, fontSize: 12, zIndex: 1 }}>{property.status}</Text>
                 <Image
-                  source={{ uri: property.thumbnail }}
+                  source={{ uri: property.thumbnail || noImage }}
                   style={{ width: "50%", height: "100%" }}
                   resizeMode="cover"
                 />

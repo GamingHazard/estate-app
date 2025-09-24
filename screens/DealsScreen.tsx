@@ -30,6 +30,8 @@ const DealsScreen = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const noImage = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png';
+
   return (
     <ScrollView 
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -71,7 +73,7 @@ const DealsScreen = () => {
                     style={styles.card}
                     onPress={() => navigation.navigate('PropertyDetails', { property })}
                   >
-                    <Image source={{ uri: property.thumbnail }} style={styles.cardImage} />
+                    <Image source={{ uri: property.thumbnail || noImage }} style={styles.cardImage} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.8)']}
                       style={styles.gradient}

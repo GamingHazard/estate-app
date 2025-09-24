@@ -54,6 +54,8 @@ const PropertyDetailsScreen = ({ route }: Props) => {
     navigation.navigate('Agent Profile', { agent });
   };
 
+  const noImage = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png';
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.galleryContainer}>
@@ -68,7 +70,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           {property.gallery.slice(0, 3).map((image, index) => (
             <TouchableOpacity key={index} onPress={() => openImageModal(image)}>
               <View style={styles.galleryImageContainer}>
-                <Image source={{ uri: image.url }} style={styles.galleryImage} />
+                <Image source={{ uri: image.url || noImage }} style={styles.galleryImage} />
                 <View style={styles.imageNameContainer}>
                   <Text style={styles.imageName}>{image.name}</Text>
                 </View>
@@ -133,7 +135,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
         <View style={styles.otherImagesContainer}>
           {property.gallery.map((image, index) => (
             <TouchableOpacity key={index} onPress={() => openImageModal(image)} style={styles.otherImageContainer}>
-              <Image source={{ uri: image.url }} style={styles.otherImage} />
+              <Image source={{ uri: image.url || noImage }} style={styles.otherImage} />
               <Text style={[styles.otherImageName, { color: colors.text }]}>{image.name}</Text>
             </TouchableOpacity>
           ))}

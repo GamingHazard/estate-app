@@ -22,6 +22,8 @@ const SavedScreen = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const noImage = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png';
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
@@ -49,7 +51,7 @@ const SavedScreen = () => {
                 style={[styles.card, { backgroundColor: colors.card }]}
                 onPress={() => navigation.navigate('PropertyDetails', { property })}
               >
-                <Image source={{ uri: property.thumbnail }} style={styles.cardImage} />
+                <Image source={{ uri: property.thumbnail || noImage }} style={styles.cardImage} />
                 <View style={styles.cardContent}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>{property.title}</Text>
                   <Text style={[styles.cardLocation, { color: colors.textMuted }]}>{property.location}</Text>

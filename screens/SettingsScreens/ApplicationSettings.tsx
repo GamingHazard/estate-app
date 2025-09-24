@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import SwitchToggle from "react-native-switch-toggle";
@@ -10,6 +9,19 @@ const ApplicationSettings: React.FC = () => {
   const [darkModeEnabled, setDarkModeEnabled] = useState(theme === "dark");
   const [locationEnabled, setLocationEnabled] = useState(false);
 
+  const switchStyle = {
+    width: 50,
+    height: 25,
+    borderRadius: 25,
+    padding: 2,
+  };
+
+  const circleStyle = {
+    width: 21,
+    height: 21,
+    borderRadius: 21,
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}> 
       <Text style={[styles.header, { color: colors.text }]}>General App Settings</Text>
@@ -19,12 +31,12 @@ const ApplicationSettings: React.FC = () => {
         <SwitchToggle
           switchOn={notificationsEnabled}
           onPress={() => setNotificationsEnabled(!notificationsEnabled)}
+          containerStyle={switchStyle}
+          circleStyle={circleStyle}
           circleColorOff={colors.background}
           circleColorOn={colors.primary}
-          backgroundColorOn={colors.primary + '55'}
-          backgroundColorOff={colors.textMuted + '55'}
-          containerStyle={{ width: 50, height: 25, borderRadius: 25, padding: 2 }}
-          circleStyle={{ width: 21, height: 21, borderRadius: 21 }}
+          backgroundColorOn={`${colors.primary}55`}
+          backgroundColorOff={`${colors.textMuted}55`}
         />
       </View>
 {/* Theme Switch */}
@@ -36,12 +48,12 @@ const ApplicationSettings: React.FC = () => {
             setDarkModeEnabled(!darkModeEnabled);
             toggleTheme();
           }}
+          containerStyle={switchStyle}
+          circleStyle={circleStyle}
           circleColorOff={colors.card}
           circleColorOn={colors.primary}
-          backgroundColorOn={colors.primary + '55'}
-          backgroundColorOff={colors.textMuted + '55'}
-          containerStyle={{ width: 50, height: 25, borderRadius: 25, padding: 2 }}
-          circleStyle={{ width: 21, height: 21, borderRadius: 21 }}
+          backgroundColorOn={`${colors.primary}55`}
+          backgroundColorOff={`${colors.textMuted}55`}
         />
       </View>
 
@@ -51,15 +63,16 @@ const ApplicationSettings: React.FC = () => {
         <SwitchToggle
           switchOn={locationEnabled}
           onPress={() => setLocationEnabled(!locationEnabled)}
+          containerStyle={switchStyle}
+          circleStyle={circleStyle}
           circleColorOff={colors.background}
           circleColorOn={colors.primary}
-          backgroundColorOn={colors.primary + '55'}
-          backgroundColorOff={colors.textMuted + '55'}
-          containerStyle={{ width: 50, height: 25, borderRadius: 25, padding: 2 }}
-          circleStyle={{ width: 21, height: 21, borderRadius: 21 }}
+          backgroundColorOn={`${colors.primary}55`}
+          backgroundColorOff={`${colors.textMuted}55`}
         />
       </View>
 
+      {/* Language Selection */}
       <View style={styles.section}>
         <Text style={[styles.label, { color: colors.text }]}>Language</Text>
         <TouchableOpacity style={[styles.languageButton, { backgroundColor: colors.card }]}>

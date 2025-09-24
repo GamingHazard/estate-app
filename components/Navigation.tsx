@@ -41,6 +41,8 @@ import {
   WrappedAdminManual,
   WrappedPropertyDetails,
 } from "../screens/AdminScreens/WrappedScreens";
+import PaymentMethodScreen from "../screens/PaymentMethodScreen";
+import AddCardScreen from "../screens/AddCardScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -123,7 +125,7 @@ const TabNavigator = () => {
   );
 };
 
-const AdminStack = createStackNavigator<RootStackParamList>();
+const AdminStack = createStackNavigator();
 
 const AdminNavigator = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -212,6 +214,8 @@ const Navigation = () => {
       <Stack.Screen name="History" component={History} />
       <Stack.Screen name="Customer Care" component={CustomerCare} />
       <Stack.Screen name="Agent Profile" component={AgentProfileScreen} />
+      <Stack.Screen name="Payment Method" component={PaymentMethodScreen} />
+      <Stack.Screen name="Add Card" component={AddCardScreen} />
     </Stack.Navigator>
   );
 };

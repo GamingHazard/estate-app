@@ -30,4 +30,6 @@ export interface RootStackParamList extends ParamListBase {
   PropertyDetails: { propertyId: string };
   AgentProfile: { agent: any };
   NoInternet: undefined;
+  PaymentMethod: undefined;
+  AddCard: undefined;
 }

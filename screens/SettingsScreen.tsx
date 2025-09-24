@@ -272,6 +272,28 @@ const SettingsScreen = ({ navigation }) => {
           />
         </TouchableOpacity>
 
+        {/* Payment Methods Btn */}
+        <TouchableOpacity
+          style={[styles.btns, { backgroundColor: colors.card }]}
+          onPress={() => navigation.navigate("Payment Method")}
+        >
+          <Ionicons
+            name={theme === "dark" ? "card" : "card-outline"}
+            size={24}
+            color={colors.text}
+            style={styles.buttonIcon}
+          />
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Payment Methods
+          </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={24}
+            color={colors.text}
+            style={styles.buttonIcon}
+          />
+        </TouchableOpacity>
+
         {/* User Manual Btn */}
         <TouchableOpacity
           style={[
