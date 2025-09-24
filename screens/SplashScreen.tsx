@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+ import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   Animated,
   Dimensions,
   ActivityIndicator,
-  Image,
+  ImageBackground,
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,22 +52,24 @@ const SplashScreen = ({ onLoadComplete }) => {
 
   return (
     <View style={styles.container}>
-      {/* Background Image
-      <Image
+      {/* Background Image */}
+      <ImageBackground
         source={{
-          uri: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'
+          uri:
+            'https://t4.ftcdn.net/jpg/04/73/72/11/360_F_473721132_I9LNMCvx7Du6EdJNH91EywcNHzgtEclz.jpg',
         }}
         style={styles.backgroundImage}
+        resizeMode="cover"
       />
-       */}
+
       {/* Gradient Overlay */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.5)']}
+        colors={["rgba(0,0,0,0.6)", "rgba(0,0,0,0.35)"]}
         style={styles.gradient}
       />
       
       {/* Main Content */}
-      <View style={styles.content}>
+      <View style={styles.content} pointerEvents="none">
         {/* Logo and Icon */}
         <Animated.View
           style={[
@@ -100,29 +102,29 @@ const SplashScreen = ({ onLoadComplete }) => {
       </View>
 
       {/* Loading Indicator */}
-      <View style={styles.loaderContainer}>
+      <View style={styles.loaderContainer} pointerEvents="none">
         <ActivityIndicator size="large" color="white" />
-        <Text style={styles.loadingText}>Loading amazing properties...</Text>
+        <Text style={styles.loadingText}>Loading app settings...</Text>
       </View>
 
       {/* Background Design Elements */}
-      <View style={styles.backgroundElements}>
+      <View style={styles.backgroundElements} pointerEvents="none">
         <MaterialCommunityIcons
           name="office-building"
           size={40}
-          color="rgba(255,255,255,0.1)"
+          color="rgba(255,255,255,0.08)"
           style={styles.bgIcon1}
         />
         <MaterialCommunityIcons
           name="home-modern"
           size={40}
-          color="rgba(255,255,255,0.1)"
+          color="rgba(255,255,255,0.08)"
           style={styles.bgIcon2}
         />
         <MaterialCommunityIcons
           name="warehouse"
           size={40}
-          color="rgba(255,255,255,0.1)"
+          color="rgba(255,255,255,0.08)"
           style={styles.bgIcon3}
         />
       </View>
@@ -135,6 +137,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000', // fallback while image loads
+  },
+  backgroundImage: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    width: width,
+    height: height,
+    // slightly dim the image visually (gradient sits on top for stronger dim)
+    opacity: 1,
   },
   gradient: {
     position: 'absolute',
@@ -146,6 +159,7 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
   },
   logoContainer: {
     alignItems: 'center',
@@ -153,8 +167,13 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
   textContainer: {
     alignItems: 'center',
@@ -165,10 +184,13 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     marginBottom: 10,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   subtitle: {
     fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
   },
   loaderContainer: {
@@ -177,7 +199,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     marginTop: 10,
     fontSize: 14,
   },
@@ -185,7 +207,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: width,
     height: height,
-    opacity: 0.1,
+    opacity: 0.12,
   },
   bgIcon1: {
     position: 'absolute',
