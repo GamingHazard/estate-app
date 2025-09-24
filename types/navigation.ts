@@ -7,9 +7,18 @@ export interface RootStackParamList extends ParamListBase {
   Saved: undefined;
   Messages: undefined;
   Settings: undefined;
+  MainTabs: undefined;
+  
+  // Admin Stack Screens
   Admin: undefined;
   PropertiesManagement: undefined;
-  MainTabs: undefined;
+  PropertyCreation: undefined;
+  AdminNotifications: undefined;
+  AdminMessages: undefined;
+  AdminSettings: undefined;
+  Analytics: undefined;
+  AdminManual: undefined;
+  AdminPropertyDetails: { propertyId: string };
 
   // Stack Screens
   Account: undefined;

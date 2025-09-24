@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,28 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import { AdminSidebar } from '../../components/AdminSidebar';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  title: string;
+  title?: string;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export function AdminLayout({ children, title }: AdminLayoutProps) {
+export function AdminLayout({ children, title = '', isSidebarCollapsed = false, onToggleSidebar }: AdminLayoutProps) {
   const { colors } = useTheme();
 
   const styles = StyleSheet.create({
     container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    layout: {
+      flex: 1,
+      flexDirection: 'row',
+    },
+    mainContainer: {
       flex: 1,
       backgroundColor: colors.background,
     },
@@ -32,21 +43,14 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
     headerContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 12,
     },
-    badge: {
-      backgroundColor: '#f59e0b',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-      flexDirection: 'row',
-      alignItems: 'center',
+    menuButton: {
+      padding: 8,
+      borderRadius: 8,
+      backgroundColor: colors.background,
     },
-    badgeText: {
-      color: 'white',
-      fontSize: 12,
-      marginLeft: 4,
-    },
+   
     title: {
       fontSize: 16,
       fontWeight: '600',
@@ -60,18 +64,33 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.badge}>
-            <MaterialIcons name="security" size={12} color="white" />
-            <Text style={styles.badgeText}>Admin</Text>
+      <View style={styles.layout}>
+        <AdminSidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={onToggleSidebar}
+        />
+        <View style={styles.mainContainer}>
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <TouchableOpacity 
+                style={styles.menuButton} 
+                onPress={onToggleSidebar}
+              >
+                <MaterialIcons 
+                  name="menu" 
+                  size={24} 
+                  color={colors.text} 
+                />
+              </TouchableOpacity>
+              
+              <Text style={styles.title}>{title}</Text>
+            </View>
           </View>
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.mainContent}>
+            {children}
+          </View>
         </View>
       </View>
-      <ScrollView style={styles.mainContent}>
-        {children}
-      </ScrollView>
     </SafeAreaView>
   );
 }

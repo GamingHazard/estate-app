@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons,MaterialCommunityIcons,MaterialIcons,FontAwesome5 } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { AdminLayout } from "../screens/AdminScreens/AdminLayout";
 
 // Import your screen components here
 import HomeScreen from "../screens/HomeScreen";
@@ -19,11 +20,27 @@ import CustomerCare from "../screens/OtherScreens/CustomerCare";
 import PropertyDetailsScreen from "../screens/PropertyDetailsScreen";
 import { PropertiesManagement } from "../screens/AdminScreens/PropertiesManagement";
 import { PropertyDetails } from "../screens/AdminScreens/PropertyDetails";
+import { PropertyCreation } from "../screens/AdminScreens/PropertyCreation";
+import { AdminNotifications } from "../screens/AdminScreens/AdminNotifications";
+import { AdminMessages } from "../screens/AdminScreens/AdminMessages";
+import { AdminSettings } from "../screens/AdminScreens/AdminSettings";
+import { Analytics } from "../screens/AdminScreens/Analytics";
+import { AdminManual } from "../screens/AdminScreens/AdminManual";
 
 import { RootStackParamList } from '../types';
 import { useInternetConnection } from '../hooks/useInternetConnection';
 import NoInternetScreen from '../screens/NoInternetScreen';
 import AgentProfileScreen from "../screens/AgentProfileScreen";
+import {
+  WrappedPropertiesManagement,
+  WrappedPropertyCreation,
+  WrappedAdminNotifications,
+  WrappedAdminMessages,
+  WrappedAdminSettings,
+  WrappedAnalytics,
+  WrappedAdminManual,
+  WrappedPropertyDetails,
+} from "../screens/AdminScreens/WrappedScreens";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -60,7 +77,7 @@ const TabNavigator = () => {
               iconName = focused ? "settings" : "settings-outline";
               break;
             case "Admin":
-              iconName = focused ? "shield" : "shield-outline";
+              iconName = focused ? "grid" : "grid-outline";
               iconSize = 22; // Slightly smaller shield icon
               color = focused ? colors.primary : color; // Use primary color for active state
               break;
@@ -109,28 +126,53 @@ const TabNavigator = () => {
 const AdminStack = createStackNavigator<RootStackParamList>();
 
 const AdminNavigator = () => {
-  const { colors } = useTheme();
-  
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
-    <AdminStack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.card,
-        },
-        headerTintColor: colors.text,
-      }}
+    <AdminLayout
+      isSidebarCollapsed={isSidebarCollapsed}
+      onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
     >
-      <AdminStack.Screen 
-        name="PropertiesManagement" 
-        component={PropertiesManagement}
-        options={{ title: "Property Management" }}
-      />
-      <AdminStack.Screen 
-        name="PropertyDetails"
-        component={PropertyDetails}
-        options={{ title: "Property Details" }}
-      />
-    </AdminStack.Navigator>
+      <AdminStack.Navigator
+        initialRouteName="PropertiesManagement"
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <AdminStack.Screen 
+          name="PropertiesManagement" 
+          component={PropertiesManagement}
+        />
+        <AdminStack.Screen 
+          name="PropertyCreation"
+          component={PropertyCreation}
+        />
+        <AdminStack.Screen 
+          name="AdminNotifications"
+          component={AdminNotifications}
+        />
+        <AdminStack.Screen 
+          name="AdminMessages"
+          component={AdminMessages}
+        />
+        <AdminStack.Screen 
+          name="AdminSettings"
+          component={AdminSettings}
+        />
+        <AdminStack.Screen 
+          name="Analytics"
+          component={Analytics}
+        />
+        <AdminStack.Screen 
+          name="AdminManual"
+          component={AdminManual}
+        />
+        <AdminStack.Screen 
+          name="AdminPropertyDetails"
+          component={PropertyDetails}
+        />
+      </AdminStack.Navigator>
+    </AdminLayout>
   );
 };
 
@@ -169,7 +211,7 @@ const Navigation = () => {
       />
       <Stack.Screen name="History" component={History} />
       <Stack.Screen name="Customer Care" component={CustomerCare} />
-      <Stack.Screen name="AgentProfile" component={AgentProfileScreen} />
+      <Stack.Screen name="Agent Profile" component={AgentProfileScreen} />
     </Stack.Navigator>
   );
 };

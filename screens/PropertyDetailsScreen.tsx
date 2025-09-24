@@ -51,7 +51,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
   // Add this function
   const handleAgentPress = () => {
     const agent = mockAgents[0]; // For demo, linking to first agent
-    navigation.navigate('Agent', { agent });
+    navigation.navigate('Agent Profile', { agent });
   };
 
   return (
