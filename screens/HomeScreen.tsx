@@ -193,7 +193,7 @@ const clearFilters = () => {
           />
           Property Consultants
         </Text>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.themeToggle, { backgroundColor: colors.background }]}
           onPress={toggleTheme}
         >
@@ -206,7 +206,7 @@ const clearFilters = () => {
           <Text style={[styles.toggleText, { color: colors.text }]}>
             {theme === "dark" ? "Dark Mode" : "Light Mode"}
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Main Content */}
