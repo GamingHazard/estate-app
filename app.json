@@ -7,10 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-img9.jpg",
+      "image": "./assets/splash-img9.png",
       "backgroundColor": "#ffffff",
       "resizeMode": "cover"
-       
     },
     "assetBundlePatterns": [
       "**/*"
@@ -27,10 +26,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
+    },"plugins": [
+      "@react-native-firebase/app" ,"@react-native-firebase/messaging","@react-native-google-signin/google-signin"
+    ],
     "extra": {
       "eas": {
-        "projectId": "f0828424-58ef-4c8b-bdd6-4f2f2c6ac932"
+        "projectId": "4e4fe29a-bb99-4e53-aff9-12c1f389195d"
       }
     }
   }
