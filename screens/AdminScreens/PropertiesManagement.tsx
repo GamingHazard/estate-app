@@ -11,7 +11,7 @@ import {
 import { AdminLayout } from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockProperties, propertyStats, Property } from '../../data/mockProperties';
+import { mockProperties, propertyStats } from '../../data/mockData';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -21,7 +21,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 export function PropertiesManagement() {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const [properties] = useState<Property[]>(mockProperties);
+  const [properties] = useState(mockProperties||[]);
   const [isLoading] = useState(false);
 
   const styles = StyleSheet.create({
@@ -158,7 +158,7 @@ export function PropertiesManagement() {
     <View style={styles.propertyCard}>
       <View style={styles.propertyHeader}>
         <Image
-          source={{ uri: property.thumbnailUrl }}
+          source={{ uri: property.thumbnail }}
           style={styles.propertyImage}
         />
         <View style={styles.propertyInfo}>
