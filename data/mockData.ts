@@ -218,3 +218,11 @@ export const mockProperties = [
     ],
   },
 ];
+
+export const propertyStats = {
+  total: 150,
+  active: 120,
+  pending: 20,
+  rejected: 10,
+  reported: 5
+};
