@@ -26,9 +26,7 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },"plugins": [
-      "@react-native-firebase/app" ,"@react-native-firebase/messaging","@react-native-google-signin/google-signin"
-    ],
+    }, 
     "extra": {
       "eas": {
         "projectId": "4e4fe29a-bb99-4e53-aff9-12c1f389195d"
