@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,21 +7,21 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-} from 'react-native';
-import { AdminLayout } from './AdminLayout';
-import { useTheme } from '../../context/ThemeContext';
-import { MaterialIcons } from '@expo/vector-icons';
-import { mockProperties, propertyStats } from '../../data/mockData';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../types/navigation';
+} from "react-native";
+import { AdminLayout } from "./AdminLayout";
+import { useTheme } from "../../context/ThemeContext";
+import { MaterialIcons } from "@expo/vector-icons";
+import { mockProperties, propertyStats } from "../../data/mockData";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../../types/navigation";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export function PropertiesManagement() {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const [properties] = useState(mockProperties||[]);
+  const [properties] = useState(mockProperties || []);
   const [isLoading] = useState(false);
 
   const styles = StyleSheet.create({
@@ -30,7 +30,7 @@ export function PropertiesManagement() {
       padding: 16,
     },
     statsContainer: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 12,
       marginBottom: 16,
     },
@@ -42,7 +42,7 @@ export function PropertiesManagement() {
       borderWidth: 1,
       borderColor: colors.border,
       elevation: 2,
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: {
         width: 0,
         height: 1,
@@ -52,26 +52,26 @@ export function PropertiesManagement() {
     },
     loadingContainer: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
     },
     listContent: {
       paddingBottom: 16,
     },
     cardHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: 8,
     },
     cardTitle: {
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: "500",
       color: colors.text,
     },
     statsValue: {
       fontSize: 24,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: colors.text,
     },
     statsDescription: {
@@ -90,7 +90,7 @@ export function PropertiesManagement() {
       borderColor: colors.border,
     },
     propertyHeader: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 12,
     },
     propertyImage: {
@@ -103,7 +103,7 @@ export function PropertiesManagement() {
     },
     propertyTitle: {
       fontSize: 16,
-      fontWeight: '500',
+      fontWeight: "500",
       color: colors.text,
     },
     propertyLocation: {
@@ -118,7 +118,7 @@ export function PropertiesManagement() {
     },
     badgeText: {
       fontSize: 12,
-      color: 'white',
+      color: "white",
     },
     agentInfo: {
       fontSize: 12,
@@ -126,7 +126,7 @@ export function PropertiesManagement() {
       marginTop: 4,
     },
     actionButtons: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 8,
       marginTop: 8,
     },
@@ -145,9 +145,9 @@ export function PropertiesManagement() {
 
   const getBadgeStyle = (status: string) => {
     switch (status) {
-      case 'active':
+      case "active":
         return { backgroundColor: colors.primary };
-      case 'pending':
+      case "pending":
         return { backgroundColor: colors.warning };
       default:
         return { backgroundColor: colors.error };
@@ -168,7 +168,7 @@ export function PropertiesManagement() {
             <Text style={styles.badgeText}>{property.status}</Text>
           </View>
           <Text style={styles.agentInfo}>
-            Listed by: {property.agent.name}
+            Listed by: {property?.agent?.name}
           </Text>
         </View>
       </View>
@@ -192,16 +192,24 @@ export function PropertiesManagement() {
             <MaterialIcons name="home" size={16} color={colors.textMuted} />
           </View>
           <Text style={styles.statsValue}>{propertyStats.total}</Text>
-          <Text style={styles.statsDescription}>Active listings in the system</Text>
+          <Text style={styles.statsDescription}>
+            Active listings in the system
+          </Text>
         </View>
 
         <View style={styles.statsCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Pending Review</Text>
-            <MaterialIcons name="assessment" size={16} color={colors.textMuted} />
+            <MaterialIcons
+              name="assessment"
+              size={16}
+              color={colors.textMuted}
+            />
           </View>
           <Text style={styles.statsValue}>{propertyStats.pending}</Text>
-          <Text style={styles.statsDescription}>Properties awaiting review</Text>
+          <Text style={styles.statsDescription}>
+            Properties awaiting review
+          </Text>
         </View>
 
         <View style={styles.statsCard}>
@@ -210,7 +218,9 @@ export function PropertiesManagement() {
             <MaterialIcons name="flag" size={16} color={colors.textMuted} />
           </View>
           <Text style={styles.statsValue}>{propertyStats.reported}</Text>
-          <Text style={styles.statsDescription}>Properties with active reports</Text>
+          <Text style={styles.statsDescription}>
+            Properties with active reports
+          </Text>
         </View>
       </View>
 

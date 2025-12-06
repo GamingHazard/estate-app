@@ -30,6 +30,10 @@ export type RootStackParamList = {
   "Terms-and-Conditions": undefined;
   History: undefined;
   "Customer Care": undefined;
+  "Agent Profile": { agent: any };
+  "Payment Method": undefined;
+  "Add Card": undefined;
+  // Admin Screens
 };
 
 export type NavigationProp = StackNavigationProp<RootStackParamList>;

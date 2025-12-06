@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
-import { Ionicons,MaterialCommunityIcons,MaterialIcons,FontAwesome5 } from "@expo/vector-icons";
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+  FontAwesome5,
+} from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { AdminLayout } from "../screens/AdminScreens/AdminLayout";
 
@@ -27,40 +32,30 @@ import { AdminSettings } from "../screens/AdminScreens/AdminSettings";
 import { Analytics } from "../screens/AdminScreens/Analytics";
 import { AdminManual } from "../screens/AdminScreens/AdminManual";
 
-import { RootStackParamList } from '../types';
-import { useInternetConnection } from '../hooks/useInternetConnection';
-import NoInternetScreen from '../screens/NoInternetScreen';
+import { RootStackParamList } from "../types";
+import { useInternetConnection } from "../hooks/useInternetConnection";
+import NoInternetScreen from "../screens/NoInternetScreen";
 import AgentProfileScreen from "../screens/AgentProfileScreen";
-import {
-  WrappedPropertiesManagement,
-  WrappedPropertyCreation,
-  WrappedAdminNotifications,
-  WrappedAdminMessages,
-  WrappedAdminSettings,
-  WrappedAnalytics,
-  WrappedAdminManual,
-  WrappedPropertyDetails,
-} from "../screens/AdminScreens/WrappedScreens";
+
 import PaymentMethodScreen from "../screens/PaymentMethodScreen";
 import AddCardScreen from "../screens/AddCardScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const TabNavigator = () => {
   const { colors } = useTheme();
 
   return (
     <Tab.Navigator
-       
       screenOptions={({ route }) => ({
         headerShown: false,
-        
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
-          let iconSize = 24; // Default icon size
+          let iconSize = focused ? 28 : 22; // Larger when active
+          let iconColor = focused ? colors.primary : colors.text;
 
           switch (route.name) {
             case "Home":
@@ -73,33 +68,44 @@ const TabNavigator = () => {
               iconName = focused ? "bookmark" : "bookmark-outline";
               break;
             case "Messages":
-              iconName = focused ? "chatbox-ellipses" : "chatbox-ellipses-outline";
+              iconName = focused
+                ? "chatbox-ellipses"
+                : "chatbox-ellipses-outline";
               break;
             case "Settings":
               iconName = focused ? "settings" : "settings-outline";
               break;
             case "Admin":
               iconName = focused ? "grid" : "grid-outline";
-              iconSize = 22; // Slightly smaller shield icon
-              color = focused ? colors.primary : color; // Use primary color for active state
+              iconSize = focused ? 26 : 20;
+              iconColor = focused ? colors.primary : colors.text;
               break;
             default:
               iconName = "alert-circle";
           }
 
-          return <Ionicons name={iconName} size={iconSize} color={color} />;
+          return <Ionicons name={iconName} size={iconSize} color={iconColor} />;
         },
         tabBarShowLabel: false,
-        tabBarActiveTintColor: colors.text,
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.tabInactive + "99",
         tabBarStyle: {
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
-          marginVertical: 5,
-          marginHorizontal: 10,
-          borderRadius: 15,
+          position: "absolute",
+          left: 16,
+          right: 16,
+          bottom: 16,
+          height: 56,
+          borderRadius: 28,
           backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 8,
+          elevation: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 0,
         },
       })}
     >
@@ -114,11 +120,11 @@ const TabNavigator = () => {
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
-      <Tab.Screen 
-        name="Admin" 
+      <Tab.Screen
+        name="Admin"
         component={AdminNavigator}
         options={{
-          unmountOnBlur: true // Reset state when navigating away
+          unmountOnBlur: true, // Reset state when navigating away
         }}
       />
     </Tab.Navigator>
@@ -141,35 +147,23 @@ const AdminNavigator = () => {
           headerShown: false,
         }}
       >
-        <AdminStack.Screen 
-          name="PropertiesManagement" 
+        <AdminStack.Screen
+          name="PropertiesManagement"
           component={PropertiesManagement}
         />
-        <AdminStack.Screen 
+        <AdminStack.Screen
           name="PropertyCreation"
           component={PropertyCreation}
         />
-        <AdminStack.Screen 
+        <AdminStack.Screen
           name="AdminNotifications"
           component={AdminNotifications}
         />
-        <AdminStack.Screen 
-          name="AdminMessages"
-          component={AdminMessages}
-        />
-        <AdminStack.Screen 
-          name="AdminSettings"
-          component={AdminSettings}
-        />
-        <AdminStack.Screen 
-          name="Analytics"
-          component={Analytics}
-        />
-        <AdminStack.Screen 
-          name="AdminManual"
-          component={AdminManual}
-        />
-        <AdminStack.Screen 
+        <AdminStack.Screen name="AdminMessages" component={AdminMessages} />
+        <AdminStack.Screen name="AdminSettings" component={AdminSettings} />
+        <AdminStack.Screen name="Analytics" component={Analytics} />
+        <AdminStack.Screen name="AdminManual" component={AdminManual} />
+        <AdminStack.Screen
           name="AdminPropertyDetails"
           component={PropertyDetails}
         />
@@ -188,15 +182,15 @@ const Navigation = () => {
 
   return (
     <Stack.Navigator
-       screenOptions={{
-          headerStyle: {
-            backgroundColor: colors.card, // background
-          },
-          headerTintColor:theme==="dark"?"white":colors.text, // text color
-          headerTitleStyle: {
-            fontWeight: "bold",
-          },
-        }}
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.card, // background
+        },
+        headerTintColor: theme === "dark" ? "white" : colors.text, // text color
+        headerTitleStyle: {
+          fontWeight: "bold",
+        },
+      }}
     >
       <Stack.Screen
         name="MainTabs"

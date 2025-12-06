@@ -17,6 +17,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Garden', 'Garage', 'Swimming Pool', 'Fireplace'],
     status: 'For Sale',
+    featured: true,
     gallery: [
       { name: 'Living Room', url: 'https://images.pexels.com/photos/2635038/pexels-photo-2635038.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Kitchen', url: 'https://images.pexels.com/photos/6782472/pexels-photo-6782472.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -40,6 +41,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Gym', 'Rooftop Terrace', 'Concierge', 'Parking'],
     status: 'For Rent',
+    featured: true,
     gallery: [
       { name: 'Living Room', url: 'https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Bedroom', url: 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -61,6 +63,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['High-speed WiFi', 'Meeting Rooms', 'Kitchenette', '24/7 Access'],
     status: 'For Rent',
+    featured: false,
     gallery: [
       { name: 'Main Space', url: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Meeting Room', url: 'https://images.pexels.com/photos/1181359/pexels-photo-1181359.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -82,6 +85,7 @@ export const mockProperties = [
     thumbnail: 'https://st.depositphotos.com/3418487/61471/i/450/depositphotos_614716758-stock-photo-land-plot-aerial-view-gps.jpg',
     amenities: ['Water Access', 'Electricity Nearby'],
     status: 'For Sale',
+    featured: false,
     gallery: [
       { name: 'Plot View 1', url: 'https://images.pexels.com/photos/1112048/pexels-photo-1112048.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Plot View 2', url: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -104,6 +108,7 @@ export const mockProperties = [
     thumbnail: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/313493790.jpg?k=9c50c4150526046f3e54a201ad32dadbe911fb5de860f629784726011359e699&o=&hp=1',
     amenities: ['Private Beach', 'Infinity Pool', 'Home Theater', 'Jacuzzi'],
     status: 'For Sale',
+    featured: true,
     gallery: [
       { name: 'Exterior', url: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/313493790.jpg?k=9c50c4150526046f3e54a201ad32dadbe911fb5de860f629784726011359e699&o=&hp=1' },
       { name: 'Pool', url: 'https://images.pexels.com/photos/1697076/pexels-photo-1697076.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -126,6 +131,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/269077/pexels-photo-269077.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Reception', 'Conference Rooms', 'Pantry', 'Security'],
     status: 'For Rent',
+    featured: true,
     gallery: [
       { name: 'Main Office', url: 'https://images.pexels.com/photos/269077/pexels-photo-269077.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Conference Room', url: 'https://images.pexels.com/photos/380769/pexels-photo-380769.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -148,6 +154,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Furnished', 'All Utilities Included', 'Laundry in Building'],
     status: 'For Rent',
+    featured: false,
     gallery: [
       { name: 'Living Area', url: 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Kitchenette', url: 'https://images.pexels.com/photos/2029722/pexels-photo-2029722.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -170,6 +177,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Large Garden', 'Fireplace', 'Pet Friendly'],
     status: 'For Sale',
+    featured: false,
     gallery: [
       { name: 'Exterior', url: 'https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Garden', url: 'https://images.pexels.com/photos/4530798/pexels-photo-4530798.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -192,6 +200,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/380769/pexels-photo-380769.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Storefront', 'Stock Room', 'Customer Parking'],
     status: 'For Rent',
+    featured: false,
     gallery: [
       { name: 'Main Floor', url: 'https://images.pexels.com/photos/380769/pexels-photo-380769.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Back Office', url: 'https://images.pexels.com/photos/269077/pexels-photo-269077.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
@@ -212,6 +221,7 @@ export const mockProperties = [
     thumbnail: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     amenities: ['Creek Access', 'Hiking Trails Nearby'],
     status: 'For Sale',
+    featured: false,
     gallery: [
       { name: 'Forest View', url: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
       { name: 'Creek', url: 'https://images.pexels.com/photos/1112048/pexels-photo-1112048.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
