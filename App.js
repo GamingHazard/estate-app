@@ -5,6 +5,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import ThemedNavigation from './components/ThemedNavigation';
 import SplashScreen from './screens/SplashScreen';
 import { preloadImages } from './utils/imagePreloader';
+import AuthScreens from './screens/AccountScreens/AuthScreens';
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +36,7 @@ const App = () => {
         )}
         <StatusBar hidden={true} />
       </NavigationContainer>
+      {/* <AuthScreens /> */}
     </ThemeProvider>
   );
 };
