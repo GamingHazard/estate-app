@@ -212,36 +212,98 @@ const HomeScreen = () => {
           zIndex: 1,
         }}
       >
-        <Text
+        <Image
+          source={{
+            uri: "https://t3.ftcdn.net/jpg/08/38/58/42/360_F_838584205_dDGwNQ1xJ8GsilZONeQwwM260WoyjNx2.jpg",
+          }}
           style={{
-            color: colors.text,
-            fontSize: 20,
-            fontWeight: "bold",
+            width: 50,
+            height: 50,
+            // aspectRatio: 1,
+            alignSelf: "center",
+          }}
+          resizeMode="contain"
+        />
+        <View
+          style={{
             flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          <Ionicons
-            name="home"
-            size={24}
-            color={colors.text}
-            style={[styles.icon, { marginRight: 10 }]}
-          />
-          Property Consultants
-        </Text>
-        {/* <TouchableOpacity
-          style={[styles.themeToggle, { backgroundColor: colors.background }]}
-          onPress={toggleTheme}
-        >
-          <Ionicons
-            name={theme === "dark" ? "moon" : "sunny"}
-            size={24}
-            color={colors.text}
-            style={styles.icon}
-          />
-          <Text style={[styles.toggleText, { color: colors.text }]}>
-            {theme === "dark" ? "Dark Mode" : "Light Mode"}
+          <Text
+            style={{
+              color: colors.text,
+              fontSize: 20,
+              fontWeight: "bold",
+            }}
+          >
+            Welcome back
           </Text>
-        </TouchableOpacity> */}
+          <Text
+            style={{
+              color: colors.text,
+              fontSize: 20,
+              fontWeight: "300",
+            }}
+          >
+            Username
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              backgroundColor: "red",
+              borderRadius: 5,
+              position: "absolute",
+              top: 0,
+              right: 0,
+              zIndex: 2,
+            }}
+          />
+          <Ionicons
+            name="notifications-outline"
+            size={28}
+            color={colors.text}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            padding: 2,
+            borderRadius: 50,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "white",
+            width: 60,
+            height: 60,
+            marginHorizontal: 5,
+          }}
+        >
+          <Image
+            source={{
+              uri: "https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png",
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              // aspectRatio: 1,
+              alignSelf: "center",
+              borderRadius: 50,
+            }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Main Content */}
