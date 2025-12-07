@@ -24,6 +24,7 @@ import { useNavigation } from "@react-navigation/native";
 import SkeletonLoader from "../components/SkeletonLoader";
 
 import { NavigationProp } from "../types";
+import { useQuery } from "@tanstack/react-query";
 
 // Move constants outside the component so they're not recreated on every render
 const sortOptions = [
@@ -62,6 +63,20 @@ const sortProperties = (properties: any[], sortBy: string): any[] => {
 };
 
 const HomeScreen = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["talents", "all"],
+    retry: 1,
+    retryDelay: 2000,
+  });
+
+  useEffect(() => {
+    if (data) {
+      console.log("====================================");
+      console.log(data);
+      console.log("====================================");
+    }
+  }, [data]);
+
   const navigation = useNavigation<NavigationProp>();
   const { colors, theme, toggleTheme } = useTheme();
   const { width } = Dimensions.get("window");

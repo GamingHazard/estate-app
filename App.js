@@ -6,6 +6,8 @@ import ThemedNavigation from './components/ThemedNavigation';
 import SplashScreen from './screens/SplashScreen';
 import { preloadImages } from './utils/imagePreloader';
 import AuthScreens from './screens/AccountScreens/AuthScreens';
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -27,17 +29,18 @@ const App = () => {
   };
 
   return (
-    <ThemeProvider>
-      <NavigationContainer>
-        {isLoading ? (
-          <SplashScreen onLoadComplete={handleLoadComplete} />
-        ) : (
-          <ThemedNavigation />
-        )}
-        <StatusBar hidden={true} />
-      </NavigationContainer>
-      {/* <AuthScreens /> */}
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <NavigationContainer>
+          {isLoading ? (
+            <SplashScreen onLoadComplete={handleLoadComplete} />
+          ) : (
+            <ThemedNavigation />
+          )}
+          <StatusBar hidden={true} />
+        </NavigationContainer>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 };
 
