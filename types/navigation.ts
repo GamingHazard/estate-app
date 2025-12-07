@@ -32,4 +32,5 @@ export interface RootStackParamList extends ParamListBase {
   NoInternet: undefined;
   PaymentMethod: undefined;
   AddCard: undefined;
+  "Chat Room":undefined
 }

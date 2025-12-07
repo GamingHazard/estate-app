@@ -587,7 +587,7 @@ const HomeScreen = () => {
             </View>
 
             {/* advert tab  */}
-            <View
+            <TouchableOpacity
               style={{
                 width: "100%",
                 height: 200,
@@ -598,6 +598,11 @@ const HomeScreen = () => {
                 justifyContent: "center",
                 alignItems: "center",
               }}
+              onPress={() =>
+                navigation.navigate("PropertyDetails", {
+                  property: featuredProperties[currentAdvertIndex],
+                })
+              }
             >
               {featuredProperties.length > 0 ? (
                 // Show current featured property
@@ -684,7 +689,7 @@ const HomeScreen = () => {
                   </LinearGradient>
                 </>
               )}
-            </View>
+            </TouchableOpacity>
 
             {/* Sorting options */}
             <View

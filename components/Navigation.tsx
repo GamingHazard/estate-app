@@ -39,6 +39,8 @@ import AgentProfileScreen from "../screens/AgentProfileScreen";
 
 import PaymentMethodScreen from "../screens/PaymentMethodScreen";
 import AddCardScreen from "../screens/AddCardScreen";
+import SellProperty from "../screens/SettingsScreens/SellProperty";
+import ChatRoom from "./ChatRoomComponent";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -131,7 +133,7 @@ const TabNavigator = () => {
   );
 };
 
-const AdminStack = createStackNavigator();
+const AdminStack = createStackNavigator<any>();
 
 const AdminNavigator = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -201,6 +203,7 @@ const Navigation = () => {
       <Stack.Screen name="Account" component={AccountScreen} />
       <Stack.Screen name="General settings" component={GeneralSettings} />
       <Stack.Screen name="User Guide" component={UserManual} />
+      <Stack.Screen name="Sell Property" component={SellProperty} />
       <Stack.Screen
         name="Terms-and-Conditions"
         component={TermsAndConditions}
@@ -210,6 +213,7 @@ const Navigation = () => {
       <Stack.Screen name="Agent Profile" component={AgentProfileScreen} />
       <Stack.Screen name="Payment Method" component={PaymentMethodScreen} />
       <Stack.Screen name="Add Card" component={AddCardScreen} />
+      <Stack.Screen name="Chat Room" component={ChatRoom} />
     </Stack.Navigator>
   );
 };

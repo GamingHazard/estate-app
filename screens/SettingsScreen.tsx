@@ -9,7 +9,7 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { useInternetConnection } from '../hooks/useInternetConnection';
+import { useInternetConnection } from "../hooks/useInternetConnection";
 import { useTheme } from "../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import ProfileEditForm from "../components/ProfileEditForm";
@@ -78,7 +78,7 @@ const SettingsScreen = ({ navigation }) => {
     ]);
   };
 
-  const handleSaveProfile = (profileData) => {
+  const handleSaveProfile = (profileData: any) => {
     // Handle saving profile data here
     console.log("Profile data to save:", { ...profileData, profileImage });
     // You would typically send this data to your backend or store it locally
@@ -192,7 +192,9 @@ const SettingsScreen = ({ navigation }) => {
             color={colors.text}
             style={styles.buttonIcon}
           />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Account</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Account
+          </Text>
           <Ionicons
             name="chevron-forward"
             size={24}
@@ -275,16 +277,16 @@ const SettingsScreen = ({ navigation }) => {
         {/* Payment Methods Btn */}
         <TouchableOpacity
           style={[styles.btns, { backgroundColor: colors.card }]}
-          onPress={() => navigation.navigate("Payment Method")}
+          onPress={() => navigation.navigate("Sell Property")}
         >
           <Ionicons
-            name={theme === "dark" ? "card" : "card-outline"}
+            name={theme === "dark" ? "home" : "home-outline"}
             size={24}
             color={colors.text}
             style={styles.buttonIcon}
           />
           <Text style={[styles.buttonText, { color: colors.text }]}>
-            Payment Methods
+            Sell Property
           </Text>
           <Ionicons
             name="chevron-forward"
@@ -307,9 +309,7 @@ const SettingsScreen = ({ navigation }) => {
           onPress={() => navigation.navigate("User Guide")} // Navigate to User Manual screen
         >
           <Ionicons
-            name={
-              theme === "dark" ? "document-text" : "document-text-outline"
-            }
+            name={theme === "dark" ? "document-text" : "document-text-outline"}
             size={24}
             color={colors.text}
             style={styles.buttonIcon}
@@ -355,8 +355,10 @@ const SettingsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </Modal>
       {!isConnected && (
-        <View style={{ alignItems: 'center', marginVertical: 10 }}>
-          <Text style={{ color: 'red' }}>No internet connection detected. Some features may be unavailable.</Text>
+        <View style={{ alignItems: "center", marginVertical: 10 }}>
+          <Text style={{ color: "red" }}>
+            No internet connection detected. Some features may be unavailable.
+          </Text>
         </View>
       )}
     </ScrollView>

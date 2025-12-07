@@ -33,7 +33,13 @@ export type RootStackParamList = {
   "Agent Profile": { agent: any };
   "Payment Method": undefined;
   "Add Card": undefined;
-  // Admin Screens
+  "Sell Property": undefined;
+  AdminPropertyDetails: undefined;
+  "Chat Room": {
+    participantName: string;
+    participantAvatar: string;
+    initialMessages: any[];
+  };
 };
 
 export type NavigationProp = StackNavigationProp<RootStackParamList>;

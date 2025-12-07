@@ -33,6 +33,39 @@ const AgentProfileScreen = ({ route }: Props) => {
   const { width } = Dimensions.get("window");
   const navigation = useNavigation<any>();
 
+  // add: helper to render star rating
+  const renderStars = (rating: number) => {
+    const full = Math.floor(rating);
+    const half = rating - full >= 0.5;
+    const stars = [];
+    for (let i = 0; i < full; i++) {
+      stars.push(
+        <Ionicons key={`full-${i}`} name="star" size={16} color={"#FFD700"} />
+      );
+    }
+    if (half) {
+      stars.push(
+        <Ionicons key="half" name="star-half" size={16} color={"#FFD700"} />
+      );
+    }
+    const remaining = 5 - stars.length;
+    for (let i = 0; i < remaining; i++) {
+      stars.push(
+        <Ionicons
+          key={`empty-${i}`}
+          name="star-outline"
+          size={16}
+          color={colors.textMuted || "#9CA3AF"}
+        />
+      );
+    }
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {stars}
+      </View>
+    );
+  };
+
   const handleContact = (method: "email" | "phone") => {
     if (!isConnected) {
       return;
@@ -58,6 +91,15 @@ const AgentProfileScreen = ({ route }: Props) => {
           )}
         </View>
         <Text style={[styles.name, { color: colors.text }]}>{agent.name}</Text>
+
+        {/* added: star row showing rating */}
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {renderStars(Number(agent.rating ?? 0))}
+          {/* <Text style={{ color: colors.textMuted, marginLeft: 8 }}>
+            {Number(agent.rating ?? 0).toFixed(1)}
+          </Text> */}
+        </View>
+
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>
@@ -196,6 +238,19 @@ const AgentProfileScreen = ({ route }: Props) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.contactButton, { backgroundColor: colors.primary }]}
+          onPress={() =>
+            navigation.navigate("Chat", {
+              userId: agent.id,
+              userName: agent.name,
+            })
+          }
+          disabled={!isConnected}
+        >
+          <MaterialCommunityIcons name="message" size={20} color="white" />
+          <Text style={styles.contactButtonText}>Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.contactButton, { backgroundColor: colors.primary }]}
           onPress={() => handleContact("email")}
           disabled={!isConnected}
         >
@@ -240,8 +295,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: "white",
-    borderRadius: 12,
+    borderRadius: 50,
     padding: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   name: {
     fontSize: 24,
@@ -361,7 +419,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 12,
     borderRadius: 25,
-    width: "45%",
+    width: "30%",
     gap: 8,
   },
   contactButtonText: {
