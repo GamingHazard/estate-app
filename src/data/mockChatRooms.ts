@@ -1,0 +1,78 @@
+export const mockChatRooms = [
+  {
+    id: '1',
+    participantName: 'John Doe',
+    participantAvatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+    lastMessage: 'Sounds great! See you then.',
+    timestamp: '10:45 AM',
+    unread: false,
+    messages: [
+      {
+        id: 'msg1',
+        sender: 'other',
+        text: 'Hi! I am interested in the Spacious Family Home. Is it still available?',
+        timestamp: '10:30 AM',
+        avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+      },
+      {
+        id: 'msg2',
+        sender: 'you',
+        text: 'Yes, it is! Would you like to schedule a viewing?',
+        timestamp: '10:35 AM',
+        avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+      },
+      {
+        id: 'msg3',
+        sender: 'other',
+        text: 'That would be perfect! How about this Saturday at 2 PM?',
+        timestamp: '10:40 AM',
+        avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+      },
+      {
+        id: 'msg4',
+        sender: 'you',
+        text: 'Sounds great! See you then.',
+        timestamp: '10:45 AM',
+        avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+      },
+    ],
+  },
+  {
+    id: '2',
+    participantName: 'Jane Smith',
+    participantAvatar: 'https://randomuser.me/api/portraits/women/2.jpg',
+    lastMessage: 'Thanks for the information!',
+    timestamp: 'Yesterday',
+    unread: true,
+    messages: [
+      {
+        id: 'msg1',
+        sender: 'other',
+        text: 'Can I schedule a visit for the Modern Downtown Apartment?',
+        timestamp: 'Yesterday 3:20 PM',
+        avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
+      },
+      {
+        id: 'msg2',
+        sender: 'you',
+        text: 'Of course! What days work best for you?',
+        timestamp: 'Yesterday 3:25 PM',
+        avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+      },
+      {
+        id: 'msg3',
+        sender: 'other',
+        text: 'Weekdays after 5 PM would be ideal.',
+        timestamp: 'Yesterday 3:30 PM',
+        avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
+      },
+      {
+        id: 'msg4',
+        sender: 'you',
+        text: 'Great! I can accommodate that. Thanks for the information!',
+        timestamp: 'Yesterday 3:35 PM',
+        avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+      },
+    ],
+  },
+];

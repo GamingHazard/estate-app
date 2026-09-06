@@ -1,0 +1,42 @@
+export const mockMessages = [
+  {
+    id: '1',
+    sender: 'John Doe',
+    message: 'Interested in the Spacious Family Home. Is it still available?',
+    timestamp: '10:30 AM',
+    unread: true,
+    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+  },
+  {
+    id: '2',
+    sender: 'Jane Smith',
+    message: 'Can I schedule a visit for the Modern Downtown Apartment?',
+    timestamp: 'Yesterday',
+    unread: true,
+    avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
+  },
+  {
+    id: '3',
+    sender: 'Real Estate Pro',
+    message: 'New listing matching your criteria: Luxury Beachfront Villa.',
+    timestamp: '2 days ago',
+    unread: false,
+    avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
+  },
+  {
+    id: '4',
+    sender: 'Support Team',
+    message: 'Your account has been successfully verified.',
+    timestamp: 'Last week',
+    unread: false,
+    avatar: 'https://randomuser.me/api/portraits/women/4.jpg',
+  },
+  {
+    id: '5',
+    sender: 'Peter Jones',
+    message: 'What are the amenities for the Creative Co-working Hub?',
+    timestamp: 'May 15, 2024',
+    unread: true,
+    avatar: 'https://randomuser.me/api/portraits/men/5.jpg',
+  },
+];
