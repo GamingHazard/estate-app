@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   SafeAreaView,
+  Pressable,
   TouchableOpacity,
 } from "react-native";
 import { useTheme } from "../../../shared/theme/ThemeContext";
@@ -34,10 +35,16 @@ export function AdminLayout({
     layout: {
       flex: 1,
       flexDirection: "row",
+      position: "relative",
     },
     mainContainer: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    sidebarDismissLayer: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: "rgba(0, 0, 0, 0.18)",
+      zIndex: 999,
     },
     header: {
       padding: 16,
@@ -70,6 +77,14 @@ export function AdminLayout({
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.layout}>
+        {!isSidebarCollapsed && onToggleSidebar && (
+          <Pressable
+            style={styles.sidebarDismissLayer}
+            onPress={onToggleSidebar}
+            accessibilityRole="button"
+            accessibilityLabel="Close sidebar"
+          />
+        )}
         <AdminSidebar
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={onToggleSidebar}

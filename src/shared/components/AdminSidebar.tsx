@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -43,7 +43,18 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const sidebarWidth = isCollapsed ? 0 : 250; // Changed from 60 to 0
+  const sidebarWidth = 250;
+  const slideAnimation = useRef(
+    new Animated.Value(isCollapsed ? -sidebarWidth : 0),
+  ).current;
+
+  useEffect(() => {
+    Animated.timing(slideAnimation, {
+      toValue: isCollapsed ? -sidebarWidth : 0,
+      duration: 240,
+      useNativeDriver: true,
+    }).start();
+  }, [isCollapsed, sidebarWidth, slideAnimation]);
 
   const menuItems: MenuItem[] = [
     {
@@ -93,7 +104,10 @@ export function AdminSidebar({
       position: "absolute",
       zIndex: 1000,
       shadowColor: "#000",
-      display: isCollapsed ? "none" : "flex", // Add display property
+      shadowOffset: { width: 2, height: 0 },
+      shadowOpacity: 0.16,
+      shadowRadius: 8,
+      elevation: 8,
     },
     header: {
       height: 60,
@@ -149,7 +163,13 @@ export function AdminSidebar({
   });
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.container,
+        { transform: [{ translateX: slideAnimation }] },
+      ]}
+      pointerEvents={isCollapsed ? "none" : "auto"}
+    >
       <View style={styles.header}>
         {!isCollapsed && (
           <View style={styles.badge}>
@@ -182,6 +202,6 @@ export function AdminSidebar({
           {!isCollapsed && <Text style={styles.menuLabel}>{item.label}</Text>}
         </TouchableOpacity>
       ))}
-    </View>
+    </Animated.View>
   );
 }

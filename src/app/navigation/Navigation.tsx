@@ -30,6 +30,7 @@ import { PropertiesManagement } from "../../features/admin/screens/PropertiesMan
 import { PropertyDetails } from "../../features/admin/screens/PropertyDetails";
 import { PropertyCreation } from "../../features/admin/screens/PropertyCreation";
 import { AdminNotifications } from "../../features/admin/screens/AdminNotifications";
+import { AdminNotificationDetails } from "../../features/admin/screens/AdminNotificationDetails";
 import { AdminMessages } from "../../features/admin/screens/AdminMessages";
 import { AdminSettings } from "../../features/admin/screens/AdminSettings";
 import { Analytics } from "../../features/admin/screens/Analytics";
@@ -149,7 +150,7 @@ const TabNavigator = () => {
 const AdminStack = createStackNavigator<any>();
 
 const AdminNavigator = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   return (
     <AdminLayout
@@ -179,6 +180,10 @@ const AdminNavigator = () => {
         <AdminStack.Screen
           name="AdminNotifications"
           component={AdminNotifications}
+        />
+        <AdminStack.Screen
+          name="AdminNotificationDetails"
+          component={AdminNotificationDetails}
         />
         <AdminStack.Screen name="AdminMessages" component={AdminMessages} />
         <AdminStack.Screen name="AdminSettings" component={AdminSettings} />

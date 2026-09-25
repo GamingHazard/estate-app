@@ -12,12 +12,14 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../../shared/types/navigation";
+import { useAdminNotifications } from "../../../shared/hooks/useAdminNotifications";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export function Dashboard() {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { notifications, unreadCount } = useAdminNotifications();
 
   const stats = [
     {
@@ -48,12 +50,6 @@ export function Dashboard() {
       icon: "trending-up" as const,
       tint: "#8b5cf6",
     },
-  ];
-
-  const alerts = [
-    "3 lease renewals due this week",
-    "2 properties need maintenance review",
-    "5 new inquiries from the last 24 hours",
   ];
 
   const quickActions = [
@@ -159,6 +155,12 @@ export function Dashboard() {
       color: colors.text,
       marginBottom: 12,
     },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    viewAll: { color: colors.primary, fontSize: 12, fontWeight: "700" },
     alertList: {
       gap: 10,
     },
@@ -177,6 +179,7 @@ export function Dashboard() {
       fontSize: 13,
       color: colors.text,
     },
+    alertUnread: { borderLeftWidth: 3, borderLeftColor: colors.primary },
     quickActions: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -272,14 +275,48 @@ export function Dashboard() {
         </View>
       </View>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Action center</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Action center</Text>
+          <Pressable onPress={() => navigation.navigate("AdminNotifications")}>
+            <Text style={styles.viewAll}>
+              {unreadCount > 0 ? `${unreadCount} unread` : "View all"}
+            </Text>
+          </Pressable>
+        </View>
         <View style={styles.alertList}>
-          {alerts.map((alert) => (
-            <View key={alert} style={styles.alertItem}>
-              <Ionicons name="alert-circle" size={18} color={colors.warning} />
-              <Text style={styles.alertText}>{alert}</Text>
-            </View>
+          {notifications.slice(0, 3).map((notification) => (
+            <Pressable
+              key={notification.id}
+              style={[
+                styles.alertItem,
+                !notification.read && styles.alertUnread,
+              ]}
+              onPress={() =>
+                navigation.navigate("AdminNotificationDetails", {
+                  notificationId: notification.id,
+                })
+              }
+            >
+              <Ionicons
+                name={
+                  notification.read ? "notifications-outline" : "alert-circle"
+                }
+                size={18}
+                color={notification.read ? colors.textMuted : colors.warning}
+              />
+              <Text style={styles.alertText} numberOfLines={2}>
+                {notification.title}: {notification.message}
+              </Text>
+              <MaterialIcons
+                name="chevron-right"
+                size={18}
+                color={colors.textMuted}
+              />
+            </Pressable>
           ))}
+          {notifications.length === 0 && (
+            <Text style={styles.subtitle}>No notifications right now.</Text>
+          )}
         </View>
       </View>
       <View style={styles.section}>
