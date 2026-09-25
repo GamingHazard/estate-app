@@ -1,28 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import {
+  Modal,
   View,
   Text,
   StyleSheet,
   Image,
-  TouchableOpacity,
+  Pressable,
   FlatList,
   ActivityIndicator,
 } from "react-native";
 import { AdminLayout } from "./AdminLayout";
 import { useTheme } from "../../../shared/theme/ThemeContext";
-import { MaterialIcons } from "@expo/vector-icons";
-import { mockProperties, propertyStats } from "../../../data/mockData";
+import { FontAwesome5, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../../shared/types/navigation";
+import { adminPropertyStore } from "../../../data/adminPropertyStore";
+import { PropertyCreation } from "./PropertyCreation";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export function PropertiesManagement() {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const [properties] = useState(mockProperties || []);
-  const [isLoading] = useState(false);
+  const [isCreationVisible, setCreationVisible] = useState(false);
+  const properties = useSyncExternalStore(
+    adminPropertyStore.subscribe,
+    adminPropertyStore.getSnapshot,
+    adminPropertyStore.getSnapshot,
+  );
+  const isLoading = false;
 
   const styles = StyleSheet.create({
     container: {
@@ -33,6 +40,7 @@ export function PropertiesManagement() {
       flexDirection: "row",
       gap: 12,
       marginBottom: 16,
+      position: "relative",
     },
     statsCard: {
       flex: 1,
@@ -77,6 +85,43 @@ export function PropertiesManagement() {
     statsDescription: {
       fontSize: 12,
       color: colors.textMuted,
+    },
+    pageHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 16,
+    },
+    pageTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    addButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    addButtonText: {
+      color: "white",
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    modalBackdrop: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+    },
+    modalContent: {
+      height: "94%",
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      overflow: "hidden",
     },
     propertiesList: {
       marginTop: 16,
@@ -154,44 +199,80 @@ export function PropertiesManagement() {
     }
   };
 
-  const renderPropertyItem = ({ item: property }: { item: any }) => (
-    <View style={styles.propertyCard}>
+  const renderPropertyItem = ({
+    item: property,
+  }: {
+    item: (typeof properties)[number];
+  }) => (
+    <Pressable
+      style={styles.propertyCard}
+      onPress={() =>
+        navigation.navigate("AdminPropertyDetails", { propertyId: property.id })
+      }
+    >
       <View style={styles.propertyHeader}>
         <Image
-          source={{ uri: property.thumbnail }}
+          source={{ uri: property.images[0]?.url }}
           style={styles.propertyImage}
         />
         <View style={styles.propertyInfo}>
-          <Text style={styles.propertyTitle}>{property.title}</Text>
-          <Text style={styles.propertyLocation}>{property.location}</Text>
+          <Text style={styles.propertyTitle}>{property.name}</Text>
+          <Text style={styles.propertyLocation}>
+            {[property.city, property.country].filter(Boolean).join(", ") ||
+              property.address}
+          </Text>
           <View style={[styles.badge, getBadgeStyle(property.status)]}>
             <Text style={styles.badgeText}>{property.status}</Text>
           </View>
           <Text style={styles.agentInfo}>
-            Listed by: {property?.agent?.name}
+            {property.owner ? `Owner: ${property.owner}` : "Owner not assigned"}
           </Text>
         </View>
       </View>
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.button}>
+        <Pressable
+          style={styles.button}
+          onPress={() =>
+            navigation.navigate("AdminPropertyDetails", {
+              propertyId: property.id,
+            })
+          }
+        >
           <Text style={styles.buttonText}>View Details</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, { padding: 8 }]}>
+        </Pressable>
+        <Pressable style={[styles.button, { padding: 8 }]} onPress={() => {}}>
           <MaterialIcons name="more-vert" size={16} color={colors.text} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Property Management</Text>
+        <Pressable
+          style={styles.addButton}
+          onPress={() => setCreationVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Add property"
+        >
+          <MaterialIcons name="add" size={20} color="white" />
+          <Text style={styles.addButtonText}>Add Property</Text>
+        </Pressable>
+      </View>
       <View style={styles.statsContainer}>
         <View style={styles.statsCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Total Properties</Text>
-            <MaterialIcons name="home" size={16} color={colors.textMuted} />
+            <Ionicons
+              name="home-outline"
+              size={16}
+              color={colors.textMuted}
+              style={{ position: "absolute", right: 0, top: 0 }}
+            />
           </View>
-          <Text style={styles.statsValue}>{propertyStats.total}</Text>
+          <Text style={styles.statsValue}>{properties.length}</Text>
           <Text style={styles.statsDescription}>
             Active listings in the system
           </Text>
@@ -200,13 +281,19 @@ export function PropertiesManagement() {
         <View style={styles.statsCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Pending Review</Text>
-            <MaterialIcons
-              name="assessment"
+            <Ionicons
+              name="hourglass-outline"
               size={16}
               color={colors.textMuted}
+              style={{ position: "absolute", right: 0, top: 0 }}
             />
           </View>
-          <Text style={styles.statsValue}>{propertyStats.pending}</Text>
+          <Text style={styles.statsValue}>
+            {
+              properties.filter((property) => property.status === "pending")
+                .length
+            }
+          </Text>
           <Text style={styles.statsDescription}>
             Properties awaiting review
           </Text>
@@ -215,9 +302,19 @@ export function PropertiesManagement() {
         <View style={styles.statsCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Reported</Text>
-            <MaterialIcons name="flag" size={16} color={colors.textMuted} />
+            <Ionicons
+              name="flag-outline"
+              style={{ position: "absolute", right: 0, top: 0 }}
+              size={16}
+              color={colors.textMuted}
+            />
           </View>
-          <Text style={styles.statsValue}>{propertyStats.reported}</Text>
+          <Text style={styles.statsValue}>
+            {
+              properties.filter((property) => property.status === "rejected")
+                .length
+            }
+          </Text>
           <Text style={styles.statsDescription}>
             Properties with active reports
           </Text>
@@ -237,6 +334,19 @@ export function PropertiesManagement() {
           contentContainerStyle={styles.listContent}
         />
       )}
+      <Modal
+        visible={isCreationVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCreationVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <PropertyCreation onClose={() => setCreationVisible(false)} />
+          </View>
+        </View>
+      </Modal>
+      <View style={{ height: 70, width: "100%" }} />
     </View>
   );
 }

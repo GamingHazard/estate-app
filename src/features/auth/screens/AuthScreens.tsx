@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,9 +14,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Picker } from "@react-native-picker/picker";
 
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { useAuth } from "../AuthContext";
+import { RegisterInput, UserRole } from "../authTypes";
+import { apiRequest } from "../../../shared/queryClient";
+import { useQuery } from "@tanstack/react-query";
 
 type AuthScreenType = "login" | "register" | "verify" | "recovery";
 
@@ -25,7 +29,7 @@ interface AuthScreensProps {
 }
 
 const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +38,7 @@ const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
 
   const handleLogin = async () => {
     setError("");
-    const result = await login({ identifier: email, password });
+    const result = await login({ identifier, password });
     if (!result.success) {
       setError(result.message);
     }
@@ -176,16 +180,15 @@ const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Email Address</Text>
+        <Text style={styles.inputLabel}>Email, Phone, or Username</Text>
         <TextInput
           style={[
             styles.input,
             focusedInput === "email" && styles.inputFocused,
           ]}
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
+          placeholder="Enter your email, phone, or username"
+          value={identifier}
+          onChangeText={setIdentifier}
           autoCapitalize="none"
           onFocus={() => setFocusedInput("email")}
           onBlur={() => setFocusedInput(null)}
@@ -263,11 +266,13 @@ const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
 };
 
 const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
+  const { register, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     dateOfBirth: "",
-    gender: "",
+    gender: "male",
+    role: "user" as UserRole,
     nin: "",
     contact: "",
     email: "",
@@ -278,9 +283,40 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleRegister = () => {
-    // Implement registration logic here
-    console.log("Register:", formData);
+  const handleRegister = async () => {
+    try {
+      if (formData.password !== formData.confirmPassword) {
+        return;
+      }
+
+      const registrationData: RegisterInput = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: Number(formData.contact),
+        dob: formData.dateOfBirth,
+        gender: formData.gender,
+        ...(formData.role !== "user" ? { nin: formData.nin } : {}),
+      };
+
+      await register(registrationData);
+      setFormData({
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        gender: "male",
+        role: "user" as UserRole,
+        nin: "",
+        contact: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+
+      navigation.navigate("Home");
+    } catch (error) {}
   };
 
   const updateField = (field: string, value: string) => {
@@ -448,30 +484,71 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Gender</Text>
-        <TextInput
-          style={[
-            styles.input,
-            focusedInput === "gender" && styles.inputFocused,
-          ]}
-          placeholder="Enter your gender"
-          value={formData.gender}
-          onChangeText={(value) => updateField("gender", value)}
-          onFocus={() => setFocusedInput("gender")}
-          onBlur={() => setFocusedInput(null)}
-        />
+        <View
+          style={{
+            backgroundColor: colors.background,
+            // padding: 15,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
+          <Picker
+            selectedValue={formData.gender}
+            onValueChange={(value: string) => updateField("gender", value)}
+            style={{ color: colors.text, height: 50 }}
+          >
+            <Picker.Item label="Male" value="male" />
+            <Picker.Item label="Female" value="female" />
+            <Picker.Item label="Other" value="other" />
+          </Picker>
+        </View>
       </View>
 
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>National ID Number (NIN)</Text>
-        <TextInput
-          style={[styles.input, focusedInput === "nin" && styles.inputFocused]}
-          placeholder="Enter your NIN"
-          value={formData.nin}
-          onChangeText={(value) => updateField("nin", value)}
-          onFocus={() => setFocusedInput("nin")}
-          onBlur={() => setFocusedInput(null)}
-        />
+        <Text style={styles.inputLabel}>Account Type</Text>
+        <View
+          style={{
+            backgroundColor: colors.background,
+            // padding: 15,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
+          <Picker
+            selectedValue={formData.role}
+            onValueChange={(value: UserRole) => {
+              updateField("role", value);
+              if (value === "user") {
+                updateField("nin", "");
+              }
+            }}
+            style={{ color: colors.text }}
+          >
+            <Picker.Item label="Me" value="user" />
+            <Picker.Item label="Landlord" value="landlord" />
+            <Picker.Item label="Property Manager" value="propertyManager" />
+          </Picker>
+        </View>
       </View>
+
+      {formData.role !== "user" && (
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>National ID Number (NIN)</Text>
+          <TextInput
+            style={[
+              styles.input,
+              focusedInput === "nin" && styles.inputFocused,
+            ]}
+            placeholder="Enter your NIN"
+            value={formData.nin}
+            onChangeText={(value) => updateField("nin", value)}
+            onFocus={() => setFocusedInput("nin")}
+            onBlur={() => setFocusedInput(null)}
+          />
+        </View>
+      )}
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Contact Number</Text>
@@ -562,14 +639,20 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleRegister}
+        disabled={isLoading}
+      >
         <LinearGradient
           colors={["#4A90E2", "#357ABD"]}
           style={styles.gradientButton}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          <Text style={styles.buttonText}>Create Account</Text>
+          <Text style={styles.buttonText}>
+            {isLoading ? "Creating Account..." : "Create Account"}
+          </Text>
         </LinearGradient>
       </TouchableOpacity>
 

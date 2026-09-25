@@ -24,13 +24,6 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {!isConnected && (
-        <View style={[styles.warningContainer]}>
-          <Text style={styles.warningText}>
-            No internet connection detected. Some features may be unavailable.
-          </Text>
-        </View>
-      )}
       <Text
         style={{
           color: "lightgrey",

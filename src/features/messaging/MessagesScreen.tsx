@@ -70,13 +70,6 @@ const MessagesScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      {!isConnected && (
-        <View style={{ alignItems: "center", marginVertical: 10 }}>
-          <Text style={{ color: "red" }}>
-            No internet connection detected. Some features may be unavailable.
-          </Text>
-        </View>
-      )}
       {messages.length > 0 ? (
         <FlatList
           data={messages}

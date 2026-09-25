@@ -71,7 +71,7 @@ const CustomerCare: React.FC = () => {
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsMultipleSelection: true,
       quality: 1,
     });
@@ -85,13 +85,6 @@ const CustomerCare: React.FC = () => {
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {!isConnected && (
-        <View style={{ alignItems: "center", marginVertical: 10 }}>
-          <Text style={{ color: "red" }}>
-            No internet connection detected. Some features may be unavailable.
-          </Text>
-        </View>
-      )}
       <Text style={[styles.header, { color: colors.primary }]}>
         Customer Care Services
       </Text>

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -8,6 +14,9 @@ import {
   TextInput,
   Image,
   RefreshControl,
+  Modal,
+  Pressable,
+  Animated,
 } from "react-native";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
 import { useTheme } from "../../shared/theme/ThemeContext";
@@ -22,6 +31,7 @@ import { mockAdverts } from "../../data/mockAdverts";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import SkeletonLoader from "../../shared/components/SkeletonLoader";
+import { useAuth } from "../../../src/features/auth/AuthContext";
 
 import { NavigationProp } from "../../shared/types";
 // ...existing code...
@@ -37,6 +47,50 @@ const sortOptions = [
 
 const NO_IMAGE =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  icon: "home-outline" | "chatbubble-outline" | "pricetag-outline";
+};
+
+const initialNotifications: NotificationItem[] = [
+  {
+    id: "property-match",
+    title: "New property match",
+    message: "A new apartment matching your saved search is available.",
+    time: "10 min ago",
+    read: false,
+    icon: "home-outline",
+  },
+  {
+    id: "price-drop",
+    title: "Price drop alert",
+    message: "A saved property has just reduced its asking price.",
+    time: "1 hour ago",
+    read: false,
+    icon: "pricetag-outline",
+  },
+  {
+    id: "message",
+    title: "New message",
+    message: "An agent sent you a message about your viewing request.",
+    time: "3 hours ago",
+    read: false,
+    icon: "chatbubble-outline",
+  },
+  {
+    id: "welcome",
+    title: "Welcome to Estate App",
+    message: "Your account is ready. Start exploring properties today.",
+    time: "Yesterday",
+    read: true,
+    icon: "home-outline",
+  },
+];
 
 // Add / tighten types for helpers
 const sortProperties = (properties: any[], sortBy: string): any[] => {
@@ -76,11 +130,42 @@ const HomeScreen = () => {
   const [filteredProperties, setFilteredProperties] =
     useState<any[]>(mockProperties);
 
+  const { user } = useAuth(); // Access the authenticated user from AuthContext
   // Slideshow state
   const [currentAdvertIndex, setCurrentAdvertIndex] = useState(0);
 
   // Sort modal state
   const [showSortModal, setShowSortModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] =
+    useState<NotificationItem[]>(initialNotifications);
+  const notificationTranslateX = useRef(new Animated.Value(width)).current;
+
+  const unreadNotificationCount = notifications.filter(
+    (notification) => !notification.read,
+  ).length;
+
+  const openNotifications = () => {
+    setShowNotifications(true);
+    notificationTranslateX.setValue(width);
+    Animated.timing(notificationTranslateX, {
+      toValue: 0,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeNotifications = () => {
+    Animated.timing(notificationTranslateX, {
+      toValue: width,
+      duration: 240,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShowNotifications(false);
+      }
+    });
+  };
 
   // add: featured properties memo
   const featuredProperties = useMemo(
@@ -248,7 +333,7 @@ const HomeScreen = () => {
               fontWeight: "300",
             }}
           >
-            Username
+            {user ? `${user?.firstName} ${user?.lastName}` : "Guest User"}
           </Text>
         </View>
 
@@ -259,26 +344,30 @@ const HomeScreen = () => {
             alignItems: "center",
             justifyContent: "center",
           }}
+          onPress={openNotifications}
+          accessibilityLabel="Open notifications"
         >
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              backgroundColor: "red",
-              borderRadius: 5,
-              position: "absolute",
-              top: 0,
-              right: 0,
-              zIndex: 2,
-            }}
-          />
+          {unreadNotificationCount > 0 && (
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                backgroundColor: "red",
+                borderRadius: 5,
+                position: "absolute",
+                top: 0,
+                right: 0,
+                zIndex: 2,
+              }}
+            />
+          )}
           <Ionicons
             name="notifications-outline"
             size={28}
             color={colors.text}
           />
         </TouchableOpacity>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={{
             padding: 2,
             borderRadius: 50,
@@ -304,8 +393,153 @@ const HomeScreen = () => {
             }}
             resizeMode="contain"
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
+
+      <Modal
+        visible={showNotifications}
+        transparent
+        animationType="none"
+        onRequestClose={closeNotifications}
+      >
+        <View style={styles.notificationModalRoot}>
+          <Pressable
+            style={styles.notificationBackdrop}
+            onPress={closeNotifications}
+          />
+          <Animated.View
+            style={[
+              styles.notificationPanel,
+              { backgroundColor: colors.card },
+              { transform: [{ translateX: notificationTranslateX }] },
+            ]}
+          >
+            <View style={styles.notificationHeader}>
+              <View>
+                <Text
+                  style={[styles.notificationTitle, { color: colors.text }]}
+                >
+                  Notification Center
+                </Text>
+                <Text
+                  style={[
+                    styles.notificationSubtitle,
+                    { color: colors.textMuted },
+                  ]}
+                >
+                  {unreadNotificationCount} unread
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={closeNotifications}
+                accessibilityLabel="Close notifications"
+                style={styles.notificationCloseButton}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.notificationList}
+            >
+              {notifications.length > 0 ? (
+                notifications.map((notification) => (
+                  <TouchableOpacity
+                    key={notification.id}
+                    style={[
+                      styles.notificationItem,
+                      {
+                        backgroundColor: notification.read
+                          ? "transparent"
+                          : theme === "dark"
+                            ? "rgba(255,255,255,0.08)"
+                            : "rgba(0,123,255,0.08)",
+                      },
+                    ]}
+                    onPress={() =>
+                      setNotifications((current) =>
+                        current.map((item) =>
+                          item.id === notification.id
+                            ? { ...item, read: true }
+                            : item,
+                        ),
+                      )
+                    }
+                  >
+                    <View
+                      style={[
+                        styles.notificationIcon,
+                        { backgroundColor: colors.primary },
+                      ]}
+                    >
+                      <Ionicons
+                        name={notification.icon}
+                        size={19}
+                        color="#fff"
+                      />
+                    </View>
+                    <View style={styles.notificationCopy}>
+                      <View style={styles.notificationItemHeading}>
+                        <Text
+                          style={[
+                            styles.notificationItemTitle,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {notification.title}
+                        </Text>
+                        {!notification.read && (
+                          <View style={styles.unreadDot} />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.notificationMessage,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        {notification.message}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.notificationTime,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        {notification.time}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyNotifications}>
+                  <Ionicons
+                    name="notifications-off-outline"
+                    size={34}
+                    color={colors.textMuted}
+                  />
+                  <Text style={{ color: colors.textMuted, marginTop: 8 }}>
+                    You are all caught up.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {notifications.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearNotificationsButton}
+                onPress={() => setNotifications([])}
+              >
+                <Ionicons name="trash-outline" size={17} color="#d64545" />
+                <Text style={styles.clearNotificationsText}>
+                  Clear all notifications
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
 
       {/* Main Content */}
       <View
@@ -315,13 +549,6 @@ const HomeScreen = () => {
           paddingBottom: 16,
         }}
       >
-        {!isConnected && (
-          <View style={{ alignItems: "center", marginVertical: 10 }}>
-            <Text style={{ color: "red" }}>
-              No internet connection detected. Some features may be unavailable.
-            </Text>
-          </View>
-        )}
         {loading || refreshing ? (
           <View>
             <SkeletonLoader
@@ -1316,6 +1543,115 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  notificationModalRoot: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  notificationBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  notificationPanel: {
+    width: "86%",
+    height: "100%",
+    marginLeft: "14%",
+    paddingTop: 20,
+    paddingHorizontal: 18,
+    paddingBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: -4, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.25)",
+  },
+  notificationTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  notificationSubtitle: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  notificationCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notificationList: {
+    paddingVertical: 14,
+  },
+  notificationItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  notificationIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  notificationCopy: {
+    flex: 1,
+  },
+  notificationItemHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  notificationItemTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#e04444",
+    marginLeft: 8,
+  },
+  notificationMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  notificationTime: {
+    fontSize: 11,
+    marginTop: 7,
+  },
+  emptyNotifications: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+  },
+  clearNotificationsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128, 128, 128, 0.25)",
+    paddingTop: 16,
+  },
+  clearNotificationsText: {
+    color: "#d64545",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 7,
   },
   themeToggle: {
     flexDirection: "row",

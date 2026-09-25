@@ -1,4 +1,4 @@
-import { ParamListBase } from '@react-navigation/native';
+import { ParamListBase } from "@react-navigation/native";
 
 export interface RootStackParamList extends ParamListBase {
   // Main Tabs
@@ -8,9 +8,10 @@ export interface RootStackParamList extends ParamListBase {
   Messages: undefined;
   Settings: undefined;
   MainTabs: undefined;
-  
+
   // Admin Stack Screens
   Admin: undefined;
+  Dashboard: undefined;
   PropertiesManagement: undefined;
   PropertyCreation: undefined;
   AdminNotifications: undefined;
@@ -32,5 +33,5 @@ export interface RootStackParamList extends ParamListBase {
   NoInternet: undefined;
   PaymentMethod: undefined;
   AddCard: undefined;
-  "Chat Room":undefined
+  "Chat Room": undefined;
 }

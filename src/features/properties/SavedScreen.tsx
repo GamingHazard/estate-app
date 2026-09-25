@@ -45,14 +45,6 @@ const SavedScreen = () => {
           Saved Properties
         </Text>
       </View>
-      {!isConnected && (
-        <View style={{ alignItems: "center", marginVertical: 10 }}>
-          <Text style={{ color: "red" }}>
-            No internet connection detected. Some features may be unavailable.
-          </Text>
-        </View>
-      )}
-
       {loading ? (
         <View style={styles.content}>
           <SkeletonLoader

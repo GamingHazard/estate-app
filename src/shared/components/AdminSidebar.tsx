@@ -20,6 +20,7 @@ interface AdminSidebarProps {
 
 type AdminScreens = keyof Pick<
   RootStackParamList,
+  | "Dashboard"
   | "PropertiesManagement"
   | "PropertyCreation"
   | "AdminNotifications"
@@ -48,12 +49,12 @@ export function AdminSidebar({
     {
       icon: "grid-outline",
       label: "Dashboard",
-      screen: "PropertiesManagement",
+      screen: "Dashboard",
     },
     {
       icon: "add-circle-outline",
       label: "Create Property",
-      screen: "PropertyCreation",
+      screen: "PropertiesManagement",
     },
     {
       icon: "notifications-outline",

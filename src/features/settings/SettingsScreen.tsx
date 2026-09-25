@@ -8,6 +8,7 @@ import {
   Modal,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
 import { useTheme } from "../../shared/theme/ThemeContext";
@@ -15,14 +16,16 @@ import { useAuth } from "../auth/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import ProfileEditForm from "../../shared/components/ProfileEditForm";
 import * as ImagePicker from "expo-image-picker";
+import { uploadRequest } from "../../shared/queryClient";
 
 const SettingsScreen = ({ navigation }: { navigation: any }) => {
   const { colors, theme, toggleTheme } = useTheme();
-  const { user, openAuth } = useAuth();
+  const { user, openAuth, updateUser } = useAuth();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [profileImage, setProfileImage] = useState(
     "https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg",
   );
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const isConnected = useInternetConnection();
 
   useEffect(() => {
@@ -42,6 +45,48 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
     })();
   }, []);
 
+  const uploadProfileImage = async (asset: ImagePicker.ImagePickerAsset) => {
+    if (!user) {
+      openAuth();
+      return;
+    }
+
+    setProfileImage(asset.uri);
+    setIsUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("avatar", {
+        uri: asset.uri,
+        name: asset.fileName || "profile-image.jpg",
+        type: asset.mimeType || "image/jpeg",
+      } as any);
+
+      const result = await uploadRequest("PATCH", "/users/me/avatar", formData);
+
+      if (!result?.success || !result.user) {
+        throw new Error(result?.message || "Unable to save profile image");
+      }
+
+      await updateUser(result.user);
+      setProfileImage(result.user.avatar?.url || asset.uri);
+      Alert.alert("Profile image updated", "Your profile image was saved.");
+    } catch (error) {
+      setProfileImage(
+        user.avatar?.url ||
+          "https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg",
+      );
+      Alert.alert(
+        "Upload failed",
+        error instanceof Error
+          ? error.message
+          : "Unable to upload profile image",
+      );
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const handleImageUpload = () => {
     Alert.alert("Upload Profile Picture", "Choose an option", [
       {
@@ -54,7 +99,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
           });
 
           if (!result.canceled) {
-            setProfileImage(result.assets[0].uri);
+            await uploadProfileImage(result.assets[0]);
           }
         },
       },
@@ -62,14 +107,14 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
         text: "Choose from Gallery",
         onPress: async () => {
           let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [1, 1],
             quality: 1,
           });
 
           if (!result.canceled) {
-            setProfileImage(result.assets[0].uri);
+            await uploadProfileImage(result.assets[0]);
           }
         },
       },
@@ -81,9 +126,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
   };
 
   const handleSaveProfile = (profileData: any) => {
-    // Handle saving profile data here
-    console.log("Profile data to save:", { ...profileData, profileImage });
-    // You would typically send this data to your backend or store it locally
+    console.log("Profile data to save:", profileData);
   };
 
   return (
@@ -141,15 +184,28 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
           <View style={styles.avatarContainer}>
             <Image
               source={{
-                uri: profileImage,
+                uri:
+                  user && !!user?.avatar?.url
+                    ? user?.avatar?.url
+                    : profileImage,
               }}
               style={styles.profileImage}
             />
+            {isUploadingImage && (
+              <View style={styles.uploadOverlay}>
+                <ActivityIndicator size="small" color="white" />
+              </View>
+            )}
             <TouchableOpacity
               style={styles.uploadIcon}
               onPress={handleImageUpload}
+              disabled={isUploadingImage}
             >
-              <Ionicons name="camera" size={24} color="white" />
+              <Ionicons
+                name={isUploadingImage ? "cloud-upload" : "camera"}
+                size={24}
+                color="white"
+              />
             </TouchableOpacity>
           </View>
           <Text
@@ -160,7 +216,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
               },
             ]}
           >
-            @UserName
+            {user ? `${user?.firstName} ${user?.lastName}` : "Guest User"}
           </Text>
           <Text
             style={[
@@ -170,7 +226,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
               },
             ]}
           >
-            user@example.com
+            {user ? user?.email : "Not logged in"}
           </Text>
         </View>
 
@@ -362,13 +418,6 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
           </View>
         </TouchableOpacity>
       </Modal>
-      {!isConnected && (
-        <View style={{ alignItems: "center", marginVertical: 10 }}>
-          <Text style={{ color: "red" }}>
-            No internet connection detected. Some features may be unavailable.
-          </Text>
-        </View>
-      )}
     </ScrollView>
   );
 };
@@ -430,6 +479,18 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginBottom: 5,
+  },
+  uploadOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 150,
+    backgroundColor: "rgba(0, 0, 0, 0.62)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
   },
   uploadIcon: {
     position: "absolute",
