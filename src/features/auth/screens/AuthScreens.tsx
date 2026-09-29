@@ -206,6 +206,7 @@ const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
             placeholder="Enter your password"
             value={password}
             onChangeText={setPassword}
+            autoCapitalize="none"
             secureTextEntry={!showPassword}
             onFocus={() => setFocusedInput("password")}
             onBlur={() => setFocusedInput(null)}
@@ -594,6 +595,7 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
             placeholder="Create a password"
             value={formData.password}
             onChangeText={(value) => updateField("password", value)}
+            autoCapitalize="none"
             secureTextEntry={!showPassword}
             onFocus={() => setFocusedInput("password")}
             onBlur={() => setFocusedInput(null)}
@@ -622,6 +624,7 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
             placeholder="Confirm your password"
             value={formData.confirmPassword}
             onChangeText={(value) => updateField("confirmPassword", value)}
+            autoCapitalize="none"
             secureTextEntry={!showConfirmPassword}
             onFocus={() => setFocusedInput("confirmPassword")}
             onBlur={() => setFocusedInput(null)}

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Modal,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -14,17 +13,13 @@ import { useInternetConnection } from "../../shared/hooks/useInternetConnection"
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import ProfileEditForm from "../../shared/components/ProfileEditForm";
 import * as ImagePicker from "expo-image-picker";
 import { uploadRequest } from "../../shared/queryClient";
 
 const SettingsScreen = ({ navigation }: { navigation: any }) => {
   const { colors, theme, toggleTheme } = useTheme();
   const { user, openAuth, updateUser } = useAuth();
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [profileImage, setProfileImage] = useState(
-    "https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg",
-  );
+  const [profileImage, setProfileImage] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const isConnected = useInternetConnection();
 
@@ -72,10 +67,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
       setProfileImage(result.user.avatar?.url || asset.uri);
       Alert.alert("Profile image updated", "Your profile image was saved.");
     } catch (error) {
-      setProfileImage(
-        user.avatar?.url ||
-          "https://www.shutterstock.com/image-vector/default-avatar-photo-placeholder-grey-600nw-2007531536.jpg",
-      );
+      setProfileImage(user.avatar?.url || "");
       Alert.alert(
         "Upload failed",
         error instanceof Error
@@ -125,10 +117,6 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
     ]);
   };
 
-  const handleSaveProfile = (profileData: any) => {
-    console.log("Profile data to save:", profileData);
-  };
-
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
@@ -145,7 +133,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
       {/* Main content Container */}
       <View style={styles.contentContainer}>
         {/* Theme Button */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.themeButton, { backgroundColor: colors.card }]}
           onPress={toggleTheme}
         >
@@ -158,12 +146,20 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
           <Text style={[styles.buttonText, { color: colors.text }]}>
             {theme === "dark" ? "Enable Light Mode" : "Enable Dark Mode"}
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
+
+        <Ionicons
+          name={theme === "dark" ? "sunny" : "moon"}
+          size={24}
+          color={"white"}
+          style={{ position: "absolute", top: 10, right: 10 }}
+          onPress={toggleTheme}
+        />
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
-            <Text
+            {/* <Text
               style={[
                 styles.profileTitle,
                 {
@@ -172,23 +168,28 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
               ]}
             >
               Profile
-            </Text>
-            <TouchableOpacity onPress={() => setIsModalVisible(true)}>
+            </Text> */}
+            {/* <TouchableOpacity onPress={() => setIsModalVisible(true)}>
               <Ionicons
                 name={theme === "dark" ? "pencil" : "pencil-outline"}
                 size={24}
                 color="white"
               />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           <View style={styles.avatarContainer}>
             <Image
-              source={{
-                uri:
-                  user && !!user?.avatar?.url
-                    ? user?.avatar?.url
-                    : profileImage,
-              }}
+              source={
+                profileImage
+                  ? { uri: profileImage }
+                  : user?.avatar?.url
+                    ? { uri: user.avatar.url }
+                    : user?.gender === "female"
+                      ? require("../../../assets/female 2.webp")
+                      : user?.gender === "male"
+                        ? require("../../../assets/male.png")
+                        : require("../../../assets/no-image 2.avif")
+              }
               style={styles.profileImage}
             />
             {isUploadingImage && (
@@ -196,17 +197,21 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
                 <ActivityIndicator size="small" color="white" />
               </View>
             )}
-            <TouchableOpacity
-              style={styles.uploadIcon}
-              onPress={handleImageUpload}
-              disabled={isUploadingImage}
-            >
-              <Ionicons
-                name={isUploadingImage ? "cloud-upload" : "camera"}
-                size={24}
-                color="white"
-              />
-            </TouchableOpacity>
+            {user ? (
+              <TouchableOpacity
+                style={styles.uploadIcon}
+                onPress={handleImageUpload}
+                disabled={isUploadingImage}
+              >
+                <Ionicons
+                  name={isUploadingImage ? "cloud-upload" : "camera"}
+                  size={24}
+                  color="white"
+                />
+              </TouchableOpacity>
+            ) : (
+              ""
+            )}
           </View>
           <Text
             style={[
@@ -397,27 +402,6 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
         </TouchableOpacity>
         <View style={{ height: 60 }} />
       </View>
-
-      {/* Profile Edit Modal */}
-      <Modal
-        visible={isModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <ProfileEditForm
-              onClose={() => setIsModalVisible(false)}
-              onSave={handleSaveProfile}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </ScrollView>
   );
 };
@@ -426,6 +410,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     alignItems: "center",
     paddingBottom: 20,
+    position: "relative",
   },
   backgroundShape: {
     height: 400,
@@ -452,6 +437,7 @@ const styles = StyleSheet.create({
     marginVertical: 5,
   },
   profileSection: {
+    marginTop: 60,
     width: "100%",
     backgroundColor: "transparent",
     justifyContent: "center",
@@ -478,7 +464,9 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: "relative",
-    marginBottom: 5,
+    marginBottom: 20,
+    backgroundColor: "white",
+    borderRadius: 150,
   },
   uploadOverlay: {
     position: "absolute",
@@ -529,15 +517,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     flex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContainer: {
-    height: "80%",
-    width: "100%",
   },
 });
 

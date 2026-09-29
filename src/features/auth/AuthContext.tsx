@@ -68,12 +68,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (input: LoginInput): Promise<AuthResult> => {
     setIsLoading(true);
+    let failureStage: "request" | "session" = "request";
     try {
       const response = await apiRequest("POST", "/auth/login", input);
       const result = await response.json();
 
       if (result.user && result.token) {
         const user = normalizeUser(result.user);
+        failureStage = "session";
         await persistSession(user, result.token);
         setUser(user);
 
@@ -87,11 +89,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         message: result?.message || "Login did not return a valid session.",
       };
     } catch (error) {
-      console.error("Login session could not be saved:", error);
+      const sessionFailure = failureStage === "session";
+      console.error(
+        sessionFailure
+          ? "Login session could not be saved:"
+          : "Login request failed:",
+        error,
+      );
       const message =
         error instanceof Error
-          ? `Unable to save your login session: ${error.message}`
-          : "Unable to save your login session.";
+          ? `${sessionFailure ? "Unable to save your login session" : "Unable to sign in"}: ${error.message}`
+          : sessionFailure
+            ? "Unable to save your login session."
+            : "Unable to sign in.";
       return { success: false, message };
     } finally {
       setIsLoading(false);

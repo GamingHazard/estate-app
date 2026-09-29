@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,55 +6,72 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Platform,
 } from "react-native";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { AuthUser } from "../../features/auth/authTypes";
 
 interface ProfileEditFormProps {
+  user: AuthUser;
   onClose: () => void;
-  onSave: (profileData: ProfileData) => void;
+  onSave: (profileData: ProfileData) => Promise<void>;
 }
 
-interface ProfileData {
-  fullName: string;
-  dateOfBirth: string;
+export interface ProfileData {
+  firstName: string;
+  lastName: string;
+  dob: string;
   gender: string;
-  ninNumber: string;
-  contact: string;
+  nin?: string;
+  phoneNumber: string;
   email: string;
 }
 
 const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
+  user,
   onClose,
   onSave,
 }) => {
   const { colors, theme } = useTheme();
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const canEditNin =
+    user.role === "landlord" || user.role === "propertyManager";
   const [profileData, setProfileData] = useState<ProfileData>({
-    fullName: "",
-    dateOfBirth: "",
-    gender: "",
-    ninNumber: "",
-    contact: "",
-    email: "",
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    dob: user.dob || "",
+    gender: user.gender || "",
+    ...(canEditNin ? { nin: user.nin || "" } : {}),
+    phoneNumber: user.phoneNumber || "",
+    email: user.email || "",
   });
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === "ios");
-    if (event.type === "dismissed") {
-      return;
-    }
-    if (selectedDate) {
-      const formattedDate = selectedDate.toLocaleDateString("en-GB"); // DD/MM/YYYY format
-      setProfileData({ ...profileData, dateOfBirth: formattedDate });
-    }
-  };
+  useEffect(() => {
+    setProfileData({
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      dob: user.dob || "",
+      gender: user.gender || "",
+      ...(canEditNin ? { nin: user.nin || "" } : {}),
+      phoneNumber: user.phoneNumber || "",
+      email: user.email || "",
+    });
+  }, [user, canEditNin]);
 
-  const handleSave = () => {
-    onSave(profileData);
-    onClose();
+  const handleSave = async () => {
+    setSaveError("");
+    setIsSaving(true);
+    try {
+      await onSave(profileData);
+      onClose();
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Unable to save profile",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -70,17 +87,33 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
       <ScrollView style={styles.formContainer}>
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
+          <Text style={[styles.label, { color: colors.text }]}>First Name</Text>
           <TextInput
             style={[
               styles.input,
               { backgroundColor: colors.card, color: colors.text },
             ]}
-            value={profileData.fullName}
+            value={profileData.firstName}
             onChangeText={(text) =>
-              setProfileData({ ...profileData, fullName: text })
+              setProfileData({ ...profileData, firstName: text })
             }
-            placeholder="Enter your full name"
+            placeholder="Enter your first name"
+            placeholderTextColor={colors.text + "80"}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.text }]}>Last Name</Text>
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.card, color: colors.text },
+            ]}
+            value={profileData.lastName}
+            onChangeText={(text) =>
+              setProfileData({ ...profileData, lastName: text })
+            }
+            placeholder="Enter your last name"
             placeholderTextColor={colors.text + "80"}
           />
         </View>
@@ -89,40 +122,18 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           <Text style={[styles.label, { color: colors.text }]}>
             Date of Birth
           </Text>
-          <TouchableOpacity
+          <TextInput
             style={[
               styles.input,
-              { backgroundColor: colors.card },
-              styles.dateInput,
+              { backgroundColor: colors.card, color: colors.text },
             ]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text
-              style={{
-                color: profileData.dateOfBirth
-                  ? colors.text
-                  : colors.text + "80",
-              }}
-            >
-              {profileData.dateOfBirth || "Select date of birth"}
-            </Text>
-            <Ionicons name="calendar" size={24} color={colors.text} />
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={
-                profileData.dateOfBirth
-                  ? new Date(
-                      profileData.dateOfBirth.split("/").reverse().join("-"),
-                    )
-                  : new Date()
-              }
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={handleDateChange}
-              maximumDate={new Date()}
-            />
-          )}
+            value={profileData.dob}
+            onChangeText={(text) =>
+              setProfileData({ ...profileData, dob: text })
+            }
+            placeholder="DD/MM/YYYY"
+            placeholderTextColor={colors.text + "80"}
+          />
         </View>
 
         <View style={styles.inputGroup}>
@@ -131,13 +142,18 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             <TouchableOpacity
               style={[
                 styles.genderOption,
-                profileData.gender === "Male" && styles.selectedGender,
-                { borderColor: colors.border },
+                profileData.gender.toLowerCase() === "male" &&
+                  styles.selectedGender,
+                {
+                  borderColor: colors.border,
+                  width: "31%",
+                  paddingHorizontal: 8,
+                },
               ]}
-              onPress={() => setProfileData({ ...profileData, gender: "Male" })}
+              onPress={() => setProfileData({ ...profileData, gender: "male" })}
             >
               <View style={styles.radioOuter}>
-                {profileData.gender === "Male" && (
+                {profileData.gender.toLowerCase() === "male" && (
                   <View
                     style={[
                       styles.radioInner,
@@ -157,15 +173,20 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             <TouchableOpacity
               style={[
                 styles.genderOption,
-                profileData.gender === "Female" && styles.selectedGender,
-                { borderColor: colors.border },
+                profileData.gender.toLowerCase() === "female" &&
+                  styles.selectedGender,
+                {
+                  borderColor: colors.border,
+                  width: "31%",
+                  paddingHorizontal: 8,
+                },
               ]}
               onPress={() =>
-                setProfileData({ ...profileData, gender: "Female" })
+                setProfileData({ ...profileData, gender: "female" })
               }
             >
               <View style={styles.radioOuter}>
-                {profileData.gender === "Female" && (
+                {profileData.gender.toLowerCase() === "female" && (
                   <View
                     style={[
                       styles.radioInner,
@@ -180,24 +201,48 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 Female
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.genderOption,
+                profileData.gender.toLowerCase() === "other" &&
+                  styles.selectedGender,
+                {
+                  borderColor: colors.border,
+                  width: "31%",
+                  paddingHorizontal: 8,
+                },
+              ]}
+              onPress={() =>
+                setProfileData({ ...profileData, gender: "other" })
+              }
+            >
+              <Text style={[styles.genderText, { color: colors.text }]}>
+                Other
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>NIN Number</Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: colors.card, color: colors.text },
-            ]}
-            value={profileData.ninNumber}
-            onChangeText={(text) =>
-              setProfileData({ ...profileData, ninNumber: text })
-            }
-            placeholder="Enter your NIN number"
-            placeholderTextColor={colors.text + "80"}
-          />
-        </View>
+        {canEditNin && (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              NIN Number
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: colors.card, color: colors.text },
+              ]}
+              value={profileData.nin || ""}
+              onChangeText={(text) =>
+                setProfileData({ ...profileData, nin: text })
+              }
+              placeholder="Enter your NIN number"
+              placeholderTextColor={colors.text + "80"}
+            />
+          </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.text }]}>Contact</Text>
@@ -206,9 +251,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               styles.input,
               { backgroundColor: colors.card, color: colors.text },
             ]}
-            value={profileData.contact}
+            value={profileData.phoneNumber}
             onChangeText={(text) =>
-              setProfileData({ ...profileData, contact: text })
+              setProfileData({ ...profileData, phoneNumber: text })
             }
             placeholder="Enter your contact number"
             placeholderTextColor={colors.text + "80"}
@@ -230,17 +275,24 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             placeholder="Enter your email"
             placeholderTextColor={colors.text + "80"}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
         </View>
 
+        {saveError ? (
+          <Text style={{ color: colors.error }}>{saveError}</Text>
+        ) : null}
         <TouchableOpacity
           style={[
             styles.saveButton,
             { backgroundColor: colors.primary || "#007AFF" },
           ]}
           onPress={handleSave}
+          disabled={isSaving}
         >
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+          <Text style={styles.saveButtonText}>
+            {isSaving ? "Saving..." : "Save Changes"}
+          </Text>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -267,7 +319,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 10,
     borderWidth: 1,
-    width: "45%",
+    width: "31%",
   },
   selectedGender: {
     borderWidth: 2,
@@ -289,11 +341,6 @@ const styles = StyleSheet.create({
   genderText: {
     fontSize: 16,
     fontWeight: "500",
-  },
-  dateInput: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   header: {
     flexDirection: "row",
@@ -332,7 +379,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
-    marginBottom: Platform.OS === "ios" ? 30 : 20,
+    marginBottom: 20,
   },
   saveButtonText: {
     color: "white",
