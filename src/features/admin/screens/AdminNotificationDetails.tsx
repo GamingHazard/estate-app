@@ -11,6 +11,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { useAdminNotifications } from "../../../shared/hooks/useAdminNotifications";
+import { useProperties } from "../../properties/useProperties";
+import { adminPropertyStore } from "../../../data/adminPropertyStore";
 
 export function AdminNotificationDetails() {
   const { colors } = useTheme();
@@ -18,6 +20,7 @@ export function AdminNotificationDetails() {
   const route = useRoute<any>();
   const { getById, markAsRead, remove } = useAdminNotifications();
   const notification = getById(route.params?.notificationId);
+  const { data: properties = [] } = useProperties();
 
   useEffect(() => {
     if (notification && !notification.read) {
@@ -114,6 +117,15 @@ export function AdminNotificationDetails() {
     ]);
   };
 
+  const relatedApiProperty = notification?.relatedPropertyId
+    ? properties.find(
+        (property) => property.id === notification.relatedPropertyId,
+      )
+    : undefined;
+  const relatedLocalProperty = notification?.relatedPropertyId
+    ? adminPropertyStore.getById(notification.relatedPropertyId)
+    : undefined;
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.card}>
@@ -131,12 +143,26 @@ export function AdminNotificationDetails() {
         <Text style={styles.meta}>
           Type: {notification.type} | Severity: {notification.severity}
         </Text>
-        {notification.relatedPropertyId && (
+        {relatedApiProperty && (
+          <Pressable
+            style={styles.action}
+            onPress={() =>
+              navigation.navigate("PropertyDetails", {
+                property: relatedApiProperty,
+              })
+            }
+          >
+            <Text style={styles.actionText}>
+              {notification.actionLabel || "Open related property"}
+            </Text>
+          </Pressable>
+        )}
+        {relatedLocalProperty && (
           <Pressable
             style={styles.action}
             onPress={() =>
               navigation.navigate("AdminPropertyDetails", {
-                propertyId: notification.relatedPropertyId,
+                propertyId: relatedLocalProperty.id,
               })
             }
           >

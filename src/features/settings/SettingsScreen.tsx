@@ -343,28 +343,6 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
           />
         </TouchableOpacity>
 
-        {/* Payment Methods Btn */}
-        <TouchableOpacity
-          style={[styles.btns, { backgroundColor: colors.card }]}
-          onPress={() => navigation.navigate("Sell Property")}
-        >
-          <Ionicons
-            name={theme === "dark" ? "home" : "home-outline"}
-            size={24}
-            color={colors.text}
-            style={styles.buttonIcon}
-          />
-          <Text style={[styles.buttonText, { color: colors.text }]}>
-            Sell Property
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={24}
-            color={colors.text}
-            style={styles.buttonIcon}
-          />
-        </TouchableOpacity>
-
         {/* User Manual Btn */}
         <TouchableOpacity
           style={[

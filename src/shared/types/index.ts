@@ -1,25 +1,5 @@
-import { StackNavigationProp } from '@react-navigation/stack';
-
-type Property = {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  price: number;
-  location: string;
-  coordinates: {
-    latitude: number;
-    longitude: number;
-  };
-  bedrooms?: number;
-  bathrooms?: number;
-  area?: number;
-  thumbnail: string;
-  amenities: string[];
-  status: string;
-  saved?: boolean;
-  gallery: { name: string; url: string }[];
-};
+import { StackNavigationProp } from "@react-navigation/stack";
+import { Property } from "../../data/property";
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -30,11 +10,11 @@ export type RootStackParamList = {
   "Terms-and-Conditions": undefined;
   History: undefined;
   "Customer Care": undefined;
-  "Agent Profile": { agent: any };
+  "Lister Profile": { userId: string };
   "Payment Method": undefined;
   "Add Card": undefined;
   "Sell Property": undefined;
-  AdminPropertyDetails: undefined;
+  AdminPropertyDetails: { propertyId: string };
   "Chat Room": {
     participantName: string;
     participantAvatar: string;

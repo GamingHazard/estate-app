@@ -15,10 +15,24 @@ import { FontAwesome5, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../../shared/types/navigation";
-import { adminPropertyStore } from "../../../data/adminPropertyStore";
-import { PropertyCreation } from "./PropertyCreation";
+import {
+  AdminProperty,
+  adminPropertyStore,
+} from "../../../data/adminPropertyStore";
+import {
+  getListingPriceLabel,
+  getPropertyDisplayLocation,
+  MarketplacePropertyRecord,
+  Property,
+} from "../../../data/property";
+import { MarketplacePropertyCreation } from "./MarketplacePropertyCreation";
+import { useProperties } from "../../properties/useProperties";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
+type ManagementProperty =
+  | { source: "local"; property: AdminProperty }
+  | { source: "api"; property: Property }
+  | { source: "marketplace"; property: MarketplacePropertyRecord };
 
 export function PropertiesManagement() {
   const { colors } = useTheme();
@@ -29,7 +43,26 @@ export function PropertiesManagement() {
     adminPropertyStore.getSnapshot,
     adminPropertyStore.getSnapshot,
   );
-  const isLoading = false;
+  const marketplaceProperties = useSyncExternalStore(
+    adminPropertyStore.subscribeMarketplace,
+    adminPropertyStore.getMarketplaceSnapshot,
+    adminPropertyStore.getMarketplaceSnapshot,
+  );
+  const {
+    data: apiProperties = [],
+    isLoading: isApiLoading,
+    isError: isApiError,
+    error: apiError,
+    refetch,
+  } = useProperties();
+  const displayProperties: ManagementProperty[] = [
+    ...apiProperties.map((property) => ({ source: "api" as const, property })),
+    ...marketplaceProperties.map((property) => ({
+      source: "marketplace" as const,
+      property,
+    })),
+    ...properties.map((property) => ({ source: "local" as const, property })),
+  ];
 
   const styles = StyleSheet.create({
     container: {
@@ -202,50 +235,105 @@ export function PropertiesManagement() {
   const renderPropertyItem = ({
     item: property,
   }: {
-    item: (typeof properties)[number];
-  }) => (
-    <Pressable
-      style={styles.propertyCard}
-      onPress={() =>
-        navigation.navigate("AdminPropertyDetails", { propertyId: property.id })
+    item: ManagementProperty;
+  }) => {
+    const isApiProperty = property.source === "api";
+    const isMarketplaceProperty = property.source === "marketplace";
+    const details = property.property;
+    const location =
+      property.source === "api" || isMarketplaceProperty
+        ? getPropertyDisplayLocation(property.property)
+        : [property.property.city, property.property.country]
+            .filter(Boolean)
+            .join(", ") || property.property.address;
+    const openProperty = () => {
+      if (property.source === "api") {
+        navigation.navigate("PropertyDetails", {
+          property: property.property,
+        });
+      } else if (isMarketplaceProperty) {
+        navigation.navigate("AdminPropertyDetails", {
+          propertyId: property.property.id,
+        });
+      } else {
+        navigation.navigate("AdminPropertyDetails", {
+          propertyId: property.property.id,
+        });
       }
-    >
-      <View style={styles.propertyHeader}>
-        <Image
-          source={{ uri: property.images[0]?.url }}
-          style={styles.propertyImage}
-        />
-        <View style={styles.propertyInfo}>
-          <Text style={styles.propertyTitle}>{property.name}</Text>
-          <Text style={styles.propertyLocation}>
-            {[property.city, property.country].filter(Boolean).join(", ") ||
-              property.address}
-          </Text>
-          <View style={[styles.badge, getBadgeStyle(property.status)]}>
-            <Text style={styles.badgeText}>{property.status}</Text>
+    };
+
+    return (
+      <Pressable style={styles.propertyCard} onPress={openProperty}>
+        <View style={styles.propertyHeader}>
+          <Image
+            source={{ uri: details.images[0]?.url }}
+            style={styles.propertyImage}
+          />
+          <View style={styles.propertyInfo}>
+            <Text style={styles.propertyTitle}>{details.name}</Text>
+            <Text style={styles.propertyLocation}>{location}</Text>
+            {property.source === "api" ? (
+              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.badgeText}>
+                  {property.property.category}
+                </Text>
+              </View>
+            ) : isMarketplaceProperty ? (
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor:
+                      property.property.moderationStatus === "approved"
+                        ? colors.primary
+                        : colors.warning,
+                  },
+                ]}
+              >
+                <Text style={styles.badgeText}>
+                  {property.property.moderationStatus} ·{" "}
+                  {getListingPriceLabel(property.property.listings[0])}
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={[styles.badge, getBadgeStyle(property.property.status)]}
+              >
+                <Text style={styles.badgeText}>{property.property.status}</Text>
+              </View>
+            )}
+            {property.source === "local" && (
+              <Text style={styles.agentInfo}>
+                {property.property.owner
+                  ? `Owner: ${property.property.owner}`
+                  : "Owner not assigned"}
+              </Text>
+            )}
+            {isMarketplaceProperty && (
+              <Text style={styles.agentInfo}>
+                {property.property.ownerId
+                  ? `Owner: ${property.property.ownerId}`
+                  : "Owner not assigned"}
+              </Text>
+            )}
           </View>
-          <Text style={styles.agentInfo}>
-            {property.owner ? `Owner: ${property.owner}` : "Owner not assigned"}
-          </Text>
         </View>
-      </View>
-      <View style={styles.actionButtons}>
-        <Pressable
-          style={styles.button}
-          onPress={() =>
-            navigation.navigate("AdminPropertyDetails", {
-              propertyId: property.id,
-            })
-          }
-        >
-          <Text style={styles.buttonText}>View Details</Text>
-        </Pressable>
-        <Pressable style={[styles.button, { padding: 8 }]} onPress={() => {}}>
-          <MaterialIcons name="more-vert" size={16} color={colors.text} />
-        </Pressable>
-      </View>
-    </Pressable>
-  );
+        <View style={styles.actionButtons}>
+          <Pressable style={styles.button} onPress={openProperty}>
+            <Text style={styles.buttonText}>View Details</Text>
+          </Pressable>
+          {!isApiProperty && !isMarketplaceProperty && (
+            <Pressable
+              style={[styles.button, { padding: 8 }]}
+              onPress={() => {}}
+            >
+              <MaterialIcons name="more-vert" size={16} color={colors.text} />
+            </Pressable>
+          )}
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -272,9 +360,9 @@ export function PropertiesManagement() {
               style={{ position: "absolute", right: 0, top: 0 }}
             />
           </View>
-          <Text style={styles.statsValue}>{properties.length}</Text>
+          <Text style={styles.statsValue}>{displayProperties.length}</Text>
           <Text style={styles.statsDescription}>
-            Active listings in the system
+            API listings and dashboard drafts
           </Text>
         </View>
 
@@ -289,10 +377,11 @@ export function PropertiesManagement() {
             />
           </View>
           <Text style={styles.statsValue}>
-            {
-              properties.filter((property) => property.status === "pending")
-                .length
-            }
+            {properties.filter((property) => property.status === "pending")
+              .length +
+              marketplaceProperties.filter(
+                (property) => property.moderationStatus === "pending",
+              ).length}
           </Text>
           <Text style={styles.statsDescription}>
             Properties awaiting review
@@ -310,10 +399,11 @@ export function PropertiesManagement() {
             />
           </View>
           <Text style={styles.statsValue}>
-            {
-              properties.filter((property) => property.status === "rejected")
-                .length
-            }
+            {properties.filter((property) => property.status === "rejected")
+              .length +
+              marketplaceProperties.filter(
+                (property) => property.moderationStatus === "rejected",
+              ).length}
           </Text>
           <Text style={styles.statsDescription}>
             Properties with active reports
@@ -321,17 +411,28 @@ export function PropertiesManagement() {
         </View>
       </View>
 
-      {isLoading ? (
+      {isApiLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={properties}
+          data={displayProperties}
           renderItem={renderPropertyItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `${item.source}-${item.property.id}`}
           style={styles.propertiesList}
           contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            isApiError ? (
+              <Pressable onPress={() => void refetch()}>
+                <Text style={{ color: colors.destructive, marginBottom: 12 }}>
+                  {apiError instanceof Error
+                    ? apiError.message
+                    : "Unable to load server properties. Tap to retry."}
+                </Text>
+              </Pressable>
+            ) : null
+          }
         />
       )}
       <Modal
@@ -342,7 +443,9 @@ export function PropertiesManagement() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalContent}>
-            <PropertyCreation onClose={() => setCreationVisible(false)} />
+            <MarketplacePropertyCreation
+              onClose={() => setCreationVisible(false)}
+            />
           </View>
         </View>
       </Modal>

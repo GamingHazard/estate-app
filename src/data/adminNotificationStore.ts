@@ -21,6 +21,7 @@ export type AdminNotification = {
 };
 
 const STORAGE_KEY = "admin-notifications";
+const LEGACY_PROPERTY_NOTIFICATION_ID = "property-1";
 const listeners = new Set<() => void>();
 
 const seedNotifications: AdminNotification[] = [
@@ -32,7 +33,6 @@ const seedNotifications: AdminNotification[] = [
     severity: "warning",
     read: false,
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    relatedPropertyId: "property-1",
     actionLabel: "Review property",
   },
   {
@@ -85,8 +85,22 @@ const hydrate = async () => {
       const parsed: unknown = JSON.parse(storedNotifications);
 
       if (Array.isArray(parsed)) {
-        notifications = parsed as AdminNotification[];
+        notifications = parsed.filter(
+          (notification): notification is AdminNotification =>
+            typeof notification === "object" &&
+            notification !== null &&
+            "id" in notification &&
+            typeof notification.id === "string" &&
+            notification.relatedPropertyId !== LEGACY_PROPERTY_NOTIFICATION_ID,
+        );
         notify();
+
+        if (notifications.length !== parsed.length) {
+          await AsyncStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(notifications),
+          );
+        }
       }
     }
   } catch (error) {

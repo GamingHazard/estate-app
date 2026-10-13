@@ -26,12 +26,18 @@ import {
   FontAwesome5,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { mockProperties } from "../../data/mockData";
 import { mockAdverts } from "../../data/mockAdverts";
+import {
+  formatPropertyPrice,
+  getPropertyDisplayLocation,
+  getSpecificationValue,
+  Property,
+} from "../../data/property";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import SkeletonLoader from "../../shared/components/SkeletonLoader";
 import { useAuth } from "../../../src/features/auth/AuthContext";
+import { useProperties } from "./useProperties";
 
 import { NavigationProp } from "../../shared/types";
 // ...existing code...
@@ -39,10 +45,7 @@ import { NavigationProp } from "../../shared/types";
 // Move constants outside the component so they're not recreated on every render
 const sortOptions = [
   { label: "Price", value: "price" },
-  { label: "Verified", value: "verified" },
-  { label: "New", value: "new" },
-  { label: "Used", value: "used" },
-  { label: "Near Me", value: "nearMe" },
+  { label: "Newest", value: "new" },
 ];
 
 const NO_IMAGE =
@@ -93,24 +96,16 @@ const initialNotifications: NotificationItem[] = [
 ];
 
 // Add / tighten types for helpers
-const sortProperties = (properties: any[], sortBy: string): any[] => {
+const sortProperties = (properties: Property[], sortBy: string): Property[] => {
   switch (sortBy) {
     case "price":
-      return [...properties].sort((a, b) => a.price - b.price);
-    case "verified":
-      return [...properties].sort((a, b) => (b.verified ? 1 : -1));
+      return [...properties].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
     case "new":
       return [...properties].sort(
         (a, b) =>
-          new Date(b.listedDate).getTime() - new Date(a.listedDate).getTime(),
+          new Date(b.createdAt ?? "").getTime() -
+          new Date(a.createdAt ?? "").getTime(),
       );
-    case "used":
-      return [...properties].sort(
-        (a, b) =>
-          new Date(a.listedDate).getTime() - new Date(b.listedDate).getTime(),
-      );
-    case "nearMe":
-      return properties;
     default:
       return properties;
   }
@@ -120,19 +115,20 @@ const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, theme, toggleTheme } = useTheme();
   const { width } = Dimensions.get("window");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data: properties = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useProperties();
   const isConnected = useInternetConnection();
   const [activeBtn, setActiveBtn] = useState<string>("All");
-  const [status, setStatus] = useState<string>("All");
   const [selectedSort, setSelectedSort] = useState<string>("");
-  // ADD: state to hold filtered properties
-  const [filteredProperties, setFilteredProperties] =
-    useState<any[]>(mockProperties);
+  const [currentAdvertIndex, setCurrentAdvertIndex] = useState(0);
 
   const { user } = useAuth(); // Access the authenticated user from AuthContext
-  // Slideshow state
-  const [currentAdvertIndex, setCurrentAdvertIndex] = useState(0);
 
   // Sort modal state
   const [showSortModal, setShowSortModal] = useState(false);
@@ -167,104 +163,95 @@ const HomeScreen = () => {
     });
   };
 
-  // add: featured properties memo
-  const featuredProperties = useMemo(
-    () => mockProperties.filter((p) => Boolean(p.featured)),
-    [],
-  );
+  const filteredProperties = useMemo(() => {
+    let result = [...properties];
 
-  // centralized filter application helper
-  const applyFilters = useCallback(
-    (typeParam?: string, statusParam?: string, sortParam?: string) => {
-      const t = typeParam ?? activeBtn;
-      const s = statusParam ?? status;
-      const sort = sortParam ?? selectedSort;
+    if (activeBtn !== "All") {
+      result = result.filter((property) => {
+        const category = property.category.toLowerCase();
+        const propertyType = property.propertyType.toLowerCase();
 
-      let result = [...mockProperties];
+        switch (activeBtn) {
+          case "Residential":
+            return category === "residential";
+          case "Commercial":
+            return category === "commercial";
+          case "Industrial":
+            return category === "industrial" || propertyType === "industrial";
+          case "Agricultural":
+            return (
+              category === "agricultural" ||
+              propertyType.includes("agricultural")
+            );
+          case "Land":
+            return category === "land" || propertyType.includes("land");
+          default:
+            return true;
+        }
+      });
+    }
 
-      if (t && t !== "All") {
-        result = result.filter((p) => p.type === t);
-      }
-
-      if (s && s !== "All") {
-        result = result.filter((p) => p.status === s);
-      }
-
-      if (sort) {
-        result = sortProperties(result, sort);
-      }
-
-      setFilteredProperties(result);
-    },
-    [activeBtn, status, selectedSort],
-  );
-
-  // initialize and keep filteredProperties in sync when mock data or filters change
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
-
-  const clearFilters = useCallback(() => {
-    setActiveBtn("All");
-    setStatus("All");
-    setSelectedSort("");
-    setFilteredProperties(mockProperties);
-  }, []);
+    return selectedSort ? sortProperties(result, selectedSort) : result;
+  }, [properties, activeBtn, selectedSort]);
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    clearFilters();
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, [clearFilters]);
+    setActiveBtn("All");
+    setSelectedSort("");
+    void refetch();
+  }, [refetch]);
 
-  const handleSortSelect = useCallback(
-    (option: string) => {
-      setSelectedSort(option);
-      setShowSortModal(false);
-      // apply immediately with new sort
-      applyFilters(undefined, undefined, option);
-    },
-    [applyFilters],
-  );
-
-  // Type & status handlers now use applyFilters so UI updates immediately
-  const selectType = useCallback(
-    (type: string) => {
-      setActiveBtn(type);
-      applyFilters(type, undefined, undefined);
-    },
-    [applyFilters],
-  );
-
-  const selectStatus = useCallback(
-    (opt: string) => {
-      setStatus(opt);
-      applyFilters(undefined, opt, undefined);
-    },
-    [applyFilters],
-  );
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
+  const handleSortSelect = useCallback((option: string) => {
+    setSelectedSort(option);
+    setShowSortModal(false);
   }, []);
 
+  const selectType = useCallback((type: string) => setActiveBtn(type), []);
+
   useEffect(() => {
+    if (mockAdverts.length === 0) {
+      return;
+    }
+
+    if (properties.length) {
+      setCurrentAdvertIndex(0);
+    }
+
     const interval = setInterval(() => {
-      if (featuredProperties.length > 0) {
-        setCurrentAdvertIndex((prev) => (prev + 1) % featuredProperties.length);
-      } else {
-        setCurrentAdvertIndex((prev) => (prev + 1) % mockAdverts.length);
-      }
+      setCurrentAdvertIndex((index) => (index + 1) % mockAdverts.length);
     }, 5000);
+
     return () => clearInterval(interval);
-  }, [featuredProperties]);
+  }, [properties]);
 
   const noImage = NO_IMAGE; // replace inline noImage with NO_IMAGE
+
+  const browseSections = [
+    {
+      title: "Family Homes",
+      subtitle: "Spacious and secure",
+      icon: "home-outline",
+      color: "#4f8ef7",
+    },
+    {
+      title: "Luxury Living",
+      subtitle: "Premium residences",
+      icon: "diamond-outline",
+      color: "#a855f7",
+    },
+    {
+      title: "Investment",
+      subtitle: "High rental yield",
+      icon: "trending-up-outline",
+      color: "#10b981",
+    },
+  ];
+
+  const neighborhoods = [
+    { name: "Westlands", price: "KSh 11.2M" },
+    { name: "Kileleshwa", price: "KSh 14.8M" },
+    { name: "Karen", price: "KSh 18.6M" },
+    { name: "Thika Road", price: "KSh 9.5M" },
+  ];
 
   return (
     <ScrollView
@@ -272,7 +259,7 @@ const HomeScreen = () => {
       style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
+          refreshing={isFetching}
           onRefresh={onRefresh}
           tintColor={colors.primary}
           titleColor={colors.primary}
@@ -284,90 +271,99 @@ const HomeScreen = () => {
       {/* Top Tab */}
       <View
         style={{
-          height: 70,
-          backgroundColor: colors.card,
+          height: 460,
+          backgroundColor: colors.bg,
           paddingHorizontal: 16,
-          elevation: 4,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
+          // elevation: 4,
+
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 1,
+          borderBottomRightRadius: 20,
+          borderBottomLeftRadius: 20,
+          overflow: "hidden",
+          // zIndex: 1,
         }}
       >
-        <Image
-          source={{
-            uri: "https://t3.ftcdn.net/jpg/08/38/58/42/360_F_838584205_dDGwNQ1xJ8GsilZONeQwwM260WoyjNx2.jpg",
-          }}
-          style={{
-            width: 50,
-            height: 50,
-            // aspectRatio: 1,
-            alignSelf: "center",
-          }}
-          resizeMode="contain"
-        />
         <View
           style={{
-            flex: 1,
-            justifyContent: "center",
+            flexDirection: "row",
             alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <Text
+          {/* <Image
+            source={{
+              uri: "https://t3.ftcdn.net/jpg/08/38/58/42/360_F_838584205_dDGwNQ1xJ8GsilZONeQwwM260WoyjNx2.jpg",
+            }}
             style={{
-              color: colors.text,
-              fontSize: 20,
-              fontWeight: "bold",
+              width: 50,
+              height: 50,
+              // aspectRatio: 1,
+              alignSelf: "center",
+            }}
+            resizeMode="contain"
+          /> */}
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
             }}
           >
-            Welcome back
-          </Text>
-          <Text
-            style={{
-              color: colors.text,
-              fontSize: 20,
-              fontWeight: "300",
-            }}
-          >
-            {user ? `${user?.firstName} ${user?.lastName}` : "Guest User"}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onPress={openNotifications}
-          accessibilityLabel="Open notifications"
-        >
-          {unreadNotificationCount > 0 && (
-            <View
+            <Text
               style={{
-                width: 10,
-                height: 10,
-                backgroundColor: "red",
-                borderRadius: 5,
-                position: "absolute",
-                top: 0,
-                right: 0,
-                zIndex: 2,
+                color: "white",
+                fontSize: 20,
+                fontWeight: "bold",
+                alignSelf: "flex-start",
+                marginTop: 5,
               }}
-            />
-          )}
-          <Ionicons
-            name="notifications-outline"
-            size={28}
-            color={colors.text}
-          />
-        </TouchableOpacity>
-        {/* <TouchableOpacity
+            >
+              Hi, {user ? `${user?.firstName} ${user?.lastName}` : "Guest User"}
+            </Text>
+
+            <Text
+              style={{
+                color: "white",
+                fontSize: 20,
+                fontWeight: "300",
+                alignSelf: "flex-start",
+                marginTop: 5,
+              }}
+            >
+              What are we looking for today?
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onPress={openNotifications}
+            accessibilityLabel="Open notifications"
+          >
+            {unreadNotificationCount > 0 && (
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  backgroundColor: "red",
+                  borderRadius: 5,
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  zIndex: 2,
+                }}
+              />
+            )}
+            <Ionicons name="notifications-outline" size={28} color="white" />
+          </TouchableOpacity>
+          {/* <TouchableOpacity
           style={{
             padding: 2,
             borderRadius: 50,
@@ -394,6 +390,7 @@ const HomeScreen = () => {
             resizeMode="contain"
           />
         </TouchableOpacity> */}
+        </View>
       </View>
 
       <Modal
@@ -549,7 +546,7 @@ const HomeScreen = () => {
           paddingBottom: 16,
         }}
       >
-        {loading || refreshing ? (
+        {isLoading ? (
           <View>
             <SkeletonLoader
               style={{
@@ -617,6 +614,17 @@ const HomeScreen = () => {
               style={{ width: "100%", height: 200, borderRadius: 8 }}
             />
           </View>
+        ) : isError ? (
+          <View style={{ alignItems: "center", paddingVertical: 48 }}>
+            <Text style={{ color: colors.text, marginBottom: 12 }}>
+              {error instanceof Error
+                ? error.message
+                : "Unable to load properties."}
+            </Text>
+            <TouchableOpacity onPress={() => void refetch()}>
+              <Text style={{ color: colors.primary }}>Try again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
             {/* Search Bar */}
@@ -624,11 +632,10 @@ const HomeScreen = () => {
               style={{
                 width: "100%",
                 backgroundColor: "transparent",
-
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
-                marginVertical: 16,
+                marginVertical: 8,
                 height: 60,
               }}
             >
@@ -637,18 +644,24 @@ const HomeScreen = () => {
                   width: "75%",
                   backgroundColor: colors.card,
                   borderRadius: 25,
-                  padding: 16,
+                  paddingHorizontal: 16,
                   height: 50,
                   flex: 1,
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: colors.border,
                   elevation: 3,
                 }}
               >
                 <TextInput
-                  placeholder="Search properties, locations, agents..."
-                  placeholderTextColor={colors.text}
+                  placeholder="Search region, city, or street"
+                  placeholderTextColor={colors.textMuted}
+                  numberOfLines={1}
                   style={{
                     flex: 1,
                     color: colors.text,
+                    padding: 0,
+                    fontSize: 15,
                   }}
                 />
               </View>
@@ -704,7 +717,8 @@ const HomeScreen = () => {
                     height: 50,
                     elevation: 5,
                     width: 50,
-
+                    borderColor: colors.card,
+                    borderWidth: 2,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -744,7 +758,8 @@ const HomeScreen = () => {
                     height: 50,
                     elevation: 5,
                     width: 50,
-
+                    borderColor: colors.card,
+                    borderWidth: 2,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -784,6 +799,8 @@ const HomeScreen = () => {
                     height: 50,
                     elevation: 5,
                     width: 50,
+                    borderColor: colors.card,
+                    borderWidth: 2,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -823,6 +840,8 @@ const HomeScreen = () => {
                     height: 50,
                     elevation: 5,
                     width: 50,
+                    borderColor: colors.card,
+                    borderWidth: 2,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -862,6 +881,8 @@ const HomeScreen = () => {
                     height: 50,
                     elevation: 5,
                     width: 50,
+                    borderColor: colors.card,
+                    borderWidth: 2,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
@@ -876,176 +897,138 @@ const HomeScreen = () => {
               </View>
             </View>
 
-            {/* advert tab  */}
-            <TouchableOpacity
-              style={{
-                width: "100%",
-                height: 200,
-                backgroundColor: colors.text,
-                marginVertical: 10,
-                borderRadius: 12,
-                overflow: "hidden",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-              onPress={() =>
-                navigation.navigate("PropertyDetails", {
-                  property: featuredProperties[currentAdvertIndex],
-                })
-              }
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Explore more
+              </Text>
+              <TouchableOpacity>
+                <Text style={styles.sectionLink}>View all</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickBrowseRow}
             >
-              {featuredProperties.length > 0 ? (
-                // Show current featured property
-                <>
+              {browseSections.map((item) => (
+                <TouchableOpacity
+                  key={item.title}
+                  style={[
+                    styles.browseCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.browseIcon,
+                      { backgroundColor: `${item.color}20` },
+                    ]}
+                  >
+                    <Ionicons name={item.icon as any} size={20} color={item.color} />
+                  </View>
+                  <Text style={[styles.browseTitle, { color: colors.text }]}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.browseSubtitle, { color: colors.textMuted }]}>
+                    {item.subtitle}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Popular neighborhoods
+              </Text>
+            </View>
+
+            <View style={styles.neighborhoodGrid}>
+              {neighborhoods.map((item) => (
+                <TouchableOpacity
+                  key={item.name}
+                  style={[
+                    styles.neighborhoodCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
                   <Image
-                    source={{
-                      uri:
-                        featuredProperties[currentAdvertIndex].thumbnail ||
-                        noImage,
-                    }}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      position: "absolute",
-                    }}
+                    source={{ uri: noImage }}
+                    style={styles.neighborhoodImage}
                     resizeMode="cover"
                   />
-                  <LinearGradient
-                    colors={["rgba(0,0,0,0.7)", "transparent"]}
-                    start={{ x: 0.5, y: 1 }}
-                    end={{ x: 0.5, y: 0 }}
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: "50%",
-                      padding: 16,
-                      justifyContent: "flex-end",
-                    }}
+                  <View style={styles.neighborhoodContent}>
+                    <Text style={[styles.neighborhoodName, { color: colors.text }]}>
+                      {item.name}
+                    </Text>
+                    <Text style={[styles.neighborhoodPrice, { color: colors.primary }]}>
+                      {item.price}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {mockAdverts.length > 0 && (
+              <View
+                style={{
+                  width: "100%",
+                  height: 180,
+                  marginVertical: 12,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  backgroundColor: colors.card,
+                }}
+              >
+                <Image
+                  source={{
+                    uri: mockAdverts[currentAdvertIndex]?.url || noImage,
+                  }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    position: "absolute",
+                  }}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.85)"]}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: "60%",
+                    padding: 16,
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <Text
+                    style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}
                   >
-                    <Text
-                      style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}
-                    >
-                      {featuredProperties[currentAdvertIndex].title}
-                    </Text>
-                    <Text style={{ color: "#fff", fontSize: 12, marginTop: 4 }}>
-                      {featuredProperties[currentAdvertIndex].type} •{" "}
-                      {featuredProperties[currentAdvertIndex].location}
-                    </Text>
-                  </LinearGradient>
-                </>
-              ) : (
-                // Fallback to original mockAdverts carousel
-                <>
-                  <Image
-                    source={{
-                      uri: mockAdverts[currentAdvertIndex].url || noImage,
-                    }}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      position: "absolute",
-                    }}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient
-                    colors={["rgba(0,0,0,0.9)", "rgba(0,0,0,0.0)"]}
-                    start={{ x: 0.5, y: 1 }}
-                    end={{ x: 0.5, y: 0 }}
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      top: 0,
-                      width: "100%",
-                      height: "100%",
-                      justifyContent: "flex-end",
-                      alignItems: "flex-start",
-                      padding: 16,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#fff",
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        marginBottom: 8,
-                      }}
-                    >
-                      {mockAdverts[currentAdvertIndex].description}
-                    </Text>
-                  </LinearGradient>
-                </>
-              )}
-            </TouchableOpacity>
+                    {mockAdverts[currentAdvertIndex]?.description}
+                  </Text>
+                </LinearGradient>
+              </View>
+            )}
 
             {/* Sorting options */}
             <View
               style={{
                 flexDirection: "row",
-                justifyContent: "flex-start",
+                justifyContent: "flex-end",
                 height: 50,
                 width: "100%",
                 backgroundColor: "transparent",
                 alignItems: "center",
               }}
             >
-              <View style={{ flex: 1, flexDirection: "row", gap: 10 }}>
-                {/* Rent button */}
-                <TouchableOpacity
-                  onPress={() => {
-                    selectStatus("For Rent");
-                  }}
-                  style={{
-                    flexDirection: "row",
-                    borderRadius: 25,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    backgroundColor:
-                      status === "For Rent" ? colors.text : colors.card,
-                    paddingHorizontal: 15,
-                    height: 35,
-                    elevation: 3,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: status === "For Rent" ? colors.card : colors.text,
-                    }}
-                  >
-                    For Rent
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Sale Btn */}
-                <TouchableOpacity
-                  onPress={() => {
-                    selectStatus("For Sale");
-                  }}
-                  style={{
-                    flexDirection: "row",
-                    borderRadius: 25,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    backgroundColor:
-                      status === "For Sale" ? colors.text : colors.card,
-                    paddingHorizontal: 15,
-                    height: 35,
-                    elevation: 3,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: status === "For Sale" ? colors.card : colors.text,
-                    }}
-                  >
-                    For Sale
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
               {/* sort Btn */}
               <View>
                 <TouchableOpacity
@@ -1057,7 +1040,8 @@ const HomeScreen = () => {
                     backgroundColor: selectedSort ? colors.text : colors.card,
                     paddingHorizontal: 15,
                     height: 35,
-                    elevation: 3,
+                    borderWidth: 1.5,
+                    borderColor: "white",
                   }}
                   onPress={() => setShowSortModal((prev) => !prev)}
                 >
@@ -1123,243 +1107,6 @@ const HomeScreen = () => {
                 ))}
               </View>
             )}
-            {/* Featured Properties */}
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "bold",
-                color: colors.text,
-                marginVertical: 16,
-              }}
-            >
-              Featured Properties
-            </Text>
-            {filteredProperties.filter((f: any) => f.featured).length > 0 ? (
-              <View style={{ marginVertical: 16 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{
-                    paddingVertical: 5,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: 5,
-                    position: "relative",
-                  }}
-                >
-                  {filteredProperties
-                    .filter((f: any) => f.featured)
-                    .map((property) => (
-                      <TouchableOpacity
-                        key={property.id}
-                        style={[
-                          styles.card,
-                          { backgroundColor: colors.card, width: width * 0.7 },
-                        ]}
-                        onPress={() =>
-                          navigation.navigate("PropertyDetails", { property })
-                        }
-                      >
-                        <Image
-                          source={{ uri: property.thumbnail || noImage }}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            borderRadius: 8,
-                          }}
-                        />
-                        <LinearGradient
-                          colors={["transparent", "rgba(0,0,0,0.9)"]}
-                          style={{
-                            position: "absolute",
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            height: "50%",
-                            borderRadius: 8,
-                          }}
-                        />
-                        <Text
-                          style={{
-                            position: "absolute",
-                            top: 10,
-                            left: 10,
-                            backgroundColor: "rgba(0,0,0,0.6)",
-                            color: "#fff",
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
-                            borderRadius: 12,
-                            fontSize: 12,
-                            zIndex: 1,
-                          }}
-                        >
-                          {property.status}
-                        </Text>
-
-                        {/* Room Icons */}
-                        {property.type === "House" &&
-                          property.bedrooms &&
-                          property.bathrooms && (
-                            <View
-                              style={{
-                                position: "absolute",
-                                top: 10,
-                                right: 10,
-                                backgroundColor: "transparent",
-                                gap: 5,
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                            >
-                              <View
-                                style={{
-                                  position: "absolute",
-                                  top: 10,
-                                  right: 0,
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  paddingHorizontal: 8,
-                                  paddingVertical: 4,
-                                  borderRadius: 12,
-                                  zIndex: 1,
-                                  flexDirection: "row",
-                                  gap: 5,
-                                  justifyContent: "center",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Text style={{ color: "white" }}>
-                                  {property.bedrooms}
-                                </Text>
-                                <FontAwesome5
-                                  style={{ marginHorizontal: 5 }}
-                                  name="bed"
-                                  size={16}
-                                  color={"white"}
-                                />
-                              </View>
-                              <View
-                                style={{
-                                  position: "absolute",
-                                  top: 50,
-                                  right: 0,
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  paddingHorizontal: 8,
-                                  paddingVertical: 4,
-                                  borderRadius: 12,
-                                  zIndex: 1,
-                                  flexDirection: "row",
-                                  gap: 5,
-                                  justifyContent: "center",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Text style={{ color: "white" }}>
-                                  {property.bathrooms}
-                                </Text>
-                                <MaterialCommunityIcons
-                                  style={{ marginHorizontal: 5 }}
-                                  name="shower"
-                                  size={20}
-                                  color={"white"}
-                                />
-                              </View>
-                              <View
-                                style={{
-                                  position: "absolute",
-                                  top: 90,
-                                  right: 0,
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  paddingHorizontal: 8,
-                                  paddingVertical: 4,
-                                  borderRadius: 12,
-                                  zIndex: 1,
-                                  flexDirection: "row",
-                                  gap: 5,
-                                  justifyContent: "center",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Text style={{ color: "white" }}>
-                                  {property.area}sqft
-                                </Text>
-                                <Ionicons
-                                  style={{ marginHorizontal: 5 }}
-                                  name="expand-outline"
-                                  size={14}
-                                  color={"white"}
-                                />
-                              </View>
-                            </View>
-                          )}
-
-                        <View
-                          style={{
-                            position: "absolute",
-                            bottom: 10,
-                            left: 10,
-                            right: 10,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 16,
-                              fontWeight: "bold",
-                              color: "#fff",
-                            }}
-                          >
-                            {property.title}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: "#fff",
-                              marginVertical: 4,
-                            }}
-                          >
-                            <Ionicons
-                              name="location-sharp"
-                              size={12}
-                              color="#fff"
-                            />
-                            {property.type} in {property.location}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              fontWeight: "bold",
-                              color: "white",
-                              marginTop: 8,
-                            }}
-                          >
-                            {property.price.toLocaleString("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            })}
-                            {property.type === "Apartment" ||
-                            property.type === "Co-working Space" ||
-                            property.type === "Office Space"
-                              ? " / month"
-                              : ""}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                </ScrollView>
-              </View>
-            ) : (
-              <View
-                style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginVertical: 50,
-                }}
-              >
-                <Text style={{ color: colors.textMuted }}>
-                  No properties found for the selected category.
-                </Text>
-              </View>
-            )}
-
             {/* Latest Property */}
             <View
               style={{
@@ -1397,128 +1144,135 @@ const HomeScreen = () => {
 
             {/* Property tabs */}
             {filteredProperties.length > 0 ? (
-              filteredProperties.map((property) => (
-                <TouchableOpacity
-                  key={property.id}
-                  style={{
-                    width: "100%",
-                    backgroundColor: colors.card,
-                    borderRadius: 10,
-                    marginBottom: 10,
-                    flexDirection: "row",
-                    position: "relative",
-                    overflow: "hidden",
-                    elevation: 3,
-                  }}
-                  onPress={() =>
-                    navigation.navigate("PropertyDetails", { property })
-                  }
-                >
-                  <Text
+              filteredProperties.map((property) => {
+                const specifications =
+                  property.specifications.length > 0
+                    ? property.specifications
+                    : (property.units[0]?.specifications ?? []);
+                const bedrooms = getSpecificationValue(
+                  specifications,
+                  "Bedrooms",
+                  "BedRooms",
+                );
+                const bathrooms = getSpecificationValue(
+                  specifications,
+                  "Bathrooms",
+                  "BathRooms",
+                );
+                const area = getSpecificationValue(
+                  specifications,
+                  "Square Feet",
+                  "Area",
+                  "Sqft",
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={property.id}
                     style={{
-                      position: "absolute",
-                      top: 10,
-                      left: 10,
-                      backgroundColor: "rgba(0,0,0,0.6)",
-                      color: "#fff",
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 12,
-                      fontSize: 12,
-                      zIndex: 1,
+                      width: "100%",
+                      backgroundColor: colors.card,
+                      borderRadius: 10,
+                      marginBottom: 10,
+                      flexDirection: "row",
+                      position: "relative",
+                      overflow: "hidden",
+                      elevation: 3,
                     }}
+                    onPress={() =>
+                      navigation.navigate("PropertyDetails", { property })
+                    }
                   >
-                    {property.status}
-                  </Text>
-                  <Image
-                    source={{ uri: property.thumbnail || noImage }}
-                    style={{ width: "50%", height: "100%" }}
-                    resizeMode="cover"
-                  />
-                  <View
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <View>
-                      <Text
-                        style={{
-                          color: colors.text,
-                          fontSize: 16,
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {property.title}
-                      </Text>
-                      <Text
-                        numberOfLines={2}
-                        style={{
-                          color: colors.text,
-                          fontSize: 14,
-                          marginVertical: 5,
-                        }}
-                      >
-                        {property.description}
-                      </Text>
-                      {property.bedrooms && (
+                    <Image
+                      source={{ uri: property.images[0]?.url || noImage }}
+                      style={{ width: "42%", height: 180 }}
+                      resizeMode="cover"
+                    />
+                    <View
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <View>
                         <Text
+                          style={{
+                            color: colors.text,
+                            fontSize: 16,
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {property.name}
+                        </Text>
+                        <Text
+                          numberOfLines={2}
                           style={{
                             color: colors.text,
                             fontSize: 14,
                             marginVertical: 5,
                           }}
                         >
-                          {property.bedrooms} Beds • {property.bathrooms} Baths
+                          {property.description}
                         </Text>
-                      )}
+                        {(bedrooms || bathrooms || area) && (
+                          <Text
+                            style={{
+                              color: colors.text,
+                              fontSize: 14,
+                              marginVertical: 5,
+                            }}
+                          >
+                            {[
+                              bedrooms && `${bedrooms} beds`,
+                              bathrooms && `${bathrooms} baths`,
+                              area && `${area} sq ft`,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </Text>
+                        )}
+                        {property.unitsAvailable > 0 && (
+                          <Text
+                            style={{
+                              color: colors.text,
+                              fontSize: 13,
+                              marginVertical: 3,
+                            }}
+                          >
+                            {property.unitsAvailable} units available
+                          </Text>
+                        )}
 
+                        <Text
+                          style={{
+                            color: colors.text,
+                            fontSize: 12,
+                            marginVertical: 3,
+                          }}
+                        >
+                          <Ionicons
+                            style={{ marginRight: 10 }}
+                            name="location"
+                            size={16}
+                            color={colors.text}
+                          />
+                          {getPropertyDisplayLocation(property)}
+                        </Text>
+                      </View>
                       <Text
                         style={{
-                          color: colors.text,
-                          fontSize: 12,
-                          marginVertical: 3,
+                          color: "#007BFF",
+                          fontSize: 16,
+                          fontWeight: "bold",
                         }}
                       >
-                        <Ionicons
-                          style={{ marginRight: 10 }}
-                          name="location"
-                          size={16}
-                          color={colors.text}
-                        />
-                        {property.location}
+                        {formatPropertyPrice(property.pricePerUnit)} / unit
                       </Text>
                     </View>
-                    <Text
-                      style={{
-                        color: "#007BFF",
-                        fontSize: 16,
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {property.price.toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      })}
-                      {property.type === "Apartment" ||
-                      property.type === "Co-working Space" ||
-                      property.type === "Office Space" ||
-                      property.type === "Commercial"
-                        ? " / month"
-                        : ""}
-                    </Text>
-                    {property.verified && (
-                      <Ionicons
-                        name="shield-checkmark"
-                        size={20}
-                        style={{ alignSelf: "flex-end" }}
-                        color={colors.primary}
-                      />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
+                  </TouchableOpacity>
+                );
+              })
             ) : (
               <View
                 style={{
@@ -1675,6 +1429,80 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderRadius: 8,
     elevation: 3,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 18,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  sectionLink: {
+    color: "#007BFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  quickBrowseRow: {
+    paddingBottom: 4,
+  },
+  browseCard: {
+    width: 170,
+    borderRadius: 16,
+    padding: 14,
+    marginRight: 12,
+    borderWidth: 1,
+    elevation: 2,
+  },
+  browseIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  browseTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  browseSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  neighborhoodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  neighborhoodCard: {
+    width: "48%",
+    borderRadius: 14,
+    overflow: "hidden",
+    marginBottom: 12,
+    borderWidth: 1,
+    elevation: 2,
+  },
+  neighborhoodImage: {
+    width: "100%",
+    height: 110,
+  },
+  neighborhoodContent: {
+    padding: 10,
+  },
+  neighborhoodName: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  neighborhoodPrice: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
 

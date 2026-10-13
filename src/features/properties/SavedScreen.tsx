@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
+import React from "react";
 import {
   View,
   Text,
@@ -7,31 +6,34 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "../../shared/theme/ThemeContext";
-import { mockProperties } from "../../data/mockData";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  formatPropertyPrice,
+  getPropertyDisplayLocation,
+} from "../../data/property";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../../shared/types";
 import SkeletonLoader from "../../shared/components/SkeletonLoader";
 import { useSavedProperties } from "./SavedPropertiesContext";
+import { useProperties } from "./useProperties";
 
 const SavedScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const [loading, setLoading] = useState(true);
-  const isConnected = useInternetConnection();
   const { savedPropertyIds } = useSavedProperties();
-  const savedProperties = mockProperties.filter((property) =>
+  const {
+    data: properties = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useProperties();
+  const savedProperties = properties.filter((property) =>
     savedPropertyIds.includes(property.id),
   );
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
 
   const noImage =
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -39,13 +41,20 @@ const SavedScreen = () => {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={isFetching}
+          onRefresh={() => void refetch()}
+          tintColor={colors.primary}
+        />
+      }
     >
       <View style={styles.header}>
         <Text style={[styles.headerText, { color: colors.text }]}>
           Saved Properties
         </Text>
       </View>
-      {loading ? (
+      {isLoading ? (
         <View style={styles.content}>
           <SkeletonLoader
             style={{
@@ -80,6 +89,17 @@ const SavedScreen = () => {
             }}
           />
         </View>
+      ) : isError ? (
+        <View style={styles.content}>
+          <Text style={{ color: colors.text, marginBottom: 12 }}>
+            {error instanceof Error
+              ? error.message
+              : "Unable to load properties."}
+          </Text>
+          <TouchableOpacity onPress={() => void refetch()}>
+            <Text style={{ color: colors.primary }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={styles.content}>
           {savedProperties.length > 0 ? (
@@ -92,23 +112,20 @@ const SavedScreen = () => {
                 }
               >
                 <Image
-                  source={{ uri: property.thumbnail || noImage }}
+                  source={{ uri: property.images[0]?.url || noImage }}
                   style={styles.cardImage}
                 />
                 <View style={styles.cardContent}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>
-                    {property.title}
+                    {property.name}
                   </Text>
                   <Text
                     style={[styles.cardLocation, { color: colors.textMuted }]}
                   >
-                    {property.location}
+                    {getPropertyDisplayLocation(property)}
                   </Text>
                   <Text style={[styles.cardPrice, { color: colors.primary }]}>
-                    {property.price.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    })}
+                    {formatPropertyPrice(property.pricePerUnit)} / unit
                   </Text>
                 </View>
               </TouchableOpacity>

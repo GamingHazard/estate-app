@@ -1,0 +1,1608 @@
+[
+  {
+    "id": "mock-apartment-rent",
+    "ownerId": "1",
+    "name": "Acacia Heights Apartment",
+    "description": "A bright, secure apartment close to shops, schools, and public transport.",
+    "category": "residential",
+    "propertyType": "apartment",
+    "address": "18 Acacia Avenue",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Ntinda Heights",
+    "location": { "lat": 0.3676, "lng": 32.6108 },
+    "pricePerUnit": 850,
+    "images": [
+      {
+        "title": "Building exterior",
+        "url": "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/apartment-rent/exterior"
+      }
+    ],
+    "features": ["24-hour security", "Parking", "Backup water"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "2" },
+      { "title": "Bathrooms", "value": "2" },
+      { "title": "Square Feet", "value": "1,150 sq ft" }
+    ],
+    "policies": {
+      "pets": {
+        "allowed": false,
+        "details": "Small pets considered by approval."
+      },
+      "parking": { "allowed": true, "details": "One space included." }
+    },
+    "serviceFee": 35,
+    "unitsAvailable": 3,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-apartment-rent",
+        "propertyId": "mock-apartment-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 850,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 35,
+        "negotiable": false,
+        "createdAt": "2026-09-01T00:00:00.000Z",
+        "updatedAt": "2026-09-01T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-01T00:00:00.000Z",
+    "updatedAt": "2026-09-01T00:00:00.000Z"
+  },
+  {
+    "id": "mock-apartment-sale",
+    "ownerId": "1",
+    "name": "Acacia Heights Apartment for Sale",
+    "description": "A finished apartment in a managed residential development with reliable services.",
+    "category": "residential",
+    "propertyType": "apartment",
+    "address": "22 Acacia Avenue",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Ntinda Heights",
+    "location": { "lat": 0.3681, "lng": 32.6114 },
+    "pricePerUnit": 118000,
+    "images": [
+      {
+        "title": "Living room",
+        "url": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/apartment-sale/living-room"
+      }
+    ],
+    "features": ["Gated community", "Balcony", "Fitness room"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "3" },
+      { "title": "Bathrooms", "value": "2" },
+      { "title": "Square Feet", "value": "1,480 sq ft" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Two allocated spaces." }
+    },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-apartment-sale",
+        "propertyId": "mock-apartment-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 118000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-02T00:00:00.000Z",
+        "updatedAt": "2026-09-02T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-02T00:00:00.000Z",
+    "updatedAt": "2026-09-02T00:00:00.000Z"
+  },
+  {
+    "id": "mock-single-family-rent",
+    "ownerId": "1",
+    "name": "Mirembe Family Home",
+    "description": "A peaceful family home with a private garden and flexible indoor living space.",
+    "category": "residential",
+    "propertyType": "single-family",
+    "address": "7 Mirembe Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kira Gardens",
+    "location": { "lat": 0.4072, "lng": 32.6401 },
+    "pricePerUnit": 1250,
+    "images": [
+      {
+        "title": "Garden exterior",
+        "url": "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/single-family-rent/exterior"
+      }
+    ],
+    "features": ["Private garden", "Garage", "Laundry room"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "3" },
+      { "title": "Bathrooms", "value": "2.5" },
+      { "title": "Lot Size", "value": "0.25 acres" }
+    ],
+    "policies": {
+      "pets": {
+        "allowed": true,
+        "details": "Pets welcome with a refundable deposit."
+      },
+      "parking": { "allowed": true, "details": "Two-car garage." }
+    },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-single-family-rent",
+        "propertyId": "mock-single-family-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1250,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "negotiable": true,
+        "createdAt": "2026-09-03T00:00:00.000Z",
+        "updatedAt": "2026-09-03T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-03T00:00:00.000Z",
+    "updatedAt": "2026-09-03T00:00:00.000Z"
+  },
+  {
+    "id": "mock-single-family-sale",
+    "ownerId": "1",
+    "name": "Mirembe Family Home for Sale",
+    "description": "A well-maintained detached home with mature landscaping in a quiet residential neighborhood.",
+    "category": "residential",
+    "propertyType": "single-family",
+    "address": "11 Mirembe Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kira Gardens",
+    "location": { "lat": 0.408, "lng": 32.641 },
+    "pricePerUnit": 245000,
+    "images": [
+      {
+        "title": "Front elevation",
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/single-family-sale/front"
+      }
+    ],
+    "features": ["Mature garden", "Home office", "Solar backup"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "4" },
+      { "title": "Bathrooms", "value": "3" },
+      { "title": "Year Built", "value": "2018" }
+    ],
+    "policies": {
+      "parking": {
+        "allowed": true,
+        "details": "Covered parking for two vehicles."
+      }
+    },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-single-family-sale",
+        "propertyId": "mock-single-family-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 245000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-04T00:00:00.000Z",
+        "updatedAt": "2026-09-04T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-04T00:00:00.000Z",
+    "updatedAt": "2026-09-04T00:00:00.000Z"
+  },
+  {
+    "id": "mock-condo-rent",
+    "ownerId": "2",
+    "name": "Lakeview Corner Condo",
+    "description": "A modern furnished condo with generous natural light and shared resident amenities.",
+    "category": "residential",
+    "propertyType": "condo",
+    "address": "4 Lakeside Walk",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kololo View",
+    "location": { "lat": 0.3378, "lng": 32.587 },
+    "pricePerUnit": 1450,
+    "images": [
+      {
+        "title": "Open-plan living area",
+        "url": "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/condo-rent/living"
+      }
+    ],
+    "features": ["Pool", "Gym", "Balcony"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "2" },
+      { "title": "Bathrooms", "value": "2" },
+      { "title": "HOA Fees (Monthly)", "value": "Included" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "One basement parking space." }
+    },
+    "serviceFee": 80,
+    "unitsAvailable": 2,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-condo-rent",
+        "propertyId": "mock-condo-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1450,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 80,
+        "createdAt": "2026-09-05T00:00:00.000Z",
+        "updatedAt": "2026-09-05T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-05T00:00:00.000Z",
+    "updatedAt": "2026-09-05T00:00:00.000Z"
+  },
+  {
+    "id": "mock-condo-sale",
+    "ownerId": "2",
+    "name": "Lakeview Corner Condo for Sale",
+    "description": "A spacious condo with views across the city, suitable for a home or investment purchase.",
+    "category": "residential",
+    "propertyType": "condo",
+    "address": "9 Lakeside Walk",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kololo View",
+    "location": { "lat": 0.3384, "lng": 32.5876 },
+    "pricePerUnit": 198000,
+    "images": [
+      {
+        "title": "Balcony view",
+        "url": "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/condo-sale/balcony"
+      }
+    ],
+    "features": ["City views", "Elevator", "Resident lounge"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "3" },
+      { "title": "Bathrooms", "value": "2" },
+      { "title": "Square Feet", "value": "1,760 sq ft" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Two reserved spaces." }
+    },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-condo-sale",
+        "propertyId": "mock-condo-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 198000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-06T00:00:00.000Z",
+        "updatedAt": "2026-09-06T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T00:00:00.000Z"
+  },
+  {
+    "id": "mock-townhouse-rent",
+    "ownerId": "2",
+    "name": "Palm Court Townhouse",
+    "description": "A low-maintenance townhouse with private outdoor space near neighborhood conveniences.",
+    "category": "residential",
+    "propertyType": "townhouse",
+    "address": "31 Palm Court",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Muyenga Rise",
+    "location": { "lat": 0.296, "lng": 32.61 },
+    "pricePerUnit": 1100,
+    "images": [
+      {
+        "title": "Townhouse facade",
+        "url": "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/townhouse-rent/facade"
+      }
+    ],
+    "features": ["Gated compound", "Patio", "Visitor parking"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "3" },
+      { "title": "Bathrooms", "value": "2.5" },
+      { "title": "Square Feet", "value": "1,620 sq ft" }
+    ],
+    "policies": { "pets": { "allowed": true }, "parking": { "allowed": true } },
+    "serviceFee": 45,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-townhouse-rent",
+        "propertyId": "mock-townhouse-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1100,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 45,
+        "createdAt": "2026-09-07T00:00:00.000Z",
+        "updatedAt": "2026-09-07T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-07T00:00:00.000Z",
+    "updatedAt": "2026-09-07T00:00:00.000Z"
+  },
+  {
+    "id": "mock-townhouse-sale",
+    "ownerId": "2",
+    "name": "Palm Court Townhouse for Sale",
+    "description": "A finished townhouse in a small managed community with practical family spaces.",
+    "category": "residential",
+    "propertyType": "townhouse",
+    "address": "35 Palm Court",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Muyenga Rise",
+    "location": { "lat": 0.2968, "lng": 32.6107 },
+    "pricePerUnit": 215000,
+    "images": [
+      {
+        "title": "Townhouse garden",
+        "url": "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/townhouse-sale/garden"
+      }
+    ],
+    "features": ["Private garden", "Staff room", "Solar water heating"],
+    "specifications": [
+      { "title": "Bedrooms", "value": "4" },
+      { "title": "Bathrooms", "value": "3" },
+      { "title": "Garage", "value": "Double attached" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Two-car garage." }
+    },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-townhouse-sale",
+        "propertyId": "mock-townhouse-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 215000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-08T00:00:00.000Z",
+        "updatedAt": "2026-09-08T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-08T00:00:00.000Z",
+    "updatedAt": "2026-09-08T00:00:00.000Z"
+  },
+  {
+    "id": "mock-office-rent",
+    "ownerId": "3",
+    "name": "Cedar Business Centre",
+    "description": "Professional office floors with flexible layouts for growing teams and consultants.",
+    "category": "commercial",
+    "propertyType": "office",
+    "address": "41 Cedar Boulevard",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Nakasero Business District",
+    "location": { "lat": 0.322, "lng": 32.582 },
+    "pricePerUnit": 2400,
+    "images": [
+      {
+        "title": "Reception area",
+        "url": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/office-rent/reception"
+      }
+    ],
+    "features": ["Reception", "Meeting rooms", "Backup generator"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "2,200 sq ft" },
+      { "title": "Number of Floors", "value": "4" },
+      { "title": "Parking Spaces", "value": "18" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Shared visitor parking." }
+    },
+    "serviceFee": 150,
+    "unitsAvailable": 4,
+    "customizeUnits": true,
+    "units": [
+      {
+        "id": "unit-office-rent-a",
+        "unitNumber": "Floor 2 Suite A",
+        "rent": 2400,
+        "unitType": "Office suite",
+        "description": "Suitable for a technology team, consultancy, or professional services office.",
+        "isAvailable": true,
+        "images": [
+          {
+            "title": "Open office",
+            "url": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80",
+            "publicId": "mock/office-rent/open-office"
+          }
+        ],
+        "specifications": [{ "title": "Area", "value": "2,200 sq ft" }]
+      }
+    ],
+    "listings": [
+      {
+        "id": "listing-office-rent",
+        "propertyId": "mock-office-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 2400,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 150,
+        "createdAt": "2026-09-09T00:00:00.000Z",
+        "updatedAt": "2026-09-09T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-09T00:00:00.000Z",
+    "updatedAt": "2026-09-09T00:00:00.000Z"
+  },
+  {
+    "id": "mock-office-sale",
+    "ownerId": "3",
+    "name": "Cedar Business Centre for Sale",
+    "description": "A prominent office building with established commercial infrastructure and road access.",
+    "category": "commercial",
+    "propertyType": "office",
+    "address": "48 Cedar Boulevard",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Nakasero Business District",
+    "location": { "lat": 0.3228, "lng": 32.5828 },
+    "pricePerUnit": 1850000,
+    "images": [
+      {
+        "title": "Office building exterior",
+        "url": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/office-sale/exterior"
+      }
+    ],
+    "features": ["Street frontage", "Lift access", "Generator room"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "18,000 sq ft" },
+      { "title": "Number of Floors", "value": "6" },
+      { "title": "Zoning Classification", "value": "Commercial" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "On-site parking deck." }
+    },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-office-sale",
+        "propertyId": "mock-office-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 1850000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-10T00:00:00.000Z",
+        "updatedAt": "2026-09-10T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-10T00:00:00.000Z",
+    "updatedAt": "2026-09-10T00:00:00.000Z"
+  },
+  {
+    "id": "mock-retail-rent",
+    "ownerId": "3",
+    "name": "Market Lane Retail Unit",
+    "description": "A visible retail unit in a neighborhood commercial strip with steady pedestrian access.",
+    "category": "commercial",
+    "propertyType": "retail",
+    "address": "3 Market Lane",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Bugolobi Market",
+    "location": { "lat": 0.3302, "lng": 32.621 },
+    "pricePerUnit": 1800,
+    "images": [
+      {
+        "title": "Shopfront",
+        "url": "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/retail-rent/shopfront"
+      }
+    ],
+    "features": ["Glass frontage", "Loading access", "Signage space"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "900 sq ft" },
+      { "title": "Street Frontage", "value": "24 ft" },
+      { "title": "Zoning Classification", "value": "C3" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Shared customer parking." }
+    },
+    "serviceFee": 60,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-retail-rent",
+        "propertyId": "mock-retail-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1800,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 60,
+        "createdAt": "2026-09-11T00:00:00.000Z",
+        "updatedAt": "2026-09-11T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z"
+  },
+  {
+    "id": "mock-retail-sale",
+    "ownerId": "3",
+    "name": "Market Lane Retail Unit for Sale",
+    "description": "A compact retail property with a prominent frontage for a shop, showroom, or service business.",
+    "category": "commercial",
+    "propertyType": "retail",
+    "address": "8 Market Lane",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Bugolobi Market",
+    "location": { "lat": 0.331, "lng": 32.6218 },
+    "pricePerUnit": 285000,
+    "images": [
+      {
+        "title": "Retail interior",
+        "url": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/retail-sale/interior"
+      }
+    ],
+    "features": ["High visibility", "Storage room", "Customer parking"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "1,250 sq ft" },
+      { "title": "Street Frontage", "value": "30 ft" },
+      { "title": "Zoning Classification", "value": "C3" }
+    ],
+    "policies": { "parking": { "allowed": true } },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-retail-sale",
+        "propertyId": "mock-retail-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 285000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-12T00:00:00.000Z",
+        "updatedAt": "2026-09-12T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-12T00:00:00.000Z",
+    "updatedAt": "2026-09-12T00:00:00.000Z"
+  },
+  {
+    "id": "mock-warehouse-rent",
+    "ownerId": "4",
+    "name": "North Link Warehouse",
+    "description": "A practical warehouse with loading access for distribution, storage, or light assembly.",
+    "category": "commercial",
+    "propertyType": "warehouse",
+    "address": "6 North Link Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kawempe Industrial Park",
+    "location": { "lat": 0.407, "lng": 32.56 },
+    "pricePerUnit": 4200,
+    "images": [
+      {
+        "title": "Warehouse loading bay",
+        "url": "https://images.unsplash.com/photo-1586528116493-da8b7c0f9b1c?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/warehouse-rent/loading"
+      }
+    ],
+    "features": ["Loading bay", "High ceiling", "Security gate"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "8,500 sq ft" },
+      { "title": "Ceiling Height", "value": "24 ft" },
+      { "title": "Loading Docks", "value": "3" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Yard parking available." }
+    },
+    "serviceFee": 200,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-warehouse-rent",
+        "propertyId": "mock-warehouse-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 4200,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 200,
+        "createdAt": "2026-09-13T00:00:00.000Z",
+        "updatedAt": "2026-09-13T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-13T00:00:00.000Z",
+    "updatedAt": "2026-09-13T00:00:00.000Z"
+  },
+  {
+    "id": "mock-warehouse-sale",
+    "ownerId": "4",
+    "name": "North Link Warehouse for Sale",
+    "description": "A logistics-ready warehouse compound with room for expansion and fleet movement.",
+    "category": "commercial",
+    "propertyType": "warehouse",
+    "address": "12 North Link Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kawempe Industrial Park",
+    "location": { "lat": 0.4078, "lng": 32.5608 },
+    "pricePerUnit": 890000,
+    "images": [
+      {
+        "title": "Warehouse interior",
+        "url": "https://images.unsplash.com/photo-1565610222536-ef125c59da2e?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/warehouse-sale/interior"
+      }
+    ],
+    "features": ["Large yard", "Office block", "Truck access"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "22,000 sq ft" },
+      { "title": "Ceiling Height", "value": "28 ft" },
+      { "title": "Power Capacity", "value": "480V" }
+    ],
+    "policies": { "parking": { "allowed": true } },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-warehouse-sale",
+        "propertyId": "mock-warehouse-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 890000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-14T00:00:00.000Z",
+        "updatedAt": "2026-09-14T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00.000Z",
+    "updatedAt": "2026-09-14T00:00:00.000Z"
+  },
+  {
+    "id": "mock-restaurant-rent",
+    "ownerId": "4",
+    "name": "Courtyard Restaurant Space",
+    "description": "A ready-to-fit restaurant space with a shaded courtyard and customer-facing frontage.",
+    "category": "commercial",
+    "propertyType": "restaurant",
+    "address": "15 Garden Street",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Mbuya Village",
+    "location": { "lat": 0.324, "lng": 32.63 },
+    "pricePerUnit": 3200,
+    "images": [
+      {
+        "title": "Restaurant courtyard",
+        "url": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/restaurant-rent/courtyard"
+      }
+    ],
+    "features": ["Outdoor seating", "Commercial kitchen", "Customer parking"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "2,800 sq ft" },
+      { "title": "Dining Capacity", "value": "80 seats" },
+      { "title": "Kitchen", "value": "Fitted" }
+    ],
+    "policies": {
+      "parking": { "allowed": true, "details": "Shared parking for customers." }
+    },
+    "serviceFee": 100,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-restaurant-rent",
+        "propertyId": "mock-restaurant-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 3200,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 100,
+        "createdAt": "2026-09-15T00:00:00.000Z",
+        "updatedAt": "2026-09-15T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-15T00:00:00.000Z",
+    "updatedAt": "2026-09-15T00:00:00.000Z"
+  },
+  {
+    "id": "mock-restaurant-sale",
+    "ownerId": "4",
+    "name": "Courtyard Restaurant Space for Sale",
+    "description": "A fully fitted hospitality property with a welcoming dining room and outdoor courtyard.",
+    "category": "commercial",
+    "propertyType": "restaurant",
+    "address": "21 Garden Street",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Mbuya Village",
+    "location": { "lat": 0.3248, "lng": 32.6308 },
+    "pricePerUnit": 540000,
+    "images": [
+      {
+        "title": "Dining room",
+        "url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/restaurant-sale/dining"
+      }
+    ],
+    "features": ["Fitted kitchen", "Private courtyard", "Outdoor bar area"],
+    "specifications": [
+      { "title": "Total Square Feet", "value": "3,600 sq ft" },
+      { "title": "Dining Capacity", "value": "110 seats" },
+      { "title": "Parking Spaces", "value": "24" }
+    ],
+    "policies": { "parking": { "allowed": true } },
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-restaurant-sale",
+        "propertyId": "mock-restaurant-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 540000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-16T00:00:00.000Z",
+        "updatedAt": "2026-09-16T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-16T00:00:00.000Z",
+    "updatedAt": "2026-09-16T00:00:00.000Z"
+  },
+  {
+    "id": "mock-vacant-land-rent",
+    "ownerId": "5",
+    "name": "East Ridge Development Land Lease",
+    "description": "A level roadside parcel offered on a long lease for a compatible temporary or phased development use.",
+    "category": "land",
+    "propertyType": "vacant-land",
+    "address": "2 East Ridge Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kira Ridge",
+    "location": { "lat": 0.398, "lng": 32.67 },
+    "pricePerUnit": 1800,
+    "images": [
+      {
+        "title": "Roadside parcel",
+        "url": "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/vacant-land-rent/parcel"
+      }
+    ],
+    "features": ["Road frontage", "Level ground", "Utility access nearby"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "1.8 acres" },
+      { "title": "Zoning Classification", "value": "Mixed residential" },
+      { "title": "Access Roads", "value": "Paved" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-vacant-land-rent",
+        "propertyId": "mock-vacant-land-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1800,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "negotiable": true,
+        "createdAt": "2026-09-17T00:00:00.000Z",
+        "updatedAt": "2026-09-17T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-17T00:00:00.000Z",
+    "updatedAt": "2026-09-17T00:00:00.000Z"
+  },
+  {
+    "id": "mock-vacant-land-sale",
+    "ownerId": "5",
+    "name": "East Ridge Development Land",
+    "description": "A strategic development parcel with road access and room for a planned residential project.",
+    "category": "land",
+    "propertyType": "vacant-land",
+    "address": "8 East Ridge Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Kira Ridge",
+    "location": { "lat": 0.3988, "lng": 32.6708 },
+    "pricePerUnit": 375000,
+    "images": [
+      {
+        "title": "Land boundary",
+        "url": "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/vacant-land-sale/boundary"
+      }
+    ],
+    "features": ["Paved access", "Flexible frontage", "Nearby utilities"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "4.2 acres" },
+      { "title": "Zoning Classification", "value": "Residential" },
+      { "title": "Road Frontage", "value": "310 ft" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-vacant-land-sale",
+        "propertyId": "mock-vacant-land-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 375000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-18T00:00:00.000Z",
+        "updatedAt": "2026-09-18T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-18T00:00:00.000Z",
+    "updatedAt": "2026-09-18T00:00:00.000Z"
+  },
+  {
+    "id": "mock-agricultural-land-rent",
+    "ownerId": "5",
+    "name": "Green Valley Farm Lease",
+    "description": "Productive agricultural land available for a seasonal or multi-year farming arrangement.",
+    "category": "land",
+    "propertyType": "agricultural-land",
+    "address": "14 Valley Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Wakiso Green Belt",
+    "location": { "lat": 0.42, "lng": 32.48 },
+    "pricePerUnit": 900,
+    "images": [
+      {
+        "title": "Farm field",
+        "url": "https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/agricultural-land-rent/field"
+      }
+    ],
+    "features": ["Seasonal stream", "Vehicle access", "Fertile soil"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "12 acres" },
+      { "title": "Utilities Available", "value": "Water nearby" },
+      { "title": "Access Roads", "value": "Gravel" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-agricultural-land-rent",
+        "propertyId": "mock-agricultural-land-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 900,
+        "currency": "USD",
+        "billingPeriod": "yearly",
+        "negotiable": true,
+        "createdAt": "2026-09-19T00:00:00.000Z",
+        "updatedAt": "2026-09-19T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-19T00:00:00.000Z",
+    "updatedAt": "2026-09-19T00:00:00.000Z"
+  },
+  {
+    "id": "mock-agricultural-land-sale",
+    "ownerId": "5",
+    "name": "Green Valley Farm",
+    "description": "A broad agricultural parcel with access to established rural roads and nearby water.",
+    "category": "land",
+    "propertyType": "agricultural-land",
+    "address": "20 Valley Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Wakiso Green Belt",
+    "location": { "lat": 0.4208, "lng": 32.4808 },
+    "pricePerUnit": 680000,
+    "images": [
+      {
+        "title": "Cultivated field",
+        "url": "https://images.unsplash.com/photo-1499529112087-3cb3b73cec95?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/agricultural-land-sale/field"
+      }
+    ],
+    "features": ["Farm road", "Water access", "Open acreage"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "28 acres" },
+      { "title": "Utilities Available", "value": "Water and power nearby" },
+      { "title": "Access Roads", "value": "All-weather road" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-agricultural-land-sale",
+        "propertyId": "mock-agricultural-land-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 680000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-20T00:00:00.000Z",
+        "updatedAt": "2026-09-20T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-20T00:00:00.000Z",
+    "updatedAt": "2026-09-20T00:00:00.000Z"
+  },
+  {
+    "id": "mock-commercial-land-rent",
+    "ownerId": "6",
+    "name": "Bypass Commercial Yard Lease",
+    "description": "A visible commercial yard suitable for vehicle display, materials storage, or a temporary trade operation.",
+    "category": "land",
+    "propertyType": "commercial-land",
+    "address": "5 Bypass Link",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Busega Trade Zone",
+    "location": { "lat": 0.296, "lng": 32.527 },
+    "pricePerUnit": 2600,
+    "images": [
+      {
+        "title": "Commercial yard",
+        "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/commercial-land-rent/yard"
+      }
+    ],
+    "features": ["Highway visibility", "Wide access", "Fenced boundary"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "2.5 acres" },
+      { "title": "Zoning Classification", "value": "Commercial" },
+      { "title": "Road Frontage", "value": "250 ft" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-commercial-land-rent",
+        "propertyId": "mock-commercial-land-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 2600,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "negotiable": true,
+        "createdAt": "2026-09-21T00:00:00.000Z",
+        "updatedAt": "2026-09-21T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-21T00:00:00.000Z",
+    "updatedAt": "2026-09-21T00:00:00.000Z"
+  },
+  {
+    "id": "mock-commercial-land-sale",
+    "ownerId": "6",
+    "name": "Bypass Commercial Development Site",
+    "description": "A prominent commercial parcel positioned for a showroom, logistics hub, or mixed-use development.",
+    "category": "land",
+    "propertyType": "commercial-land",
+    "address": "13 Bypass Link",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Busega Trade Zone",
+    "location": { "lat": 0.2968, "lng": 32.5278 },
+    "pricePerUnit": 920000,
+    "images": [
+      {
+        "title": "Development site",
+        "url": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/commercial-land-sale/site"
+      }
+    ],
+    "features": ["Main road frontage", "Commercial zoning", "Utility corridor"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "6.5 acres" },
+      { "title": "Max Buildout Potential", "value": "280,000 sq ft" },
+      { "title": "Road Frontage", "value": "460 ft" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-commercial-land-sale",
+        "propertyId": "mock-commercial-land-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 920000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-22T00:00:00.000Z",
+        "updatedAt": "2026-09-22T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-22T00:00:00.000Z",
+    "updatedAt": "2026-09-22T00:00:00.000Z"
+  },
+  {
+    "id": "mock-residential-land-rent",
+    "ownerId": "6",
+    "name": "Garden District Plot Lease",
+    "description": "A residentially zoned plot available for a phased temporary housing or community project.",
+    "category": "land",
+    "propertyType": "residential-land",
+    "address": "9 Garden District Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Lubowa Gardens",
+    "location": { "lat": 0.257, "lng": 32.566 },
+    "pricePerUnit": 1200,
+    "images": [
+      {
+        "title": "Residential plot",
+        "url": "https://images.unsplash.com/photo-1449157291145-7efd050a4d0e?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/residential-land-rent/plot"
+      }
+    ],
+    "features": ["Quiet neighborhood", "Paved road", "Power at boundary"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "1.2 acres" },
+      { "title": "Zoning Classification", "value": "Residential" },
+      { "title": "Utilities Available", "value": "Water and power" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-residential-land-rent",
+        "propertyId": "mock-residential-land-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1200,
+        "currency": "USD",
+        "billingPeriod": "yearly",
+        "negotiable": true,
+        "createdAt": "2026-09-23T00:00:00.000Z",
+        "updatedAt": "2026-09-23T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-23T00:00:00.000Z",
+    "updatedAt": "2026-09-23T00:00:00.000Z"
+  },
+  {
+    "id": "mock-residential-land-sale",
+    "ownerId": "6",
+    "name": "Garden District Residential Plot",
+    "description": "A serviced residential plot in an established neighborhood with clear road access.",
+    "category": "land",
+    "propertyType": "residential-land",
+    "address": "17 Garden District Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Lubowa Gardens",
+    "location": { "lat": 0.2578, "lng": 32.5668 },
+    "pricePerUnit": 210000,
+    "images": [
+      {
+        "title": "Serviced plot",
+        "url": "https://images.unsplash.com/photo-1460317442991-0ec209397118?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/residential-land-sale/plot"
+      }
+    ],
+    "features": ["Serviced plot", "Residential zoning", "Good drainage"],
+    "specifications": [
+      { "title": "Total Acreage", "value": "1.8 acres" },
+      { "title": "Zoning Classification", "value": "Residential" },
+      { "title": "Road Frontage", "value": "180 ft" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-residential-land-sale",
+        "propertyId": "mock-residential-land-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 210000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-24T00:00:00.000Z",
+        "updatedAt": "2026-09-24T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-24T00:00:00.000Z",
+    "updatedAt": "2026-09-24T00:00:00.000Z"
+  },
+  {
+    "id": "mock-parking-lot-rent",
+    "ownerId": "7",
+    "name": "Central Event Parking Yard",
+    "description": "A secure paved parking yard available for daily operations, events, or commercial vehicle storage.",
+    "category": "special",
+    "propertyType": "parking-lot",
+    "address": "10 Central Access Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Central Business District",
+    "location": { "lat": 0.314, "lng": 32.582 },
+    "pricePerUnit": 1500,
+    "images": [
+      {
+        "title": "Parking yard",
+        "url": "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/parking-lot-rent/yard"
+      }
+    ],
+    "features": ["Paved surface", "Security lighting", "Controlled gate"],
+    "specifications": [
+      { "title": "Parking Capacity", "value": "85 vehicles" },
+      { "title": "Surface", "value": "Paved" },
+      { "title": "Access", "value": "24-hour" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-parking-lot-rent",
+        "propertyId": "mock-parking-lot-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 1500,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "negotiable": true,
+        "createdAt": "2026-09-25T00:00:00.000Z",
+        "updatedAt": "2026-09-25T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-25T00:00:00.000Z",
+    "updatedAt": "2026-09-25T00:00:00.000Z"
+  },
+  {
+    "id": "mock-parking-lot-sale",
+    "ownerId": "7",
+    "name": "Central Event Parking Yard for Sale",
+    "description": "A paved commercial parking property near offices, retail, and event venues.",
+    "category": "special",
+    "propertyType": "parking-lot",
+    "address": "16 Central Access Road",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Central Business District",
+    "location": { "lat": 0.3148, "lng": 32.5828 },
+    "pricePerUnit": 1250000,
+    "images": [
+      {
+        "title": "Parking entrance",
+        "url": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/parking-lot-sale/entrance"
+      }
+    ],
+    "features": ["Central location", "Paved bays", "Security booth"],
+    "specifications": [
+      { "title": "Parking Capacity", "value": "140 vehicles" },
+      { "title": "Land Area", "value": "1.4 acres" },
+      { "title": "Surface", "value": "Paved" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-parking-lot-sale",
+        "propertyId": "mock-parking-lot-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 1250000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-26T00:00:00.000Z",
+        "updatedAt": "2026-09-26T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-26T00:00:00.000Z",
+    "updatedAt": "2026-09-26T00:00:00.000Z"
+  },
+  {
+    "id": "mock-storage-facility-rent",
+    "ownerId": "7",
+    "name": "SafeKeep Storage Centre",
+    "description": "Secure individual storage units for household goods, business inventory, and equipment.",
+    "category": "special",
+    "propertyType": "storage-facility",
+    "address": "28 Storage Lane",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Industrial Area",
+    "location": { "lat": 0.318, "lng": 32.625 },
+    "pricePerUnit": 90,
+    "images": [
+      {
+        "title": "Storage units",
+        "url": "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/storage-rent/units"
+      }
+    ],
+    "features": ["CCTV", "Controlled access", "Loading bay"],
+    "specifications": [
+      { "title": "Unit Size", "value": "50-200 sq ft" },
+      { "title": "Access", "value": "Daily" },
+      { "title": "Security", "value": "CCTV monitored" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 18,
+    "customizeUnits": true,
+    "units": [
+      {
+        "id": "unit-storage-rent-a",
+        "unitNumber": "S-12",
+        "rent": 90,
+        "unitType": "Storage unit",
+        "description": "Suitable for household furniture, archived files, or small business inventory.",
+        "isAvailable": true,
+        "images": [
+          {
+            "title": "Unit interior",
+            "url": "https://images.unsplash.com/photo-1600518464441-9154a4dea21b?auto=format&fit=crop&w=1200&q=80",
+            "publicId": "mock/storage-rent/interior"
+          }
+        ],
+        "specifications": [{ "title": "Area", "value": "80 sq ft" }]
+      }
+    ],
+    "listings": [
+      {
+        "id": "listing-storage-facility-rent",
+        "propertyId": "mock-storage-facility-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 90,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "createdAt": "2026-09-27T00:00:00.000Z",
+        "updatedAt": "2026-09-27T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-27T00:00:00.000Z",
+    "updatedAt": "2026-09-27T00:00:00.000Z"
+  },
+  {
+    "id": "mock-storage-facility-sale",
+    "ownerId": "7",
+    "name": "SafeKeep Storage Centre for Sale",
+    "description": "An operating storage facility with secure access, multiple unit sizes, and room for expansion.",
+    "category": "special",
+    "propertyType": "storage-facility",
+    "address": "34 Storage Lane",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Industrial Area",
+    "location": { "lat": 0.3188, "lng": 32.6258 },
+    "pricePerUnit": 1450000,
+    "images": [
+      {
+        "title": "Facility exterior",
+        "url": "https://images.unsplash.com/photo-1565610222536-ef125c59da2e?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/storage-sale/exterior"
+      }
+    ],
+    "features": ["Multiple unit sizes", "Security office", "Expansion land"],
+    "specifications": [
+      { "title": "Total Area", "value": "32,000 sq ft" },
+      { "title": "Storage Units", "value": "96" },
+      { "title": "Land Area", "value": "1.9 acres" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-storage-facility-sale",
+        "propertyId": "mock-storage-facility-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 1450000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-28T00:00:00.000Z",
+        "updatedAt": "2026-09-28T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-28T00:00:00.000Z",
+    "updatedAt": "2026-09-28T00:00:00.000Z"
+  },
+  {
+    "id": "mock-school-rent",
+    "ownerId": "8",
+    "name": "Greenfield Learning Campus Lease",
+    "description": "A purpose-built campus with classrooms, administration space, and outdoor activity areas.",
+    "category": "special",
+    "propertyType": "school",
+    "address": "4 Learning Crescent",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Bukoto Education Quarter",
+    "location": { "lat": 0.365, "lng": 32.615 },
+    "pricePerUnit": 8500,
+    "images": [
+      {
+        "title": "Campus building",
+        "url": "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/school-rent/campus"
+      }
+    ],
+    "features": ["Classrooms", "Playground", "Administration block"],
+    "specifications": [
+      { "title": "Classrooms", "value": "18" },
+      { "title": "Campus Area", "value": "2.6 acres" },
+      { "title": "Parking Spaces", "value": "35" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-school-rent",
+        "propertyId": "mock-school-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 8500,
+        "currency": "USD",
+        "billingPeriod": "yearly",
+        "negotiable": true,
+        "createdAt": "2026-09-29T00:00:00.000Z",
+        "updatedAt": "2026-09-29T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-29T00:00:00.000Z",
+    "updatedAt": "2026-09-29T00:00:00.000Z"
+  },
+  {
+    "id": "mock-school-sale",
+    "ownerId": "8",
+    "name": "Greenfield Learning Campus for Sale",
+    "description": "A complete educational campus with classrooms, staff facilities, and secure outdoor grounds.",
+    "category": "special",
+    "propertyType": "school",
+    "address": "12 Learning Crescent",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Bukoto Education Quarter",
+    "location": { "lat": 0.3658, "lng": 32.6158 },
+    "pricePerUnit": 2600000,
+    "images": [
+      {
+        "title": "School courtyard",
+        "url": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/school-sale/courtyard"
+      }
+    ],
+    "features": ["Science rooms", "Sports field", "Library"],
+    "specifications": [
+      { "title": "Classrooms", "value": "24" },
+      { "title": "Campus Area", "value": "4.5 acres" },
+      { "title": "Year Built", "value": "2016" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-school-sale",
+        "propertyId": "mock-school-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 2600000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-09-30T00:00:00.000Z",
+        "updatedAt": "2026-09-30T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-30T00:00:00.000Z",
+    "updatedAt": "2026-09-30T00:00:00.000Z"
+  },
+  {
+    "id": "mock-hospital-rent",
+    "ownerId": "8",
+    "name": "Civic Medical Centre Lease",
+    "description": "A flexible healthcare facility with consultation rooms, reception, and accessible patient areas.",
+    "category": "special",
+    "propertyType": "hospital",
+    "address": "25 Civic Avenue",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Civic Health District",
+    "location": { "lat": 0.31, "lng": 32.59 },
+    "pricePerUnit": 12000,
+    "images": [
+      {
+        "title": "Medical centre exterior",
+        "url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/hospital-rent/exterior"
+      }
+    ],
+    "features": ["Reception", "Treatment rooms", "Accessible entrance"],
+    "specifications": [
+      { "title": "Treatment Rooms", "value": "14" },
+      { "title": "Total Area", "value": "14,000 sq ft" },
+      { "title": "Parking Spaces", "value": "40" }
+    ],
+    "policies": {},
+    "serviceFee": 500,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-hospital-rent",
+        "propertyId": "mock-hospital-rent",
+        "purpose": "rent",
+        "status": "published",
+        "price": 12000,
+        "currency": "USD",
+        "billingPeriod": "monthly",
+        "serviceFee": 500,
+        "negotiable": true,
+        "createdAt": "2026-10-01T00:00:00.000Z",
+        "updatedAt": "2026-10-01T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-10-01T00:00:00.000Z",
+    "updatedAt": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "mock-hospital-sale",
+    "ownerId": "8",
+    "name": "Civic Medical Centre for Sale",
+    "description": "A modern medical facility designed for outpatient care, diagnostics, and specialist services.",
+    "category": "special",
+    "propertyType": "hospital",
+    "address": "31 Civic Avenue",
+    "city": "Kampala",
+    "country": "Uganda",
+    "estate": "Civic Health District",
+    "location": { "lat": 0.3108, "lng": 32.5908 },
+    "pricePerUnit": 4200000,
+    "images": [
+      {
+        "title": "Medical facility reception",
+        "url": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
+        "publicId": "mock/hospital-sale/reception"
+      }
+    ],
+    "features": ["Diagnostic wing", "Pharmacy space", "Ambulance access"],
+    "specifications": [
+      { "title": "Treatment Rooms", "value": "22" },
+      { "title": "Total Area", "value": "28,000 sq ft" },
+      { "title": "Year Built", "value": "2021" }
+    ],
+    "policies": {},
+    "serviceFee": 0,
+    "unitsAvailable": 1,
+    "customizeUnits": false,
+    "units": [],
+    "listings": [
+      {
+        "id": "listing-hospital-sale",
+        "propertyId": "mock-hospital-sale",
+        "purpose": "sale",
+        "status": "published",
+        "price": 4200000,
+        "currency": "USD",
+        "billingPeriod": "one-time",
+        "negotiable": true,
+        "createdAt": "2026-10-01T00:00:00.000Z",
+        "updatedAt": "2026-10-01T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-10-01T00:00:00.000Z",
+    "updatedAt": "2026-10-01T00:00:00.000Z"
+  }
+]

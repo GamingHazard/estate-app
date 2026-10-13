@@ -8,6 +8,8 @@ export type AuthUser = {
   email: string;
   role: UserRole;
   phoneNumber?: string;
+  bio?: string;
+  publicContact?: { showPhone: boolean; showEmail: boolean };
   dob?: string;
   nin?: string;
   gender?: string;
@@ -29,8 +31,11 @@ export type RegisterInput = {
   dob: any;
   gender: string;
   nin?: string;
-};
+};  QA1WS2ED3R4FTG5YH6U78888888\
 
 export type AuthResult =
   | { success: true; user: AuthUser }
   | { success: false; message: string };
+
+
+  |

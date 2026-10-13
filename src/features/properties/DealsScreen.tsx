@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -9,34 +9,37 @@ import {
   RefreshControl,
 } from "react-native";
 import { useTheme } from "../../shared/theme/ThemeContext";
-import { mockProperties } from "../../data/mockData";
+import {
+  formatPropertyPrice,
+  getPropertyDisplayLocation,
+} from "../../data/property";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../../shared/types";
 import SkeletonLoader from "../../shared/components/SkeletonLoader";
+import { useProperties } from "./useProperties";
 
 const DealsScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const discountedProperties = mockProperties.filter((p) => p.price < 300000);
-  const hotDeals = mockProperties.filter((p) => p.status === "For Rent");
+  const {
+    data: properties = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useProperties();
+  const propertiesWithUnits = properties.filter(
+    (property) => property.unitsAvailable > 0 || property.units.length > 0,
+  );
+  const lowestPriceProperties = [...properties]
+    .sort((a, b) => a.pricePerUnit - b.pricePerUnit)
+    .slice(0, 5);
 
   const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    // Simulate a data refresh
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    void refetch();
+  }, [refetch]);
 
   const noImage =
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -46,7 +49,7 @@ const DealsScreen = () => {
       style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
+          refreshing={isFetching}
           onRefresh={onRefresh}
           tintColor={colors.text}
           titleColor={colors.text}
@@ -57,11 +60,11 @@ const DealsScreen = () => {
     >
       <View style={styles.header}>
         <Text style={[styles.headerText, { color: colors.text }]}>
-          Deals and Discounts
+          Properties
         </Text>
       </View>
 
-      {loading ? (
+      {isLoading ? (
         <View style={styles.section}>
           <SkeletonLoader
             style={{ width: 150, height: 24, marginBottom: 15 }}
@@ -104,65 +107,68 @@ const DealsScreen = () => {
             }}
           />
         </View>
+      ) : isError ? (
+        <View style={styles.section}>
+          <Text style={{ color: colors.text, marginBottom: 12 }}>
+            {error instanceof Error
+              ? error.message
+              : "Unable to load properties."}
+          </Text>
+          <TouchableOpacity onPress={() => void refetch()}>
+            <Text style={{ color: colors.primary }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Hot Deals
+              Available Units
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {hotDeals.map((property) => {
-                const oldPrice = property.price * 1.1; // Assume a 10% discount
-                return (
-                  <TouchableOpacity
-                    key={property.id}
-                    style={styles.card}
-                    onPress={() =>
-                      navigation.navigate("PropertyDetails", { property })
-                    }
-                  >
-                    <Image
-                      source={{ uri: property.thumbnail || noImage }}
-                      style={styles.cardImage}
-                    />
-                    <LinearGradient
-                      colors={["transparent", "rgba(0,0,0,0.8)"]}
-                      style={styles.gradient}
-                    />
-                    <View style={styles.cardContent}>
-                      <Text style={styles.cardTitle}>{property.title}</Text>
-                      <View style={styles.priceContainer}>
-                        <Text style={[styles.oldPrice, { color: "#fff" }]}>
-                          {oldPrice.toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          })}
-                        </Text>
-                        <Text style={styles.cardPrice}>
-                          {property.price.toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          })}
-                          {property.type.includes("Apartment") ||
-                          property.type.includes("Space")
-                            ? " / month"
-                            : ""}
-                        </Text>
-                      </View>
+              {propertiesWithUnits.map((property) => (
+                <TouchableOpacity
+                  key={property.id}
+                  style={styles.card}
+                  onPress={() =>
+                    navigation.navigate("PropertyDetails", { property })
+                  }
+                >
+                  <Image
+                    source={{ uri: property.images[0]?.url || noImage }}
+                    style={styles.cardImage}
+                  />
+                  <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.8)"]}
+                    style={styles.gradient}
+                  />
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle}>{property.name}</Text>
+                    <View style={styles.priceContainer}>
+                      <Text style={styles.cardPrice}>
+                        {property.unitsAvailable} units ·{" "}
+                        {formatPropertyPrice(property.pricePerUnit)} / unit
+                      </Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              })}
+                    <Text style={{ color: "#fff", fontSize: 12 }}>
+                      {getPropertyDisplayLocation(property)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
+            {propertiesWithUnits.length === 0 && (
+              <Text style={{ color: colors.textMuted }}>
+                No units currently listed.
+              </Text>
+            )}
           </View>
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Discounted Properties
+              Lowest Price per Unit
             </Text>
-            {discountedProperties.map((property) => {
-              const oldPrice = property.price * 1.2; // Assume a 20% discount
-              return (
+            {lowestPriceProperties.length > 0 ? (
+              lowestPriceProperties.map((property) => (
                 <TouchableOpacity
                   key={property.id}
                   style={[styles.listItem, { backgroundColor: colors.card }]}
@@ -171,38 +177,31 @@ const DealsScreen = () => {
                   }
                 >
                   <Image
-                    source={{ uri: property.thumbnail }}
+                    source={{ uri: property.images[0]?.url || noImage }}
                     style={styles.listItemImage}
                   />
                   <View style={styles.listItemContent}>
                     <Text
                       style={[styles.listItemTitle, { color: colors.text }]}
                     >
-                      {property.title}
+                      {property.name}
                     </Text>
-                    <View style={styles.priceContainer}>
-                      <Text style={[styles.oldPrice, { color: colors.text }]}>
-                        {oldPrice.toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        })}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.listItemPrice,
-                          { color: colors.primary },
-                        ]}
-                      >
-                        {property.price.toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        })}
-                      </Text>
-                    </View>
+                    <Text style={{ color: colors.textMuted }}>
+                      {getPropertyDisplayLocation(property)}
+                    </Text>
+                    <Text
+                      style={[styles.listItemPrice, { color: colors.primary }]}
+                    >
+                      {formatPropertyPrice(property.pricePerUnit)} / unit
+                    </Text>
                   </View>
                 </TouchableOpacity>
-              );
-            })}
+              ))
+            ) : (
+              <Text style={{ color: colors.textMuted }}>
+                No properties found.
+              </Text>
+            )}
           </View>
         </>
       )}

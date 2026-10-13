@@ -1,8 +1,8 @@
-import {
-  mockProperties as seedProperties,
-  Property as SeedProperty,
-} from "./mockProperties";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  MarketplacePropertyDraft,
+  MarketplacePropertyRecord,
+} from "./property";
 
 export type PropertyImage = {
   url: string;
@@ -95,63 +95,15 @@ export type PropertyDraft = Omit<
 >;
 
 const listeners = new Set<() => void>();
-
-const toAdminProperty = (property: SeedProperty): AdminProperty => ({
-  id: property.id,
-  name: property.title,
-  address: property.location,
-  city: property.location,
-  country: "",
-  category: property.type,
-  estate: "",
-  price_per_unit: String(property.price),
-  propertyType: property.type,
-  geography: property.location,
-  description: property.description,
-  images: [property.mainImage, ...property.images].map((url, index) => ({
-    url,
-    public_id: `seed-${property.id}-${index}`,
-  })),
-  features: [],
-  specifications: [
-    { title: "Bedrooms", value: String(property.bedrooms) },
-    { title: "Bathrooms", value: String(property.bathrooms) },
-    { title: "Area", value: `${property.area} sq ft` },
-  ],
-  location: { lat: 0, lng: 0 },
-  zoning: "",
-  annualPropertyTaxes: 0,
-  annualInsurance: 0,
-  appraisedValue: property.price,
-  noi: 0,
-  capRate: 0,
-  lastAppraisalDate: property.updatedAt,
-  units_available: 0,
-  customizeUnits: false,
-  autoGenerateUnitNumbers: true,
-  customUnitNumbers: "",
-  detailedUnits: [],
-  permittedUses: [],
-  serviceFee: 0,
-  policies: {
-    petPolicy: { allowed: false, details: "" },
-    parkingPolicy: { allowed: false, details: "" },
-    leasePolicy: "",
-    otherPolicies: [],
-  },
-  tenants: [],
-  payments: [],
-  units: [],
-  owner: property.agent.id,
-  status: property.status,
-  createdAt: property.createdAt,
-  updatedAt: property.updatedAt,
-});
-
-let properties: AdminProperty[] = seedProperties.map(toAdminProperty);
 const PROPERTY_STORAGE_KEY = "admin-properties";
+const MARKETPLACE_PROPERTY_STORAGE_KEY = "marketplace-properties";
+const LEGACY_SEEDED_PROPERTY_IDS = new Set(["1", "2", "3"]);
+let properties: AdminProperty[] = [];
 let hasLocalMutation = false;
 let hydrationPromise: Promise<void>;
+const marketplaceListeners = new Set<() => void>();
+let marketplaceProperties: MarketplacePropertyRecord[] = [];
+let marketplaceHydrationPromise: Promise<void>;
 
 const notify = () => listeners.forEach((listener) => listener());
 
@@ -168,8 +120,22 @@ const hydrate = async () => {
       const parsedProperties: unknown = JSON.parse(storedProperties);
 
       if (Array.isArray(parsedProperties)) {
-        properties = parsedProperties as AdminProperty[];
+        properties = parsedProperties.filter(
+          (property): property is AdminProperty =>
+            typeof property === "object" &&
+            property !== null &&
+            "id" in property &&
+            typeof property.id === "string" &&
+            !LEGACY_SEEDED_PROPERTY_IDS.has(property.id),
+        );
         notify();
+
+        if (properties.length !== parsedProperties.length) {
+          await AsyncStorage.setItem(
+            PROPERTY_STORAGE_KEY,
+            JSON.stringify(properties),
+          );
+        }
       }
     }
   } catch (error) {
@@ -178,6 +144,33 @@ const hydrate = async () => {
 };
 
 hydrationPromise = hydrate();
+
+const hydrateMarketplace = async () => {
+  try {
+    const storedProperties = await AsyncStorage.getItem(
+      MARKETPLACE_PROPERTY_STORAGE_KEY,
+    );
+    if (storedProperties) {
+      const parsedProperties: unknown = JSON.parse(storedProperties);
+      if (Array.isArray(parsedProperties)) {
+        marketplaceProperties = parsedProperties as MarketplacePropertyRecord[];
+        marketplaceListeners.forEach((listener) => listener());
+      }
+    }
+  } catch (error) {
+    console.error("Unable to restore marketplace properties:", error);
+  }
+};
+
+marketplaceHydrationPromise = hydrateMarketplace();
+
+const persistMarketplace = async () => {
+  await marketplaceHydrationPromise;
+  await AsyncStorage.setItem(
+    MARKETPLACE_PROPERTY_STORAGE_KEY,
+    JSON.stringify(marketplaceProperties),
+  );
+};
 
 export const adminPropertyStore = {
   getSnapshot: () => properties,
@@ -239,4 +232,79 @@ export const adminPropertyStore = {
     );
   },
   getById: (id: string) => properties.find((property) => property.id === id),
+  getMarketplaceSnapshot: () => marketplaceProperties,
+  subscribeMarketplace: (listener: () => void) => {
+    marketplaceListeners.add(listener);
+    return () => marketplaceListeners.delete(listener);
+  },
+  createMarketplace: (
+    draft: MarketplacePropertyDraft,
+  ): MarketplacePropertyRecord => {
+    const now = new Date().toISOString();
+    const id = `marketplace-property-${Date.now()}`;
+    const listing = draft.listings[0];
+    const property: MarketplacePropertyRecord = {
+      ...draft,
+      id,
+      listings: draft.listings.map((item) => ({
+        ...item,
+        propertyId: id,
+      })),
+      pricePerUnit: listing?.price ?? 0,
+      unitsAvailable:
+        draft.units.filter((unit) => unit.isAvailable).length || 1,
+      moderationStatus: "approved",
+      createdAt: now,
+      updatedAt: now,
+    };
+    marketplaceProperties = [property, ...marketplaceProperties];
+    marketplaceListeners.forEach((listener) => listener());
+    void persistMarketplace().catch((error) =>
+      console.error("Unable to save marketplace property:", error),
+    );
+    return property;
+  },
+  updateMarketplace: (
+    id: string,
+    updates: Partial<MarketplacePropertyRecord>,
+  ) => {
+    marketplaceProperties = marketplaceProperties.map((property) =>
+      property.id === id
+        ? { ...property, ...updates, updatedAt: new Date().toISOString() }
+        : property,
+    );
+    marketplaceListeners.forEach((listener) => listener());
+    void persistMarketplace().catch((error) =>
+      console.error("Unable to update marketplace property:", error),
+    );
+  },
+  updateMarketplaceModeration: (
+    id: string,
+    moderationStatus: MarketplacePropertyRecord["moderationStatus"],
+    moderationReason?: string,
+  ) => {
+    marketplaceProperties = marketplaceProperties.map((property) =>
+      property.id === id
+        ? {
+            ...property,
+            moderationStatus,
+            moderationReason,
+            updatedAt: new Date().toISOString(),
+          }
+        : property,
+    );
+    marketplaceListeners.forEach((listener) => listener());
+    void persistMarketplace().catch((error) =>
+      console.error("Unable to update marketplace moderation:", error),
+    );
+  },
+  removeMarketplace: (id: string) => {
+    marketplaceProperties = marketplaceProperties.filter(
+      (property) => property.id !== id,
+    );
+    marketplaceListeners.forEach((listener) => listener());
+    void persistMarketplace().catch((error) =>
+      console.error("Unable to remove marketplace property:", error),
+    );
+  },
 };

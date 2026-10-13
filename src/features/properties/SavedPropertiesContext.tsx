@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { mockProperties } from "../../data/mockData";
 import { useAuth } from "../auth/AuthContext";
 
 type SavedPropertiesContextValue = {
@@ -21,13 +20,7 @@ export const SavedPropertiesProvider = ({
   const [savedPropertyIds, setSavedPropertyIds] = useState<string[]>([]);
 
   useEffect(() => {
-    setSavedPropertyIds(
-      user
-        ? mockProperties
-            .filter((property) => property.saved)
-            .map((property) => property.id)
-        : [],
-    );
+    setSavedPropertyIds([]);
   }, [user?.id]);
 
   const isSaved = (propertyId: string) => savedPropertyIds.includes(propertyId);

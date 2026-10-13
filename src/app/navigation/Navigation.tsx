@@ -13,7 +13,7 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { AdminLayout } from "../../features/admin/screens/AdminLayout";
 
 // Import your screen components here
-import HomeScreen from "../../features/properties/HomeScreen";
+import HomeScreen from "../../features/properties/MarketplaceHomeScreen";
 import DealsScreen from "../../features/properties/DealsScreen";
 import SavedScreen from "../../features/properties/SavedScreen";
 import MessagesScreen from "../../features/messaging/MessagesScreen";
@@ -28,7 +28,8 @@ import PropertyDetailsScreen from "../../features/properties/PropertyDetailsScre
 import { Dashboard } from "../../features/admin/screens/Dashboard";
 import { PropertiesManagement } from "../../features/admin/screens/PropertiesManagement";
 import { PropertyDetails } from "../../features/admin/screens/PropertyDetails";
-import { PropertyCreation } from "../../features/admin/screens/PropertyCreation";
+import { MarketplacePropertyCreation } from "../../features/admin/screens/MarketplacePropertyCreation";
+import { MarketplacePropertyDetails } from "../../features/admin/screens/MarketplacePropertyDetails";
 import { AdminNotifications } from "../../features/admin/screens/AdminNotifications";
 import { AdminNotificationDetails } from "../../features/admin/screens/AdminNotificationDetails";
 import { AdminMessages } from "../../features/admin/screens/AdminMessages";
@@ -39,12 +40,12 @@ import { AdminManual } from "../../features/admin/screens/AdminManual";
 import { RootStackParamList } from "../../shared/types";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
 import OfflineBanner from "../../shared/components/OfflineBanner";
-import AgentProfileScreen from "../../features/properties/AgentProfileScreen";
+import ListerProfileScreen from "../../features/properties/ListerProfileScreen";
 
 import PaymentMethodScreen from "../../features/payments/PaymentMethodScreen";
 import AddCardScreen from "../../features/payments/AddCardScreen";
-import SellProperty from "../../features/settings/SellProperty";
 import ChatRoom from "../../shared/components/ChatRoomComponent";
+import { adminPropertyStore } from "../../data/adminPropertyStore";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -109,7 +110,7 @@ const TabNavigator = () => {
           height: 60,
           borderRadius: 28,
           backgroundColor: colors.card,
-          borderWidth: 0.5,
+          borderWidth: 0,
           borderColor: colors.border + "33",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 4 },
@@ -170,7 +171,7 @@ const AdminNavigator = () => {
         />
         <AdminStack.Screen
           name="PropertyCreation"
-          component={PropertyCreation}
+          component={MarketplacePropertyCreation}
           options={{
             presentation: "modal",
             cardStyle: { backgroundColor: "transparent" },
@@ -191,9 +192,18 @@ const AdminNavigator = () => {
         <AdminStack.Screen name="AdminManual" component={AdminManual} />
         <AdminStack.Screen
           name="AdminPropertyDetails"
-          children={({ route }: any) => (
-            <PropertyDetails propertyId={route.params?.propertyId} />
-          )}
+          children={({ route }: any) => {
+            const propertyId = route.params?.propertyId;
+            const isMarketplaceProperty = adminPropertyStore
+              .getMarketplaceSnapshot()
+              .some((property) => property.id === propertyId);
+
+            return isMarketplaceProperty ? (
+              <MarketplacePropertyDetails propertyId={propertyId} />
+            ) : (
+              <PropertyDetails propertyId={propertyId} />
+            );
+          }}
         />
       </AdminStack.Navigator>
     </AdminLayout>
@@ -231,14 +241,13 @@ const Navigation = () => {
         <Stack.Screen name="Account" component={AccountScreen} />
         <Stack.Screen name="General settings" component={GeneralSettings} />
         <Stack.Screen name="User Guide" component={UserManual} />
-        <Stack.Screen name="Sell Property" component={SellProperty} />
         <Stack.Screen
           name="Terms-and-Conditions"
           component={TermsAndConditions}
         />
         <Stack.Screen name="History" component={History} />
         <Stack.Screen name="Customer Care" component={CustomerCare} />
-        <Stack.Screen name="Agent Profile" component={AgentProfileScreen} />
+        <Stack.Screen name="Lister Profile" component={ListerProfileScreen} />
         <Stack.Screen name="Payment Method" component={PaymentMethodScreen} />
         <Stack.Screen name="Add Card" component={AddCardScreen} />
         <Stack.Screen

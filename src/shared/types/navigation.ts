@@ -1,4 +1,5 @@
 import { ParamListBase } from "@react-navigation/native";
+import { Property } from "../../data/property";
 
 export interface RootStackParamList extends ParamListBase {
   // Main Tabs
@@ -29,8 +30,8 @@ export interface RootStackParamList extends ParamListBase {
   TermsAndConditions: undefined;
   History: undefined;
   CustomerCare: undefined;
-  PropertyDetails: { propertyId: string };
-  AgentProfile: { agent: any };
+  PropertyDetails: { property: Property };
+  "Lister Profile": { userId: string };
   NoInternet: undefined;
   PaymentMethod: undefined;
   AddCard: undefined;

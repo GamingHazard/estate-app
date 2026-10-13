@@ -1,11 +1,9 @@
 import { Image } from "react-native";
-import { mockProperties } from "../../data/mockData";
 import { mockAdverts } from "../../data/mockAdverts";
 
 export const preloadImages = async () => {
-  const propertyImages = mockProperties.map((property) => property.thumbnail);
   const advertImages = mockAdverts.map((advert) => advert.url);
-  const allImages = [...propertyImages, ...advertImages];
+  const allImages = [...advertImages];
 
   const loadImage = (imageUrl: string) => {
     return new Promise((resolve, reject) => {

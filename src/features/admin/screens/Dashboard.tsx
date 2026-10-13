@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../../shared/types/navigation";
 import { useAdminNotifications } from "../../../shared/hooks/useAdminNotifications";
+import { adminPropertyStore } from "../../../data/adminPropertyStore";
+import { useProperties } from "../../properties/useProperties";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -20,35 +22,58 @@ export function Dashboard() {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { notifications, unreadCount } = useAdminNotifications();
+  const {
+    data: apiProperties = [],
+    isLoading: isPropertiesLoading,
+    isError: isPropertiesError,
+  } = useProperties();
+  const localProperties = useSyncExternalStore(
+    adminPropertyStore.subscribe,
+    adminPropertyStore.getSnapshot,
+    adminPropertyStore.getSnapshot,
+  );
+  const formatServerMetric = (value: number) =>
+    isPropertiesLoading
+      ? "..."
+      : isPropertiesError
+        ? "Unavailable"
+        : value.toLocaleString();
 
   const stats = [
     {
-      label: "Total properties",
-      value: "128",
-      delta: "+12%",
+      label: "Server properties",
+      value: formatServerMetric(apiProperties.length),
+      description: "Live property feed",
       icon: "home" as const,
       tint: colors.primary,
     },
     {
-      label: "Occupancy",
-      value: "91%",
-      delta: "+4%",
+      label: "Units available",
+      value: formatServerMetric(
+        apiProperties.reduce(
+          (total, property) => total + property.unitsAvailable,
+          0,
+        ),
+      ),
+      description: "Across server properties",
       icon: "business" as const,
       tint: "#10b981",
     },
     {
-      label: "Pending review",
-      value: "14",
-      delta: "-3",
+      label: "Categories",
+      value: formatServerMetric(
+        new Set(apiProperties.map((property) => property.category)).size,
+      ),
+      description: "In the server feed",
       icon: "timer" as const,
       tint: colors.warning,
     },
     {
-      label: "Revenue",
-      value: "$42.8k",
-      delta: "+8.2%",
-      icon: "trending-up" as const,
-      tint: "#8b5cf6",
+      label: "Local drafts",
+      value: localProperties.length.toLocaleString(),
+      description: "Stored on this device",
+      icon: "drafts" as const,
+      tint: colors.primary,
     },
   ];
 
@@ -70,11 +95,13 @@ export function Dashboard() {
     { label: "Settings", route: "AdminSettings", icon: "settings" },
   ] as const;
 
-  const propertyHealth = [
-    { name: "Sunset Villa", status: "Healthy", value: "96%" },
-    { name: "Oak Heights", status: "Attention", value: "74%" },
-    { name: "River Point", status: "Healthy", value: "92%" },
-  ];
+  const recentProperties = [...apiProperties]
+    .sort(
+      (left, right) =>
+        (Date.parse(right.createdAt ?? "") || 0) -
+        (Date.parse(left.createdAt ?? "") || 0),
+    )
+    .slice(0, 3);
 
   const styles = StyleSheet.create({
     container: {
@@ -134,6 +161,11 @@ export function Dashboard() {
       fontWeight: "700",
       color: colors.text,
       marginTop: 8,
+    },
+    statsDescription: {
+      marginTop: 8,
+      fontSize: 12,
+      color: colors.textMuted,
     },
     statDelta: {
       marginTop: 8,
@@ -251,7 +283,7 @@ export function Dashboard() {
               <MaterialIcons name={item.icon} size={18} color={item.tint} />
             </View>
             <Text style={styles.statValue}>{item.value}</Text>
-            <Text style={styles.statDelta}>{item.delta} vs last month</Text>
+            <Text style={styles.statsDescription}>{item.description}</Text>
           </View>
         ))}
       </View>
@@ -320,18 +352,29 @@ export function Dashboard() {
         </View>
       </View>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Property health</Text>
-        {propertyHealth.map((property) => (
-          <View key={property.name} style={styles.healthRow}>
-            <Text style={styles.healthName}>{property.name}</Text>
-            <View style={styles.healthMeta}>
-              <View style={styles.healthBadge}>
-                <Text style={styles.healthBadgeText}>{property.status}</Text>
-              </View>
-              <Text style={styles.healthValue}>{property.value}</Text>
-            </View>
-          </View>
-        ))}
+        <Text style={styles.sectionTitle}>Recent properties</Text>
+        {recentProperties.length > 0 ? (
+          recentProperties.map((property) => (
+            <Pressable
+              key={property.id}
+              style={styles.healthRow}
+              onPress={() =>
+                navigation.navigate("PropertyDetails", { property })
+              }
+            >
+              <Text style={styles.healthName}>{property.name}</Text>
+              <Text style={styles.healthValue}>
+                {property.category} · {property.unitsAvailable} units
+              </Text>
+            </Pressable>
+          ))
+        ) : (
+          <Text style={styles.subtitle}>
+            {isPropertiesLoading
+              ? "Loading properties..."
+              : "No server properties available."}
+          </Text>
+        )}
       </View>
       <View style={{ height: 70, width: "100%" }} />
     </ScrollView>

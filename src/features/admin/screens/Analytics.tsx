@@ -7,10 +7,41 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useTheme } from "../../../shared/theme/ThemeContext";
-import { MaterialIcons } from "@expo/vector-icons";
+import { useProperties } from "../../properties/useProperties";
 
 export function Analytics() {
   const { colors } = useTheme();
+  const {
+    data: properties = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useProperties();
+
+  const categoryCounts = Object.entries(
+    properties.reduce<Record<string, number>>((counts, property) => {
+      const category = property.category || "Uncategorized";
+      counts[category] = (counts[category] ?? 0) + 1;
+      return counts;
+    }, {}),
+  ).sort(([left], [right]) => left.localeCompare(right));
+
+  const metrics = [
+    { label: "Properties", value: properties.length },
+    {
+      label: "Available units",
+      value: properties.reduce(
+        (total, property) => total + property.unitsAvailable,
+        0,
+      ),
+    },
+    { label: "Categories", value: categoryCounts.length },
+    {
+      label: "Listings with images",
+      value: properties.filter((property) => property.images.length > 0).length,
+    },
+  ];
 
   const styles = StyleSheet.create({
     container: {
@@ -50,19 +81,29 @@ export function Analytics() {
       fontSize: 14,
       color: colors.textMuted,
     },
-    chart: {
-      height: 200,
+    categoryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    categoryLabel: {
+      fontSize: 14,
+      color: colors.text,
+      textTransform: "capitalize",
+    },
+    categoryValue: {
+      fontSize: 14,
+      color: colors.textMuted,
+      fontWeight: "600",
+    },
+    status: {
       backgroundColor: colors.card,
-      borderRadius: 8,
       padding: 16,
-      marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    chartPlaceholder: {
-      color: colors.textMuted,
+      borderRadius: 8,
     },
   });
 
@@ -71,51 +112,55 @@ export function Analytics() {
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsValue}>1,234</Text>
-            <Text style={styles.statsLabel}>Total Properties</Text>
+        <Text style={styles.sectionTitle}>Property feed</Text>
+        {isLoading ? (
+          <View style={styles.status}>
+            <Text style={styles.statsLabel}>Loading property metrics...</Text>
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsValue}>56</Text>
-            <Text style={styles.statsLabel}>New Listings</Text>
+        ) : isError ? (
+          <View style={styles.status}>
+            <Text style={styles.statsLabel}>
+              {error instanceof Error
+                ? error.message
+                : "Unable to load property metrics."}
+            </Text>
+            <TouchableOpacity onPress={() => void refetch()}>
+              <Text style={{ color: colors.primary, marginTop: 10 }}>
+                Try again
+              </Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsValue}>89</Text>
-            <Text style={styles.statsLabel}>Active Agents</Text>
+        ) : (
+          <View style={styles.statsGrid}>
+            {metrics.map((metric) => (
+              <View style={styles.statsCard} key={metric.label}>
+                <Text style={styles.statsValue}>{metric.value}</Text>
+                <Text style={styles.statsLabel}>{metric.label}</Text>
+              </View>
+            ))}
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsValue}>432</Text>
-            <Text style={styles.statsLabel}>Properties Sold</Text>
-          </View>
-        </View>
+        )}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Revenue</Text>
-        <View style={styles.chart}>
-          <Text style={styles.chartPlaceholder}>Revenue Chart Placeholder</Text>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>User Activity</Text>
-        <View style={styles.chart}>
-          <Text style={styles.chartPlaceholder}>
-            User Activity Chart Placeholder
+      {!isLoading && !isError && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Properties by category</Text>
+          {categoryCounts.length > 0 ? (
+            categoryCounts.map(([category, count]) => (
+              <View style={styles.categoryRow} key={category}>
+                <Text style={styles.categoryLabel}>{category}</Text>
+                <Text style={styles.categoryValue}>{count}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.statsLabel}>No properties available.</Text>
+          )}
+          <Text style={[styles.statsLabel, { marginTop: 16 }]}>
+            Sales, occupancy, and revenue metrics are not provided by the
+            property feed.
           </Text>
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Property Categories</Text>
-        <View style={styles.chart}>
-          <Text style={styles.chartPlaceholder}>
-            Categories Chart Placeholder
-          </Text>
-        </View>
-      </View>
+      )}
     </ScrollView>
   );
 }

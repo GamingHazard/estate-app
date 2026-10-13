@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Switch,
 } from "react-native";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,6 +26,8 @@ export interface ProfileData {
   nin?: string;
   phoneNumber: string;
   email: string;
+  bio?: string;
+  publicContact?: { showPhone: boolean; showEmail: boolean };
 }
 
 const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
@@ -37,6 +40,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const [saveError, setSaveError] = useState("");
   const canEditNin =
     user.role === "landlord" || user.role === "propertyManager";
+  const canEditListerProfile = canEditNin;
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: user.firstName || "",
     lastName: user.lastName || "",
@@ -45,6 +49,15 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     ...(canEditNin ? { nin: user.nin || "" } : {}),
     phoneNumber: user.phoneNumber || "",
     email: user.email || "",
+    ...(canEditListerProfile
+      ? {
+          bio: user.bio || "",
+          publicContact: {
+            showPhone: user.publicContact?.showPhone ?? false,
+            showEmail: user.publicContact?.showEmail ?? false,
+          },
+        }
+      : {}),
   });
 
   useEffect(() => {
@@ -56,8 +69,17 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       ...(canEditNin ? { nin: user.nin || "" } : {}),
       phoneNumber: user.phoneNumber || "",
       email: user.email || "",
+      ...(canEditListerProfile
+        ? {
+            bio: user.bio || "",
+            publicContact: {
+              showPhone: user.publicContact?.showPhone ?? false,
+              showEmail: user.publicContact?.showEmail ?? false,
+            },
+          }
+        : {}),
     });
-  }, [user, canEditNin]);
+  }, [user, canEditNin, canEditListerProfile]);
 
   const handleSave = async () => {
     setSaveError("");
@@ -117,6 +139,81 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             placeholderTextColor={colors.text + "80"}
           />
         </View>
+
+        {canEditListerProfile && (
+          <>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Public bio
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.bioInput,
+                  { backgroundColor: colors.card, color: colors.text },
+                ]}
+                value={profileData.bio || ""}
+                onChangeText={(text) =>
+                  setProfileData({ ...profileData, bio: text.slice(0, 280) })
+                }
+                placeholder="Introduce yourself to people viewing your listings"
+                placeholderTextColor={colors.text + "80"}
+                multiline
+                maxLength={280}
+                textAlignVertical="top"
+              />
+              <Text
+                style={[styles.characterCount, { color: colors.textMuted }]}
+              >
+                {(profileData.bio || "").length}/280
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Public contact details
+              </Text>
+              <View style={styles.visibilityRow}>
+                <Text style={[styles.visibilityLabel, { color: colors.text }]}>
+                  Show phone number
+                </Text>
+                <Switch
+                  value={profileData.publicContact?.showPhone ?? false}
+                  onValueChange={(showPhone) =>
+                    setProfileData({
+                      ...profileData,
+                      publicContact: {
+                        showPhone,
+                        showEmail:
+                          profileData.publicContact?.showEmail ?? false,
+                      },
+                    })
+                  }
+                  trackColor={{ true: colors.primary }}
+                />
+              </View>
+              <View style={styles.visibilityRow}>
+                <Text style={[styles.visibilityLabel, { color: colors.text }]}>
+                  Show email address
+                </Text>
+                <Switch
+                  value={profileData.publicContact?.showEmail ?? false}
+                  onValueChange={(showEmail) =>
+                    setProfileData({
+                      ...profileData,
+                      publicContact: {
+                        showPhone:
+                          profileData.publicContact?.showPhone ?? false,
+                        showEmail,
+                      },
+                    })
+                  }
+                  trackColor={{ true: colors.primary }}
+                />
+              </View>
+            </View>
+          </>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.text }]}>
@@ -323,6 +420,24 @@ const styles = StyleSheet.create({
   },
   selectedGender: {
     borderWidth: 2,
+  },
+  bioInput: {
+    minHeight: 104,
+    paddingTop: 12,
+  },
+  characterCount: {
+    alignSelf: "flex-end",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  visibilityRow: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  visibilityLabel: {
+    fontSize: 14,
   },
   radioOuter: {
     height: 24,
