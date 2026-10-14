@@ -1,4 +1,5 @@
 import React, { useState, useSyncExternalStore } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Modal,
   View,
@@ -27,12 +28,14 @@ import {
 } from "../../../data/property";
 import { MarketplacePropertyCreation } from "./MarketplacePropertyCreation";
 import { useProperties } from "../../properties/useProperties";
+import { parsePropertyListResponse } from "../../../data/property";
+import { getQueryFn } from "../../../shared/queryClient";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type ManagementProperty =
   | { source: "local"; property: AdminProperty }
   | { source: "api"; property: Property }
-  | { source: "marketplace"; property: MarketplacePropertyRecord };
+  | { source: "marketplace" | "server-marketplace"; property: MarketplacePropertyRecord | Property };
 
 export function PropertiesManagement() {
   const { colors } = useTheme();
@@ -55,8 +58,23 @@ export function PropertiesManagement() {
     error: apiError,
     refetch,
   } = useProperties();
+  const reviewQuery = useQuery({
+    queryKey: ["properties", "marketplace", "manage"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    select: (response: unknown) =>
+      parsePropertyListResponse(response).properties,
+  });
+  const reviewedPropertyIds = new Set(
+    (reviewQuery.data ?? []).map((property) => property.id),
+  );
   const displayProperties: ManagementProperty[] = [
-    ...apiProperties.map((property) => ({ source: "api" as const, property })),
+    ...apiProperties
+      .filter((property) => !reviewedPropertyIds.has(property.id))
+      .map((property) => ({ source: "api" as const, property })),
+    ...(reviewQuery.data ?? []).map((property) => ({
+      source: "server-marketplace" as const,
+      property,
+    })),
     ...marketplaceProperties.map((property) => ({
       source: "marketplace" as const,
       property,
@@ -238,7 +256,9 @@ export function PropertiesManagement() {
     item: ManagementProperty;
   }) => {
     const isApiProperty = property.source === "api";
-    const isMarketplaceProperty = property.source === "marketplace";
+    const isMarketplaceProperty =
+      property.source === "marketplace" ||
+      property.source === "server-marketplace";
     const details = property.property;
     const location =
       property.source === "api" || isMarketplaceProperty
@@ -278,7 +298,8 @@ export function PropertiesManagement() {
                   {property.property.category}
                 </Text>
               </View>
-            ) : isMarketplaceProperty ? (
+            ) : property.source === "marketplace" ||
+              property.source === "server-marketplace" ? (
               <View
                 style={[
                   styles.badge,
@@ -291,17 +312,19 @@ export function PropertiesManagement() {
                 ]}
               >
                 <Text style={styles.badgeText}>
-                  {property.property.moderationStatus} ·{" "}
-                  {getListingPriceLabel(property.property.listings[0])}
+                  {property.property.moderationStatus ?? "pending"} ·{" "}
+                  {property.property.listings[0]
+                    ? getListingPriceLabel(property.property.listings[0])
+                    : "No listing"}
                 </Text>
               </View>
-            ) : (
+            ) : property.source === "local" ? (
               <View
                 style={[styles.badge, getBadgeStyle(property.property.status)]}
               >
                 <Text style={styles.badgeText}>{property.property.status}</Text>
               </View>
-            )}
+            ) : null}
             {property.source === "local" && (
               <Text style={styles.agentInfo}>
                 {property.property.owner
@@ -380,6 +403,9 @@ export function PropertiesManagement() {
             {properties.filter((property) => property.status === "pending")
               .length +
               marketplaceProperties.filter(
+                (property) => property.moderationStatus === "pending",
+              ).length +
+              (reviewQuery.data ?? []).filter(
                 (property) => property.moderationStatus === "pending",
               ).length}
           </Text>

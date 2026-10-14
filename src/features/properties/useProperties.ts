@@ -27,6 +27,15 @@ export function useProperties() {
       return parsePropertyListResponse(response).properties;
     },
   });
+  const marketplaceQuery = useQuery({
+    queryKey: ["properties", "marketplace"],
+    queryFn: useMockProperties
+      ? async () => ({ properties: [] as Property[] })
+      : getQueryFn({ on401: "throw" }),
+    enabled: !useMockProperties,
+    select: (response: unknown) =>
+      parsePropertyListResponse(response).properties,
+  });
 
   const publicLocalProperties = locallyPublishedProperties.filter(
     (property) =>
@@ -34,16 +43,27 @@ export function useProperties() {
       property.listings.some((listing) => listing.status === "published"),
   );
   const existingIds = new Set(
-    (query.data ?? []).map((property) => property.id),
+    [...(query.data ?? []), ...(marketplaceQuery.data ?? [])].map(
+      (property) => property.id,
+    ),
   );
+  const properties = [
+    ...(query.data ?? []),
+    ...(marketplaceQuery.data ?? []).filter(
+      (property) => !query.data?.some((item) => item.id === property.id),
+    ),
+    ...publicLocalProperties.filter((property) => !existingIds.has(property.id)),
+  ];
 
   return {
     ...query,
-    data: [
-      ...(query.data ?? []),
-      ...publicLocalProperties.filter(
-        (property) => !existingIds.has(property.id),
-      ),
-    ],
+    data: properties,
+    isLoading: query.isLoading || marketplaceQuery.isLoading,
+    isFetching: query.isFetching || marketplaceQuery.isFetching,
+    isError: query.isError || marketplaceQuery.isError,
+    error: query.error ?? marketplaceQuery.error,
+    refetch: async () => {
+      await Promise.all([query.refetch(), marketplaceQuery.refetch()]);
+    },
   };
 }

@@ -42,7 +42,7 @@ const faqs = [
   {
     question: "How do I enable notifications?",
     answer:
-      "Visit Application Settings and toggle the notifications switch to enable or disable notifications.",
+      "Open General Settings to save your notification preferences. Push and email delivery are not connected yet. Device notification permission can be managed from the Open device settings link.",
   },
 ];
 

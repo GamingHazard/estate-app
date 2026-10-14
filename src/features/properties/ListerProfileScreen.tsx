@@ -1,11 +1,13 @@
 import React from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Linking,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -13,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getQueryFn } from "../../shared/queryClient";
+import { apiRequest, getQueryFn } from "../../shared/queryClient";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { NavigationProp, RootStackParamList } from "../../shared/types";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
@@ -27,10 +29,43 @@ import { useProperties } from "./useProperties";
 import { useSavedProperties } from "./SavedPropertiesContext";
 import PropertyListingCard from "./PropertyListingCard";
 
+type ReviewItem = {
+  id: string;
+  reviewerId: string;
+  reviewedUserId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt?: string;
+  reviewer?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: { url?: string } | null;
+  } | null;
+};
+
 type PublicProfileResponse = { user: PublicListerProfile };
+type ReviewListResponse = { reviews: ReviewItem[] };
+type ReviewSummaryResponse = {
+  summary: { averageRating: number; totalReviews: number; ratingCount: number };
+};
 type Props = {
   route: RouteProp<RootStackParamList, "Lister Profile">;
 };
+
+const renderStars = (rating: number, size = 16, color = "#f5b301") =>
+  Array.from({ length: 5 }).map((_, index) => {
+    const isFilled = index < Math.round(rating);
+    return (
+      <Ionicons
+        key={`${rating}-${index}`}
+        name={isFilled ? "star" : "star-outline"}
+        size={size}
+        color={isFilled ? color : "#8a8a8a"}
+      />
+    );
+  });
 
 const ListerProfileScreen = ({ route }: Props) => {
   const { userId } = route.params;
@@ -39,6 +74,10 @@ const ListerProfileScreen = ({ route }: Props) => {
   const insets = useSafeAreaInsets();
   const { user: signedInUser, openAuth } = useAuth();
   const { isSaved, toggleSaved } = useSavedProperties();
+  const [draftRating, setDraftRating] = React.useState(5);
+  const [draftComment, setDraftComment] = React.useState("");
+  const [editingReviewId, setEditingReviewId] = React.useState<string | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = React.useState(false);
   const {
     data: properties = [],
     isLoading: propertiesLoading,
@@ -58,6 +97,22 @@ const ListerProfileScreen = ({ route }: Props) => {
     queryFn: getQueryFn<PublicProfileResponse>({ on401: "throw" }),
     enabled: Boolean(userId) && !useMockProperties,
   });
+  const {
+    data: reviewResponse,
+    refetch: refetchReviews,
+  } = useQuery({
+    queryKey: ["users", userId, "reviews"],
+    queryFn: getQueryFn<ReviewListResponse>({ on401: "returnNull" }),
+    enabled: Boolean(userId),
+  });
+  const {
+    data: reviewSummaryResponse,
+    refetch: refetchReviewSummary,
+  } = useQuery({
+    queryKey: ["users", userId, "reviews", "summary"],
+    queryFn: getQueryFn<ReviewSummaryResponse>({ on401: "returnNull" }),
+    enabled: Boolean(userId),
+  });
   const lister = useMockProperties
     ? mockListerProfiles.find((profile) => profile.id === userId)
     : profileResponse?.user;
@@ -66,7 +121,82 @@ const ListerProfileScreen = ({ route }: Props) => {
       property.ownerId === userId &&
       getPublishedListing(property)?.status === "published",
   );
+  const reviews = reviewResponse?.reviews ?? [];
+  const summary =
+    reviewSummaryResponse?.summary ??
+    ({
+      averageRating: lister?.averageRating ?? 0,
+      totalReviews: lister?.totalReviews ?? reviews.length,
+      ratingCount: lister?.ratingCount ?? reviews.length,
+    } as ReviewSummaryResponse["summary"]);
   const isLoading = profileLoading || propertiesLoading;
+  const canCreateReview = Boolean(signedInUser && signedInUser.id !== userId);
+
+  const refreshReviews = async () => {
+    await Promise.all([refetchReviews(), refetchReviewSummary()]);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!signedInUser) {
+      openAuth();
+      return;
+    }
+
+    if (!draftComment.trim() && !draftRating) {
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const payload = {
+        reviewedUserId: userId,
+        rating: draftRating,
+        comment: draftComment.trim(),
+      };
+
+      if (editingReviewId) {
+        await apiRequest("PATCH", `/reviews/${editingReviewId}`, payload);
+      } else {
+        await apiRequest("POST", "/reviews", payload);
+      }
+
+      setDraftComment("");
+      setDraftRating(5);
+      setEditingReviewId(null);
+      await refreshReviews();
+    } catch (error: any) {
+      Alert.alert(
+        editingReviewId ? "Unable to update review" : "Unable to submit review",
+        error?.message || "Please try again.",
+      );
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    Alert.alert("Delete review", "This review will be removed permanently.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await apiRequest("DELETE", `/reviews/${reviewId}`);
+            await refreshReviews();
+          } catch (error: any) {
+            Alert.alert("Delete failed", error?.message || "Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const startEditingReview = (review: ReviewItem) => {
+    setDraftRating(review.rating);
+    setDraftComment(review.comment);
+    setEditingReviewId(review.id);
+  };
 
   const handleContact = async (url: string) => {
     try {
@@ -145,7 +275,7 @@ const ListerProfileScreen = ({ route }: Props) => {
                       borderColor: colors.border,
                       flexDirection: "row",
                       width: "100%",
-                      justifyContent: "flex-start",
+                      justifyContent: "space-between",
                       paddingHorizontal: 16,
                       alignItems: "center",
                     },
@@ -171,13 +301,9 @@ const ListerProfileScreen = ({ route }: Props) => {
                     )}
                   </View>
                   <View
-                    style={{
-                      alignItems: "flex-start",
-                      flex: 1,
-                      height: "100%",
-                    }}
+                    style={styles.profileInfo}
                   >
-                    <Text style={[styles.name, { color: colors.text }]}>
+                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
                       {lister.firstName} {lister.lastName}
                     </Text>
                     <Text style={[styles.role, { color: colors.primary }]}>
@@ -189,6 +315,28 @@ const ListerProfileScreen = ({ route }: Props) => {
                       {listerProperties.length} active{" "}
                       {listerProperties.length === 1 ? "listing" : "listings"}
                     </Text>
+                    <View
+                      accessibilityLabel={`${summary.averageRating.toFixed(1)} out of 5 stars, ${summary.totalReviews} reviews`}
+                      style={styles.profileRating}
+                    >
+                      {summary.totalReviews > 0 ? (
+                        <>
+                          <View style={styles.profileStars}>
+                            {renderStars(summary.averageRating, 14)}
+                          </View>
+                          <Text style={[styles.profileRatingValue, { color: colors.text }]}>
+                            {summary.averageRating.toFixed(1)}
+                          </Text>
+                          <Text style={[styles.profileRatingCount, { color: colors.textMuted }]}>
+                            ({summary.totalReviews})
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={[styles.profileRatingCount, { color: colors.textMuted }]}>
+                          No reviews yet
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 </View>
 
@@ -209,23 +357,167 @@ const ListerProfileScreen = ({ route }: Props) => {
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>
                     Reviews
                   </Text>
-                  <View
-                    style={[
-                      styles.reviewPlaceholder,
-                      { backgroundColor: colors.card },
-                    ]}
-                  >
-                    <Ionicons
-                      name="star-outline"
-                      size={20}
-                      color={colors.textMuted}
-                    />
-                    <Text
-                      style={[styles.reviewCopy, { color: colors.textMuted }]}
+
+                  {canCreateReview && (
+                    <View
+                      style={[
+                        styles.reviewComposer,
+                        { backgroundColor: colors.card },
+                      ]}
                     >
-                      Reviews will be available in a future update.
-                    </Text>
-                  </View>
+                      <Text style={[styles.reviewComposerTitle, { color: colors.text }]}>
+                        {editingReviewId ? "Edit your review" : "Leave a review"}
+                      </Text>
+
+                      <View style={styles.starSelector}>
+                        {Array.from({ length: 5 }).map((_, index) => {
+                          const value = index + 1;
+                          const active = value <= draftRating;
+
+                          return (
+                            <TouchableOpacity
+                              key={value}
+                              onPress={() => setDraftRating(value)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Rate ${value} out of 5`}
+                            >
+                              <Ionicons
+                                name={active ? "star" : "star-outline"}
+                                size={28}
+                                color={active ? "#f5b301" : colors.textMuted}
+                              />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      <TextInput
+                        value={draftComment}
+                        onChangeText={setDraftComment}
+                        placeholder="Share your experience with this lister"
+                        placeholderTextColor={colors.textMuted}
+                        multiline
+                        style={[
+                          styles.reviewInput,
+                          {
+                            backgroundColor: colors.background,
+                            color: colors.text,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      />
+
+                      <TouchableOpacity
+                        style={[
+                          styles.submitReviewButton,
+                          {
+                            backgroundColor: colors.primary,
+                            opacity: isSubmittingReview ? 0.7 : 1,
+                          },
+                        ]}
+                        onPress={() => void handleSubmitReview()}
+                        disabled={isSubmittingReview}
+                      >
+                        <Text style={styles.submitReviewText}>
+                          {isSubmittingReview
+                            ? "Submitting..."
+                            : editingReviewId
+                              ? "Save changes"
+                              : "Submit review"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {reviews.length > 0 ? (
+                    reviews.map((review) => {
+                      const isOwnReview = signedInUser?.id === review.reviewerId;
+
+                      return (
+                        <View
+                          key={review.id}
+                          style={[
+                            styles.reviewCard,
+                            { backgroundColor: colors.card, borderColor: colors.border },
+                          ]}
+                        >
+                          <View style={styles.reviewHeaderRow}>
+                            <View style={styles.reviewAuthorRow}>
+                              {review.reviewer?.avatar?.url ? (
+                                <Image
+                                  source={{ uri: review.reviewer.avatar.url }}
+                                  style={styles.reviewAvatar}
+                                />
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.reviewAvatar,
+                                    { backgroundColor: colors.background },
+                                  ]}
+                                >
+                                  <Ionicons
+                                    name="person-outline"
+                                    size={14}
+                                    color={colors.textMuted}
+                                  />
+                                </View>
+                              )}
+                              <View>
+                                <Text style={[styles.reviewAuthor, { color: colors.text }]}>
+                                  {review.reviewer
+                                    ? `${review.reviewer.firstName || ""} ${review.reviewer.lastName || ""}`.trim() || "Guest reviewer"
+                                    : "Guest reviewer"}
+                                </Text>
+                                <Text style={[styles.reviewDate, { color: colors.textMuted }]}>
+                                  {new Date(review.createdAt).toLocaleDateString()}
+                                </Text>
+                              </View>
+                            </View>
+
+                            {isOwnReview && (
+                              <View style={styles.reviewActions}>
+                                <TouchableOpacity
+                                  onPress={() => startEditingReview(review)}
+                                  accessibilityRole="button"
+                                >
+                                  <Text style={[styles.inlineActionText, { color: colors.primary }]}>Edit</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => void handleDeleteReview(review.id)}
+                                  accessibilityRole="button"
+                                >
+                                  <Text style={[styles.inlineActionText, { color: "#ef4444" }]}>Delete</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+
+                          <View style={styles.starRow}>{renderStars(review.rating, 14)}</View>
+                          {review.comment ? (
+                            <Text style={[styles.reviewComment, { color: colors.textMuted }]}>
+                              {review.comment}
+                            </Text>
+                          ) : null}
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <View
+                      style={[
+                        styles.reviewPlaceholder,
+                        { backgroundColor: colors.card },
+                      ]}
+                    >
+                      <Ionicons
+                        name="star-outline"
+                        size={20}
+                        color={colors.textMuted}
+                      />
+                      <Text style={[styles.reviewCopy, { color: colors.textMuted }]}>
+                        No reviews yet. Be the first to leave one.
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.listingsHeading}>
@@ -315,28 +607,108 @@ const ListerProfileScreen = ({ route }: Props) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   profileHeader: {
-    // alignItems: "center",
-    // paddingTop: 28,
-    // paddingBottom: 22,
     borderBottomWidth: 1,
-    height: 200,
-    paddingVertical: 12,
+    minHeight: 176,
+    paddingVertical: 16,
   },
   avatarWrap: {
-    width: "50%",
-    height: "100%",
+    width: 124,
+    height: 144,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
     overflow: "hidden",
-    marginHorizontal: 16,
+    marginRight: 14,
   },
   avatar: { width: "100%", height: "100%" },
+  profileInfo: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
   name: { fontSize: 22, fontWeight: "800" },
   role: { fontSize: 14, fontWeight: "700", marginTop: 5 },
   listingCount: { fontSize: 13, marginTop: 8 },
+  profileRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 5,
+    marginTop: 12,
+  },
+  profileStars: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 1,
+  },
+  profileRatingValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  profileRatingCount: {
+    fontSize: 12,
+  },
   section: { padding: 18, borderBottomWidth: 1 },
   sectionTitle: { fontSize: 17, fontWeight: "700" },
   bio: { fontSize: 14, lineHeight: 21, marginTop: 8 },
+  reviewSummary: {
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 10,
+  },
+  reviewSummaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  starGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  ratingValue: {
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  reviewMeta: {
+    fontSize: 12,
+    marginTop: 6,
+  },
+  reviewComposer: {
+    marginTop: 14,
+    borderRadius: 10,
+    padding: 14,
+    gap: 12,
+  },
+  reviewComposerTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  starSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  reviewInput: {
+    minHeight: 80,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    textAlignVertical: "top",
+  },
+  submitReviewButton: {
+    minHeight: 42,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  submitReviewText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
   reviewPlaceholder: {
     minHeight: 48,
     flexDirection: "row",
@@ -347,6 +719,59 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   reviewCopy: { flex: 1, fontSize: 13 },
+  reviewCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+  },
+  reviewHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  reviewAuthorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  reviewAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewAuthor: {
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  reviewDate: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  reviewActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  inlineActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  starRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 10,
+  },
+  reviewComment: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 10,
+  },
   listingsHeading: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 12 },
   emptyListings: {
     textAlign: "center",

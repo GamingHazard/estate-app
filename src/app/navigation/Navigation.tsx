@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -27,7 +28,6 @@ import CustomerCare from "../../features/settings/CustomerCare";
 import PropertyDetailsScreen from "../../features/properties/PropertyDetailsScreen";
 import { Dashboard } from "../../features/admin/screens/Dashboard";
 import { PropertiesManagement } from "../../features/admin/screens/PropertiesManagement";
-import { PropertyDetails } from "../../features/admin/screens/PropertyDetails";
 import { MarketplacePropertyCreation } from "../../features/admin/screens/MarketplacePropertyCreation";
 import { MarketplacePropertyDetails } from "../../features/admin/screens/MarketplacePropertyDetails";
 import { AdminNotifications } from "../../features/admin/screens/AdminNotifications";
@@ -36,6 +36,7 @@ import { AdminMessages } from "../../features/admin/screens/AdminMessages";
 import { AdminSettings } from "../../features/admin/screens/AdminSettings";
 import { Analytics } from "../../features/admin/screens/Analytics";
 import { AdminManual } from "../../features/admin/screens/AdminManual";
+import DealsManagement from "../../features/admin/screens/DealsManagement";
 
 import { RootStackParamList } from "../../shared/types";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
@@ -53,8 +54,9 @@ const Stack = createStackNavigator<RootStackParamList>();
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const TabNavigator = () => {
-  const { colors } = useTheme();
+  const { colors ,theme} = useTheme();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -63,7 +65,7 @@ const TabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
           let iconSize = focused ? 28 : 22; // Larger when active
-          let iconColor = focused ? colors.primary : colors.text;
+          let iconColor = focused ? theme === 'light'?colors.bg:'white': colors.text;
 
           switch (route.name) {
             case "Home":
@@ -86,7 +88,7 @@ const TabNavigator = () => {
             case "Admin":
               iconName = focused ? "grid" : "grid-outline";
               iconSize = focused ? 26 : 20;
-              iconColor = focused ? colors.primary : colors.text;
+              iconColor = focused ? theme === 'light' ? colors.bg : 'white' : colors.text;
               break;
             default:
               iconName = "alert-circle";
@@ -95,19 +97,19 @@ const TabNavigator = () => {
           return <Ionicons name={iconName} size={iconSize} color={iconColor} />;
         },
         tabBarShowLabel: true,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: theme === "dark" ? "white" : colors.bg,
         tabBarInactiveTintColor: colors.tabInactive + "99",
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
-          marginBottom: 6,
+          marginBottom: 3,
         },
         tabBarStyle: {
           position: "absolute",
           left: 16,
           right: 16,
           bottom: 16,
-          height: 60,
+          height: 65 + insets.bottom,
           borderRadius: 28,
           backgroundColor: colors.card,
           borderWidth: 0,
@@ -118,7 +120,8 @@ const TabNavigator = () => {
           shadowRadius: 8,
           elevation: 8,
           paddingHorizontal: 12,
-          paddingVertical: 0,
+          paddingBottom: insets.bottom + 8,
+          paddingTop: 0,
           alignItems: "center",
           justifyContent: "center",
         },
@@ -131,11 +134,15 @@ const TabNavigator = () => {
           headerShown: false,
         }}
       />
-      <Tab.Screen name="Deals" component={DealsScreen} />
+      <Tab.Screen name="Deals" component={DealsScreen} options={{
+          headerShown: false,
+        }}/>
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
-      {(user?.role === "landlord" || user?.role === "propertyManager") && (
+      {(["admin", "landlord", "propertyManager"] as string[]).includes(
+        user?.role ?? "",
+      ) && (
         <Tab.Screen
           name="Admin"
           component={AdminNavigator}
@@ -170,6 +177,10 @@ const AdminNavigator = () => {
           component={PropertiesManagement}
         />
         <AdminStack.Screen
+          name="DealsManagement"
+          component={DealsManagement}
+        />
+        <AdminStack.Screen
           name="PropertyCreation"
           component={MarketplacePropertyCreation}
           options={{
@@ -198,10 +209,12 @@ const AdminNavigator = () => {
               .getMarketplaceSnapshot()
               .some((property) => property.id === propertyId);
 
-            return isMarketplaceProperty ? (
-              <MarketplacePropertyDetails propertyId={propertyId} />
-            ) : (
-              <PropertyDetails propertyId={propertyId} />
+            return (
+              <MarketplacePropertyDetails
+                propertyId={propertyId ?? ""}
+                // Legacy local property detail screen was removed; marketplace details
+                // are now the active admin detail view for all property records.
+              />
             );
           }}
         />

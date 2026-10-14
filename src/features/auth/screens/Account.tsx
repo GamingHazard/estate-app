@@ -10,7 +10,11 @@ import {
   Alert,
   ActivityIndicator,
   Pressable,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { useAuth } from "../AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,12 +28,16 @@ interface AccountScreenProps {
 }
 
 const AccountScreen: React.FC<AccountScreenProps> = () => {
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const { logout, user, updateUser } = useAuth();
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -87,6 +95,7 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setIsPasswordModalVisible(false);
     } catch (error) {
       Alert.alert(
         "Unable to update password",
@@ -152,270 +161,206 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
     setDeletePassword("");
   };
 
+  const displayName = [user?.firstName, user?.lastName]
+    .filter(Boolean)
+    .join(" ");
+  const roleLabel = user?.role === "propertyManager"
+    ? "Property manager"
+    : user?.role === "landlord"
+      ? "Landlord"
+      : "Member";
+  const detailRows = [
+    { label: "Email", value: user?.email },
+    { label: "Phone", value: user?.phoneNumber },
+    { label: "Date of birth", value: user?.dob },
+    { label: "Gender", value: user?.gender },
+    ...((user?.role === "landlord" || user?.role === "propertyManager") && user.nin
+      ? [{ label: "NIN", value: user.nin }]
+      : []),
+  ];
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.sectionHeading}>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "bold" }}>
-          Profile
-        </Text>
-      </View>
-      <View
-        style={{
-          width: "100%",
-          borderRadius: 8,
-          backgroundColor: colors.card,
-          padding: 10,
-          position: "relative",
-        }}
-      >
+      <View style={[styles.identityHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+          {user?.avatar?.url ? (
+            <Image source={{ uri: user.avatar.url }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarInitials}>
+              {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+              {user?.lastName?.[0]?.toUpperCase() || ""}
+            </Text>
+          )}
+        </View>
+        <View style={styles.identityText}>
+          <Text style={[styles.identityName, { color: colors.text }]} numberOfLines={1}>
+            {displayName || "Your account"}
+          </Text>
+          <Text style={[styles.identityEmail, { color: colors.textMuted }]} numberOfLines={1}>
+            {user?.email || "No email added"}
+          </Text>
+          <Text style={[styles.roleLabel, { color: colors.primary }]}>{roleLabel}</Text>
+        </View>
         {user && (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Edit profile"
             onPress={() => setIsProfileModalVisible(true)}
-            style={[
-              styles.iconButton,
-              { backgroundColor: colors.card, elevation: 2, zIndex: 1 },
-            ]}
+            style={[styles.editButton, { borderColor: colors.border }]}
           >
-            <Ionicons name="create-outline" size={21} color={colors.primary} />
-            <Text>Edit Profile</Text>
+            <Ionicons name="create-outline" size={18} color={colors.primary} />
+            <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
           </Pressable>
         )}
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "bold" }}>
-          Personal Information
-        </Text>
-        <Text
-          style={{ color: theme === "dark" ? "white" : "black", marginTop: 10 }}
-        >
-          Full Name
-        </Text>
-        <Text style={{ color: colors.textMuted, marginTop: 5, fontSize: 16 }}>
-          {user?.firstName || " "} {user?.lastName || "User Full Name"}
-        </Text>
+      </View>
 
-        <Text
-          style={{ color: theme === "dark" ? "white" : "black", marginTop: 10 }}
-        >
-          Email
-        </Text>
-        <View
-          style={{ flexDirection: "row", alignItems: "center", marginTop: 5 }}
-        >
-          <Text
-            style={{ color: colors.textMuted, fontSize: 16, marginRight: 10 }}
+      <View style={styles.sectionHeading}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Personal information</Text>
+      </View>
+      <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {detailRows.map((item, index) => (
+          <View
+            key={item.label}
+            style={[
+              styles.detailRow,
+              index < detailRows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+            ]}
           >
-            {user?.email || "User Email"}
-          </Text>
-          <Text
-            style={{
-              backgroundColor: "lightpink",
-              color: "red",
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 12,
-              fontSize: 12,
-              zIndex: 1,
-            }}
-          >
-            Not-Verified
+            <Text style={[styles.detailLabel, { color: colors.textMuted }]}>{item.label}</Text>
+            <Text style={[styles.detailValue, { color: item.value ? colors.text : colors.textMuted }]} numberOfLines={2}>
+              {item.value || "Not added"}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.sectionHeading}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Change password"
+        onPress={() => setIsPasswordModalVisible(true)}
+        style={[styles.actionRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.actionIcon, { backgroundColor: colors.primary + "18" }]}>
+          <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
+        </View>
+        <View style={styles.actionCopy}>
+          <Text style={[styles.actionTitle, { color: colors.text }]}>Change password</Text>
+          <Text style={[styles.actionSubtitle, { color: colors.textMuted }]}>Update your sign-in credentials</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+      </Pressable>
+
+      <View style={styles.sectionHeading}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Account actions</Text>
+      </View>
+      <View style={[styles.dangerSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.dangerCopy}>
+          <Text style={[styles.actionTitle, { color: colors.text }]}>Delete account</Text>
+          <Text style={[styles.actionSubtitle, { color: colors.textMuted }]}>
+            Your account and personal data will be removed.
           </Text>
         </View>
-
-        <Text
-          style={{ color: theme === "dark" ? "white" : "black", marginTop: 10 }}
-        >
-          Date of Birth
-        </Text>
-        <Text style={{ color: colors.textMuted, marginTop: 5, fontSize: 16 }}>
-          {user?.dob || "User Date of Birth"}
-        </Text>
-
-        <Text
-          style={{ color: theme === "dark" ? "white" : "black", marginTop: 10 }}
-        >
-          Gender
-        </Text>
-        <Text style={{ color: colors.textMuted, marginTop: 5, fontSize: 16 }}>
-          {user?.gender || "User Gender"}
-        </Text>
-
-        <Text
-          style={{ color: theme === "dark" ? "white" : "black", marginTop: 10 }}
-        >
-          Phone
-        </Text>
-        <Text style={{ color: colors.textMuted, marginTop: 5, fontSize: 16 }}>
-          {user?.phoneNumber || "User Phone"}
-        </Text>
-
-        {(user?.role === "landlord" || user?.role === "propertyManager") &&
-          user.nin && (
-            <>
-              <Text
-                style={{
-                  color: theme === "dark" ? "white" : "black",
-                  marginTop: 10,
-                }}
-              >
-                NIN
-              </Text>
-              <Text
-                style={{ color: colors.textMuted, marginTop: 5, fontSize: 16 }}
-              >
-                {user?.nin || "User NIN"}
-              </Text>
-            </>
-          )}
-      </View>
-
-      {/* Security */}
-      <Text
-        style={{
-          color: "lightgrey",
-          fontSize: 20,
-          fontWeight: "bold",
-          marginVertical: 10,
-        }}
-      >
-        Security
-      </Text>
-      <View
-        style={{
-          width: "100%",
-          borderRadius: 8,
-          backgroundColor: colors.card,
-          padding: 10,
-        }}
-      >
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "bold" }}>
-          Change Password
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: colors.background, color: colors.text },
-          ]}
-          placeholder="Enter old-password"
-          placeholderTextColor={colors.textMuted}
-          value={currentPassword}
-          onChangeText={setCurrentPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: colors.background, color: colors.text },
-          ]}
-          placeholder="Enter new-password"
-          placeholderTextColor={colors.textMuted}
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: colors.background, color: colors.text },
-          ]}
-          placeholder="confirm-password"
-          placeholderTextColor={colors.textMuted}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-
-        <TouchableOpacity
-          style={{
-            marginTop: 10,
-            backgroundColor: colors.bg,
-            padding: 10,
-            borderRadius: 8,
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "row",
-          }}
-          onPress={handleChangePassword}
-          disabled={isChangingPassword}
-        >
-          {isChangingPassword ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              Update Password
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Delete account */}
-      <Text
-        style={{
-          color: "lightpink",
-          fontSize: 20,
-          fontWeight: "bold",
-          marginVertical: 10,
-        }}
-      >
-        Danger Zone
-      </Text>
-      <View
-        style={{
-          width: "100%",
-          borderRadius: 8,
-          backgroundColor: "lightpink",
-          padding: 10,
-        }}
-      >
-        <Text style={{ color: "crimson", fontSize: 20, fontWeight: "bold" }}>
-          Delete Account
-        </Text>
-
-        <Text style={{ color: "crimson", marginTop: 10 }}>
-          Once you delete your account, there is no going back. Please be
-          certain.
-          <Text style={{ fontWeight: "bold" }}>
-            This action is irreversible!
-          </Text>
-        </Text>
-        <TouchableOpacity
-          style={{
-            marginTop: 10,
-            backgroundColor: "crimson",
-            padding: 10,
-            borderRadius: 8,
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "row",
-          }}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
           onPress={() => setIsDeleteModalVisible(true)}
           disabled={isDeleting}
+          style={[styles.deleteButton, { borderColor: colors.destructive }]}
         >
-          <Text style={{ color: "pink", fontWeight: "bold" }}>
-            {isDeleting ? "Deleting..." : "Delete Account"}
+          <Text style={[styles.deleteButtonText, { color: colors.destructive }]}>
+            {isDeleting ? "Deleting..." : "Delete account"}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
-      <TouchableOpacity
-        style={{
-          marginTop: 20,
-          backgroundColor: colors.primary,
-          padding: 12,
-          borderRadius: 8,
-          alignItems: "center",
-        }}
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Sign out"
         onPress={logout}
+        style={[styles.signOutButton, { borderColor: colors.border }]}
       >
-        <Text style={{ color: "white", fontWeight: "bold" }}>
-          Sign out {user?.username ? `(${user.username})` : ""}
-        </Text>
-      </TouchableOpacity>
-      <View style={{ height: 40 }} />
+        <Ionicons name="log-out-outline" size={20} color={colors.textMuted} />
+        <Text style={[styles.signOutText, { color: colors.textMuted }]}>Sign out</Text>
+      </Pressable>
+
+      <Modal
+        visible={isPasswordModalVisible}
+        animationType="slide"
+        onRequestClose={() => setIsPasswordModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
+          <KeyboardAvoidingView
+            style={styles.passwordModal}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Change password</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close password form"
+                onPress={() => setIsPasswordModalVisible(false)}
+                hitSlop={10}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.passwordForm} keyboardShouldPersistTaps="handled">
+            <Text style={[styles.passwordIntro, { color: colors.textMuted }]}>Use a strong password that you do not use elsewhere.</Text>
+            {[
+              { label: "Current password", value: currentPassword, setValue: setCurrentPassword, visible: showCurrentPassword, setVisible: setShowCurrentPassword },
+              { label: "New password", value: newPassword, setValue: setNewPassword, visible: showNewPassword, setVisible: setShowNewPassword },
+              { label: "Confirm new password", value: confirmPassword, setValue: setConfirmPassword, visible: showConfirmPassword, setVisible: setShowConfirmPassword },
+            ].map((field) => (
+              <View key={field.label} style={styles.passwordField}>
+                <Text style={[styles.fieldLabel, { color: colors.text }]}>{field.label}</Text>
+                <View style={[styles.passwordInputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <TextInput
+                    accessibilityLabel={field.label}
+                    style={[styles.passwordInput, { color: colors.text }]}
+                    value={field.value}
+                    onChangeText={field.setValue}
+                    secureTextEntry={!field.visible}
+                    autoCapitalize="none"
+                    autoComplete="password"
+                    textContentType="password"
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${field.visible ? "Hide" : "Show"} ${field.label.toLowerCase()}`}
+                    onPress={() => field.setVisible(!field.visible)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name={field.visible ? "eye-off-outline" : "eye-outline"} size={21} color={colors.textMuted} />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleChangePassword}
+              disabled={isChangingPassword}
+              style={[styles.savePasswordButton, { backgroundColor: colors.primary }]}
+            >
+              {isChangingPassword ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.savePasswordText}>Update password</Text>}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setIsPasswordModalVisible(false)}
+              style={styles.cancelPasswordButton}
+            >
+              <Text style={[styles.cancelPasswordText, { color: colors.textMuted }]}>Cancel</Text>
+            </Pressable>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
 
       <Modal
         visible={isProfileModalVisible && Boolean(user)}
@@ -511,25 +456,232 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 32,
+  },
+  identityHeader: {
+    minHeight: 96,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarInitials: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  identityText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  identityName: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  identityEmail: {
+    fontSize: 13,
+    marginTop: 3,
+  },
+  roleLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 5,
+  },
+  editButton: {
+    minHeight: 42,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   sectionHeading: {
+    marginTop: 24,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  section: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+  },
+  detailRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginVertical: 10,
+    minHeight: 56,
+    paddingVertical: 10,
   },
-  iconButton: {
-    borderRadius: 20,
+  detailLabel: {
+    fontSize: 14,
+    flexShrink: 0,
+  },
+  detailValue: {
+    flex: 1,
+    marginLeft: 18,
+    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  actionRow: {
+    minHeight: 76,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    padding: 3,
-    paddingHorizontal: 4,
+  },
+  actionCopy: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  actionSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  dangerSection: {
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 14,
+    gap: 14,
+  },
+  dangerCopy: {
     gap: 2,
-    position: "absolute",
-    top: 10,
-    right: 10,
+  },
+  deleteButton: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  deleteButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  signOutButton: {
+    minHeight: 52,
+    marginTop: 18,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  signOutText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  passwordModal: {
+    flex: 1,
+  },
+  modalHeader: {
+    minHeight: 58,
+    paddingHorizontal: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  passwordForm: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 36,
+  },
+  passwordIntro: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 22,
+  },
+  passwordField: {
+    marginBottom: 18,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  passwordInputWrap: {
+    minHeight: 52,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    minHeight: 50,
+    fontSize: 16,
+  },
+  savePasswordButton: {
+    minHeight: 50,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  savePasswordText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  cancelPasswordText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  cancelPasswordButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 6,
   },
   deleteOverlay: {
     flex: 1,
@@ -566,22 +718,11 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
-    height: 40,
+    minHeight: 48,
     borderRadius: 8,
-    marginVertical: 10,
-    paddingHorizontal: 6,
-  },
-  warningContainer: {
-    alignItems: "center",
-    marginVertical: 10,
-    padding: 10,
-    backgroundColor: "rgba(255, 0, 0, 0.1)",
-    borderRadius: 8,
-  },
-  warningText: {
-    color: "red",
-    fontSize: 14,
-    textAlign: "center",
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
   },
 });
 

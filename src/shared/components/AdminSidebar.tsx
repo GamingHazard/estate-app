@@ -22,6 +22,7 @@ type AdminScreens = keyof Pick<
   RootStackParamList,
   | "Dashboard"
   | "PropertiesManagement"
+  | "DealsManagement"
   | "PropertyCreation"
   | "AdminNotifications"
   | "AdminMessages"
@@ -66,6 +67,11 @@ export function AdminSidebar({
       icon: "add-circle-outline",
       label: "Create Property",
       screen: "PropertiesManagement",
+    },
+    {
+      icon: "pricetags-outline",
+      label: "Deals",
+      screen: "DealsManagement",
     },
     {
       icon: "notifications-outline",

@@ -2,6 +2,7 @@ export type ApiPropertyImage = {
   _id?: string;
   title?: string;
   public_id?: string;
+  publicId?: string;
   url: string;
 };
 
@@ -80,6 +81,9 @@ export type ApiProperty = {
   units?: ApiPropertyUnit[];
   listings?: ApiPropertyListing[];
   owner?: string;
+  ownerId?: string;
+  moderationStatus?: ModerationStatus;
+  moderationReason?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -153,6 +157,8 @@ export type Property = {
   units: PropertyUnit[];
   listings: PropertyListing[];
   ownerId?: string;
+  moderationStatus?: ModerationStatus;
+  moderationReason?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -179,7 +185,7 @@ export type PropertyListResponse = {
 const mapImage = (image: ApiPropertyImage): PropertyImage => ({
   id: image._id,
   title: image.title,
-  publicId: image.public_id,
+  publicId: image.publicId ?? image.public_id,
   url: image.url,
 });
 
@@ -207,27 +213,8 @@ const mapUnit = (unit: ApiPropertyUnit): PropertyUnit => ({
   images: (unit.images ?? []).map(mapImage),
 });
 
-const mapProperty = (property: ApiProperty): Property => ({
-  id: property._id,
-  name: property.name,
-  address: property.address,
-  city: property.city,
-  country: property.country,
-  category: property.category,
-  estate: property.estate,
-  pricePerUnit: Number(property.price_per_unit),
-  propertyType: property.propertyType,
-  description: property.description,
-  images: (property.images ?? []).map(mapImage),
-  features: property.features ?? [],
-  specifications: (property.specifications ?? []).map(mapSpecification),
-  location: property.location,
-  policies: property.policies,
-  serviceFee: property.serviceFee,
-  unitsAvailable: property.units_available ?? 0,
-  customizeUnits: property.customizeUnits ?? false,
-  units: (property.units ?? []).map(mapUnit),
-  listings: (property.listings ?? []).map((listing) => ({
+const mapProperty = (property: ApiProperty): Property => {
+  const listings = (property.listings ?? []).map((listing) => ({
     id: listing._id ?? `${property._id}-${listing.purpose}`,
     propertyId: listing.propertyId ?? listing.property ?? property._id,
     purpose: listing.purpose,
@@ -243,11 +230,38 @@ const mapProperty = (property: ApiProperty): Property => ({
       listing.createdAt ?? property.createdAt ?? new Date(0).toISOString(),
     updatedAt:
       listing.updatedAt ?? property.updatedAt ?? new Date(0).toISOString(),
-  })),
-  ownerId: property.owner,
+  }));
+
+  return {
+  id: property._id,
+  name: property.name,
+  address: property.address,
+  city: property.city,
+  country: property.country,
+  category: property.category,
+  estate: property.estate,
+  pricePerUnit: Number(
+    property.price_per_unit ?? listings.find((item) => item.status === "published")?.price ?? 0,
+  ),
+  propertyType: property.propertyType,
+  description: property.description,
+  images: (property.images ?? []).map(mapImage),
+  features: property.features ?? [],
+  specifications: (property.specifications ?? []).map(mapSpecification),
+  location: property.location,
+  policies: property.policies,
+  serviceFee: property.serviceFee,
+  unitsAvailable: property.units_available ?? 0,
+  customizeUnits: property.customizeUnits ?? false,
+  units: (property.units ?? []).map(mapUnit),
+  listings,
+  ownerId: property.ownerId ?? property.owner,
+  moderationStatus: property.moderationStatus,
+  moderationReason: property.moderationReason,
   createdAt: property.createdAt,
   updatedAt: property.updatedAt,
-});
+  };
+};
 
 export function parsePropertyListResponse(
   value: unknown,

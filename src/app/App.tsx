@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../shared/theme/ThemeContext";
 import { AuthProvider } from "../features/auth/AuthContext";
 import { SavedPropertiesProvider } from "../features/properties/SavedPropertiesContext";
@@ -35,14 +36,16 @@ const App = () => {
       <ThemeProvider>
         <AuthProvider>
           <SavedPropertiesProvider>
-            <NavigationContainer>
-              {isLoading ? (
-                <SplashScreen onLoadComplete={handleLoadComplete} />
-              ) : (
-                <ThemedNavigation />
-              )}
-              <StatusBar style="light" />
-            </NavigationContainer>
+            <SafeAreaProvider>
+              <NavigationContainer>
+                {isLoading ? (
+                  <SplashScreen onLoadComplete={handleLoadComplete} />
+                ) : (
+                  <ThemedNavigation />
+                )}
+                <StatusBar style="light" />
+              </NavigationContainer>
+            </SafeAreaProvider>
           </SavedPropertiesProvider>
         </AuthProvider>
       </ThemeProvider>

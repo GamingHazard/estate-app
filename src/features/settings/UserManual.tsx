@@ -87,8 +87,9 @@ const UserManual: React.FC<UserManualProps> = () => {
           7. Application Settings
         </Text>
         <Text style={{ color: colors.text }}>
-          - Access the Settings tab to manage notifications, dark mode, and
-          more.
+          - Open the Settings tab for appearance and General Settings for
+          locally saved notification, search, and privacy preferences. Push and
+          email delivery are not connected yet.
         </Text>
       </View>
 

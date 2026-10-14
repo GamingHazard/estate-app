@@ -9,8 +9,8 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -36,6 +36,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   onBack,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
@@ -121,8 +122,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingTop: insets.top },
+      ]}
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -160,7 +164,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
       {/* Input Area */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[styles.inputContainer, { borderTopColor: colors.border }]}
+        style={[
+          styles.inputContainer,
+          { borderTopColor: colors.border, paddingBottom: insets.bottom },
+        ]}
       >
         <TextInput
           style={[
@@ -189,7 +196,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           />
         </TouchableOpacity>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

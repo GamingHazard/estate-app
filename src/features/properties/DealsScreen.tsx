@@ -11,7 +11,9 @@ import {
 import { useTheme } from "../../shared/theme/ThemeContext";
 import {
   formatPropertyPrice,
+  getListingPriceLabel,
   getPropertyDisplayLocation,
+  Property,
 } from "../../data/property";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -30,11 +32,27 @@ const DealsScreen = () => {
     error,
     refetch,
   } = useProperties();
-  const propertiesWithUnits = properties.filter(
+  const getPublishedOffer = (property: Property) =>
+    property.listings.find((listing) => listing.status === "published");
+  const getDisplayPrice = (property: Property) => {
+    const listing = getPublishedOffer(property);
+    return listing
+      ? getListingPriceLabel(listing)
+      : `${formatPropertyPrice(property.pricePerUnit)} / unit`;
+  };
+  const visibleProperties = properties.filter(
+    (property) =>
+      property.listings.length === 0 || Boolean(getPublishedOffer(property)),
+  );
+  const propertiesWithUnits = visibleProperties.filter(
     (property) => property.unitsAvailable > 0 || property.units.length > 0,
   );
-  const lowestPriceProperties = [...properties]
-    .sort((a, b) => a.pricePerUnit - b.pricePerUnit)
+  const lowestPriceProperties = [...visibleProperties]
+    .sort(
+      (a, b) =>
+        (getPublishedOffer(a)?.price ?? a.pricePerUnit) -
+        (getPublishedOffer(b)?.price ?? b.pricePerUnit),
+    )
     .slice(0, 5);
 
   const onRefresh = React.useCallback(() => {
@@ -145,8 +163,7 @@ const DealsScreen = () => {
                     <Text style={styles.cardTitle}>{property.name}</Text>
                     <View style={styles.priceContainer}>
                       <Text style={styles.cardPrice}>
-                        {property.unitsAvailable} units ·{" "}
-                        {formatPropertyPrice(property.pricePerUnit)} / unit
+                        {property.unitsAvailable} units · {getDisplayPrice(property)}
                       </Text>
                     </View>
                     <Text style={{ color: "#fff", fontSize: 12 }}>
@@ -192,7 +209,7 @@ const DealsScreen = () => {
                     <Text
                       style={[styles.listItemPrice, { color: colors.primary }]}
                     >
-                      {formatPropertyPrice(property.pricePerUnit)} / unit
+                      {getDisplayPrice(property)}
                     </Text>
                   </View>
                 </TouchableOpacity>

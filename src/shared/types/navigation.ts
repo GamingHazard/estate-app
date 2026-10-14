@@ -14,6 +14,7 @@ export interface RootStackParamList extends ParamListBase {
   Admin: undefined;
   Dashboard: undefined;
   PropertiesManagement: undefined;
+  DealsManagement: undefined;
   PropertyCreation: undefined;
   AdminNotifications: undefined;
   AdminNotificationDetails: { notificationId: string };

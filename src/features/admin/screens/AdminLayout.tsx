@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
-  SafeAreaView,
   Pressable,
   TouchableOpacity,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { AdminSidebar } from "../../../shared/components/AdminSidebar";
@@ -26,11 +25,13 @@ export function AdminLayout({
   onToggleSidebar,
 }: AdminLayoutProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: "lightblue",
+      paddingTop: insets.top,
     },
     layout: {
       flex: 1,
@@ -75,7 +76,7 @@ export function AdminLayout({
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.layout}>
         {!isSidebarCollapsed && onToggleSidebar && (
           <Pressable
@@ -105,6 +106,6 @@ export function AdminLayout({
           <View style={styles.mainContent}>{children}</View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

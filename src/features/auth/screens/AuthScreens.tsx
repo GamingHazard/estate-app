@@ -11,7 +11,7 @@ import {
   Dimensions,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
@@ -28,7 +28,10 @@ interface AuthScreensProps {
   // Add props here if needed
 }
 
-const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
+const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
+  colors,
+  onForgotPassword,
+}) => {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -224,7 +227,7 @@ const LoginForm: React.FC<{ colors: any }> = ({ colors }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.forgotPassword}>
+      <TouchableOpacity style={styles.forgotPassword} onPress={onForgotPassword}>
         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
       </TouchableOpacity>
 
@@ -812,15 +815,286 @@ const EmailVerificationForm: React.FC<{ colors: any }> = ({ colors }) => {
   );
 };
 
-const AccountRecoveryForm: React.FC<{ colors: any }> = ({ colors }) => {
+const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> = ({
+  colors,
+  onBackToLogin,
+}) => {
+  const [step, setStep] = useState<"request" | "verify" | "reset">("request");
   const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { colors: themeColors } = useTheme();
 
-  const handleRecovery = () => {
-    // Implement recovery logic here
-    console.log("Recover:", { email });
+  const resetFeedback = () => {
+    setStatusMessage("");
+    setErrorMessage("");
   };
+
+  const handleRequestCode = async () => {
+    resetFeedback();
+
+    if (!email.trim()) {
+      setErrorMessage("Please enter your email");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await apiRequest("POST", "/auth/password-reset/request", {
+        email,
+      });
+      const result = await response.json();
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Unable to send the reset code");
+      }
+
+      setStatusMessage(result.message || "A reset code has been sent to your email.");
+      setStep("verify");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to send the reset code.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    resetFeedback();
+
+    if (!otpCode.trim()) {
+      setErrorMessage("Please enter the 6-digit code");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await apiRequest("POST", "/auth/password-reset/verify", {
+        email,
+        code: otpCode,
+      });
+      const result = await response.json();
+
+      if (!result?.success) {
+        throw new Error(result?.message || "The reset code is invalid");
+      }
+
+      setStatusMessage(result.message || "Code verified successfully.");
+      setStep("reset");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to validate the code.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    resetFeedback();
+
+    if (!password.trim() || !confirmPassword.trim()) {
+      setErrorMessage("Please enter and confirm your new password");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage("Password must be at least 6 characters long.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await apiRequest("POST", "/auth/password-reset/reset", {
+        email,
+        code: otpCode,
+        password,
+      });
+      const result = await response.json();
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Unable to reset your password");
+      }
+
+      setStatusMessage(result.message || "Password reset successful.");
+      setPassword("");
+      setConfirmPassword("");
+      setOtpCode("");
+      setTimeout(() => onBackToLogin(), 1200);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to reset your password.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderRequestStep = () => (
+    <>
+      <Text style={styles.formTitle}>Reset Password</Text>
+      <Text style={styles.description}>
+        Don&apos;t worry! It happens. Please enter the email address associated with your account.
+      </Text>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Email Address</Text>
+        <TextInput
+          style={[styles.input, focusedInput === "email" && styles.inputFocused]}
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          onFocus={() => setFocusedInput("email")}
+          onBlur={() => setFocusedInput(null)}
+        />
+      </View>
+
+      {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleRequestCode} disabled={isSubmitting}>
+        <LinearGradient
+          colors={[colors.primary, colors.secondary]}
+          style={styles.gradientButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.buttonText}>
+            {isSubmitting ? "Sending code..." : "Send Reset Code"}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderVerifyStep = () => (
+    <>
+      <Text style={styles.formTitle}>Verify Your Code</Text>
+      <Text style={styles.description}>
+        We have sent a 6-digit code to {email}. Enter it below to continue.
+      </Text>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Verification Code</Text>
+        <TextInput
+          style={[styles.input, focusedInput === "otp" && styles.inputFocused]}
+          placeholder="Enter 6-digit code"
+          value={otpCode}
+          onChangeText={setOtpCode}
+          keyboardType="number-pad"
+          maxLength={6}
+          onFocus={() => setFocusedInput("otp")}
+          onBlur={() => setFocusedInput(null)}
+        />
+      </View>
+
+      {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleVerifyCode} disabled={isSubmitting}>
+        <LinearGradient
+          colors={[colors.primary, colors.secondary]}
+          style={styles.gradientButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.buttonText}>
+            {isSubmitting ? "Verifying..." : "Verify Code"}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={{ marginTop: 20, alignItems: "center" }} onPress={handleRequestCode}>
+        <Text style={{ color: "#4A90E2", fontSize: 14 }}>
+          {isSubmitting ? "Sending..." : "Resend code"}
+        </Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderResetStep = () => (
+    <>
+      <Text style={styles.formTitle}>Create New Password</Text>
+      <Text style={styles.description}>Choose a new password for your account.</Text>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>New Password</Text>
+        <View>
+          <TextInput
+            style={[styles.input, focusedInput === "newPassword" && styles.inputFocused]}
+            placeholder="Enter new password"
+            value={password}
+            onChangeText={setPassword}
+            autoCapitalize="none"
+            secureTextEntry={!showPassword}
+            onFocus={() => setFocusedInput("newPassword")}
+            onBlur={() => setFocusedInput(null)}
+          />
+          <TouchableOpacity
+            style={{ position: "absolute", right: 15, top: 15 }}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <MaterialIcons name={showPassword ? "visibility" : "visibility-off"} size={24} color="#666" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Confirm New Password</Text>
+        <View>
+          <TextInput
+            style={[styles.input, focusedInput === "confirmPassword" && styles.inputFocused]}
+            placeholder="Confirm new password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            autoCapitalize="none"
+            secureTextEntry={!showConfirmPassword}
+            onFocus={() => setFocusedInput("confirmPassword")}
+            onBlur={() => setFocusedInput(null)}
+          />
+          <TouchableOpacity
+            style={{ position: "absolute", right: 15, top: 15 }}
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+          >
+            <MaterialIcons
+              name={showConfirmPassword ? "visibility" : "visibility-off"}
+              size={24}
+              color="#666"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={isSubmitting}>
+        <LinearGradient
+          colors={[colors.primary, colors.secondary]}
+          style={styles.gradientButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.buttonText}>{isSubmitting ? "Updating..." : "Update Password"}</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </>
+  );
 
   const styles = StyleSheet.create({
     formContainer: {
@@ -899,6 +1173,18 @@ const AccountRecoveryForm: React.FC<{ colors: any }> = ({ colors }) => {
       color: colors.textMuted,
       fontSize: 14,
     },
+    successText: {
+      color: "#16a34a",
+      fontSize: 12,
+      marginTop: 5,
+      marginLeft: 4,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 12,
+      marginTop: 5,
+      marginLeft: 4,
+    },
   });
 
   return (
@@ -909,39 +1195,9 @@ const AccountRecoveryForm: React.FC<{ colors: any }> = ({ colors }) => {
         color={themeColors.text}
         style={{ alignSelf: "center", marginBottom: 20 }}
       />
-      <Text style={styles.formTitle}>Reset Password</Text>
-      <Text style={styles.description}>
-        Don't worry! It happens. Please enter the email address associated with
-        your account.
-      </Text>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Email Address</Text>
-        <TextInput
-          style={[
-            styles.input,
-            focusedInput === "email" && styles.inputFocused,
-          ]}
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          onFocus={() => setFocusedInput("email")}
-          onBlur={() => setFocusedInput(null)}
-        />
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleRecovery}>
-        <LinearGradient
-          colors={[colors.primary, colors.secondary]}
-          style={styles.gradientButton}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.buttonText}>Send Reset Link</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+      {step === "request" && renderRequestStep()}
+      {step === "verify" && renderVerifyStep()}
+      {step === "reset" && renderResetStep()}
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
@@ -949,12 +1205,7 @@ const AccountRecoveryForm: React.FC<{ colors: any }> = ({ colors }) => {
         <View style={styles.dividerLine} />
       </View>
 
-      <TouchableOpacity
-        style={{ marginTop: 10, alignItems: "center" }}
-        onPress={() => {
-          /* Handle navigation to login */
-        }}
-      >
+      <TouchableOpacity style={{ marginTop: 10, alignItems: "center" }} onPress={onBackToLogin}>
         <Text style={{ color: "#4A90E2", fontSize: 14 }}>
           Remember your password? Login
         </Text>
@@ -966,18 +1217,20 @@ const AccountRecoveryForm: React.FC<{ colors: any }> = ({ colors }) => {
 const AuthScreens: React.FC<AuthScreensProps> = () => {
   const [activeScreen, setActiveScreen] = useState<AuthScreenType>("login");
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { continueAsGuest } = useAuth();
   const { width } = Dimensions.get("window");
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
+      paddingTop: insets.top,
     },
     scrollContainer: {
       flexGrow: 1,
       paddingHorizontal: 20,
       paddingTop: 20,
-      paddingBottom: 40,
+      paddingBottom: 40 + insets.bottom,
     },
     tabContainer: {
       flexDirection: "row",
@@ -1018,18 +1271,18 @@ const AuthScreens: React.FC<AuthScreensProps> = () => {
   const renderForm = () => {
     switch (activeScreen) {
       case "login":
-        return <LoginForm colors={colors} />;
+        return <LoginForm colors={colors} onForgotPassword={() => setActiveScreen("recovery")} />;
       case "register":
         return <RegistrationForm colors={colors} />;
       case "verify":
         return <EmailVerificationForm colors={colors} />;
       case "recovery":
-        return <AccountRecoveryForm colors={colors} />;
+        return <AccountRecoveryForm colors={colors} onBackToLogin={() => setActiveScreen("login")} />;
     }
   };
 
   return (
-    <SafeAreaView
+    <View
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <KeyboardAvoidingView
@@ -1106,7 +1359,7 @@ const AuthScreens: React.FC<AuthScreensProps> = () => {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 export default AuthScreens;

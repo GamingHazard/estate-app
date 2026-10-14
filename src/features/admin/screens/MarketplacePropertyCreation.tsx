@@ -13,6 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { useAuth } from "../../auth/AuthContext";
 import {
@@ -24,6 +25,7 @@ import {
   PropertyUnit,
 } from "../../../data/property";
 import { adminPropertyStore } from "../../../data/adminPropertyStore";
+import { apiRequest } from "../../../shared/queryClient";
 import {
   getSpecificationsForType,
   normalizeCategory,
@@ -67,8 +69,10 @@ export const MarketplacePropertyCreation = ({ onClose }: Props) => {
   const { colors } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     purpose: "rent" as "rent" | "sale",
@@ -356,14 +360,74 @@ export const MarketplacePropertyCreation = ({ onClose }: Props) => {
     return "";
   };
 
-  const submit = () => {
-    const listingId = `draft-listing-${Date.now()}`;
-    const now = new Date().toISOString();
-    const listing = {
-      id: listingId,
-      propertyId: "pending",
+  const submit = async () => {
+    setIsSubmitting(true);
+    setError("");
+    const formData = new FormData();
+    const imageFiles: Array<{
+      uri: string;
+      fileName?: string | null;
+      mimeType?: string | null;
+    }> = [];
+    const propertyImages = form.images.map((image, index) => {
+      imageFiles.push({ uri: image.url, fileName: image.title });
+      return { title: image.title, uploadIndex: imageFiles.length - 1 };
+    });
+    const units = form.units.map((unit) => ({
+      ...unit,
+      images: unit.images.map((image) => {
+        imageFiles.push({ uri: image.url, fileName: image.title });
+        return { title: image.title, uploadIndex: imageFiles.length - 1 };
+      }),
+    }));
+    imageFiles.forEach((asset, index) => {
+      const extension = asset.uri.match(/\.([a-z0-9]+)(?:\?|$)/i)?.[1]?.toLowerCase();
+      const imageType =
+        extension === "png"
+          ? "image/png"
+          : extension === "webp"
+            ? "image/webp"
+            : "image/jpeg";
+      const fileExtension = imageType.split("/")[1];
+      formData.append("images", {
+        uri: asset.uri,
+        name: asset.fileName?.includes(".")
+          ? asset.fileName
+          : `property-image-${index}.${fileExtension}`,
+        type: imageType,
+      } as any);
+    });
+    formData.append(
+      "payload",
+      JSON.stringify({
+        name: form.name.trim(),
+        purpose: form.purpose,
+        category,
+        propertyType,
+        description: form.description.trim(),
+        address: form.address.trim(),
+        estate: form.estate.trim(),
+        city: form.city.trim(),
+        country: form.country.trim(),
+        location: { lat: Number(form.lat) || 0, lng: Number(form.lng) || 0 },
+        images: propertyImages,
+        features: form.features.map((feature) => feature.trim()).filter(Boolean),
+        specifications: [
+          ...typeSpecifications
+            .map((specification) => ({
+              title: specification.label,
+              value: form.specificationValues[specification.key]?.trim() || "",
+            }))
+            .filter((specification) => specification.value),
+          ...form.customSpecifications.filter(
+            (specification) =>
+              specification.title.trim() && specification.value.trim(),
+          ),
+        ],
+        policies: form.policies,
+        units,
+        listing: {
       purpose: form.purpose,
-      status: "published" as const,
       price: Number(form.price),
       currency: form.currency,
       billingPeriod:
@@ -371,46 +435,28 @@ export const MarketplacePropertyCreation = ({ onClose }: Props) => {
       serviceFee: form.serviceFee ? Number(form.serviceFee) : undefined,
       negotiable: form.negotiable,
       availableFrom: form.availableFrom || undefined,
-      publishedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const draft: MarketplacePropertyDraft = {
-      ownerId: user?.id ? String(user.id) : undefined,
-      name: form.name.trim(),
-      description: form.description.trim(),
-      category,
-      propertyType,
-      address: form.address.trim(),
-      estate: form.estate.trim(),
-      city: form.city.trim(),
-      country: form.country.trim(),
-      location: { lat: Number(form.lat) || 0, lng: Number(form.lng) || 0 },
-      images: form.images,
-      features: form.features.map((feature) => feature.trim()).filter(Boolean),
-      specifications: [
-        ...typeSpecifications
-          .map((specification) => ({
-            title: specification.label,
-            value: form.specificationValues[specification.key]?.trim() || "",
-          }))
-          .filter((specification) => specification.value),
-        ...form.customSpecifications.filter(
-          (specification) =>
-            specification.title.trim() && specification.value.trim(),
-        ),
-      ],
-      policies: form.policies,
-      units: form.units,
-      listings: [{ ...listing, propertyId: "pending" }],
-      customizeUnits: form.units.length > 1,
-    };
-    adminPropertyStore.createMarketplace(draft);
-    Alert.alert(
-      "Listing published",
-      "Your property is now live in the marketplace.",
-      [{ text: "Done", onPress: onClose ?? (() => navigation.goBack()) }],
+        },
+      }),
     );
+
+    try {
+      await apiRequest("POST", "/properties/marketplace", formData);
+      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["properties", "marketplace", "manage"],
+      });
+      Alert.alert("Submitted for review", "Your property is pending approval.", [
+        { text: "Done", onPress: onClose ?? (() => navigation.goBack()) },
+      ]);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to submit this property.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -884,9 +930,10 @@ export const MarketplacePropertyCreation = ({ onClose }: Props) => {
           <Pressable
             style={[styles.footerButton, styles.primaryButton]}
             onPress={submit}
+            disabled={isSubmitting}
           >
             <Text style={[styles.buttonText, styles.primaryText]}>
-              Submit for review
+              {isSubmitting ? "Submitting..." : "Submit for review"}
             </Text>
           </Pressable>
         )}

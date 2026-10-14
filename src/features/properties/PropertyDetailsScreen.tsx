@@ -16,7 +16,9 @@ import { useTheme } from "../../shared/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { RouteProp } from "@react-navigation/native";
+import { useQuery } from "@tanstack/react-query";
 import { RootStackParamList, NavigationProp } from "../../shared/types";
+import { getQueryFn } from "../../shared/queryClient";
 import {
   formatPropertyPrice,
   getListingPriceLabel,
@@ -57,6 +59,19 @@ type PolicyDetail = {
   details?: string;
 };
 
+const renderStars = (rating: number, size = 16, color = "#f5b301") =>
+  Array.from({ length: 5 }).map((_, index) => {
+    const isFilled = index < Math.round(rating);
+    return (
+      <Ionicons
+        key={`${rating}-${index}`}
+        name={isFilled ? "star" : "star-outline"}
+        size={size}
+        color={isFilled ? color : "#8a8a8a"}
+      />
+    );
+  });
+
 const PropertyDetailsScreen = ({ route }: Props) => {
   const navigation = useNavigation<NavigationProp>();
   const { colors } = useTheme();
@@ -76,6 +91,13 @@ const PropertyDetailsScreen = ({ route }: Props) => {
   } | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const { data: ownerReviewSummary } = useQuery({
+    queryKey: ["users", String(property.ownerId), "reviews", "summary"],
+    queryFn: getQueryFn<{ summary: { averageRating: number; totalReviews: number } }>({
+      on401: "returnNull",
+    }),
+    enabled: Boolean(property.ownerId),
+  });
 
   const selectedUnit =
     property.units.find(
@@ -196,6 +218,10 @@ const PropertyDetailsScreen = ({ route }: Props) => {
   const visiblePolicies = policyDetails.filter((policy) =>
     Boolean(policy.value?.trim() || policy.details?.trim()),
   );
+  const ownerRatingSummary = ownerReviewSummary?.summary ?? {
+    averageRating: 0,
+    totalReviews: 0,
+  };
   const hasLongDescription = property.description.trim().length > 180;
 
   const openImageModal = (image: { url: string; name: string }) => {
@@ -630,6 +656,36 @@ const PropertyDetailsScreen = ({ route }: Props) => {
         </View>
       </ScrollView>
 
+      {property.ownerId && (
+        <View
+          style={[
+            styles.ownerTrustSummary,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <View style={styles.ownerTrustRow}>
+            <Text style={[styles.ownerTrustLabel, { color: colors.textMuted }]}>
+              Lister rating
+            </Text>
+            <View style={styles.ownerTrustValue}>
+              <View style={styles.ownerStarRow}>
+                {renderStars(ownerRatingSummary.averageRating, 15)}
+              </View>
+              <Text style={[styles.ownerTrustScore, { color: colors.text }]}>
+                {ownerRatingSummary.averageRating.toFixed(1)}
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.ownerTrustMeta, { color: colors.textMuted }]}>
+            {ownerRatingSummary.totalReviews} review
+            {ownerRatingSummary.totalReviews === 1 ? "" : "s"}
+          </Text>
+        </View>
+      )}
+
       <View
         style={[
           styles.actionBar,
@@ -947,6 +1003,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "right",
+  },
+  ownerTrustSummary: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  ownerTrustRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  ownerTrustLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  ownerTrustValue: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  ownerStarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  ownerTrustScore: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  ownerTrustMeta: {
+    marginTop: 4,
+    fontSize: 12,
   },
   actionBar: {
     borderTopWidth: StyleSheet.hairlineWidth,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,35 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Pressable,
+  Animated,
 } from "react-native";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { uploadRequest } from "../../shared/queryClient";
+import { apiRequest, uploadRequest } from "../../shared/queryClient";
 
 const SettingsScreen = ({ navigation }: { navigation: any }) => {
   const { colors, theme, toggleTheme } = useTheme();
   const { user, openAuth, updateUser } = useAuth();
   const [profileImage, setProfileImage] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+  const isAvatarBusy = isUploadingImage || isRemovingAvatar;
   const isConnected = useInternetConnection();
+  const isDarkMode = theme === "dark";
+  const knobPosition = useRef(new Animated.Value(isDarkMode ? 30 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(knobPosition, {
+      toValue: isDarkMode ? 30 : 0,
+      useNativeDriver: true,
+      tension: 140,
+      friction: 12,
+    }).start();
+  }, [isDarkMode, knobPosition]);
 
   useEffect(() => {
     (async () => {
@@ -79,8 +94,8 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  const handleImageUpload = () => {
-    Alert.alert("Upload Profile Picture", "Choose an option", [
+  const chooseProfileImageSource = () => {
+    Alert.alert("Change profile photo", "Choose an option", [
       {
         text: "Take Photo",
         onPress: async () => {
@@ -110,11 +125,66 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
           }
         },
       },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
+      { text: "Cancel", style: "cancel" },
     ]);
+  };
+
+  const handleImageUpload = () => {
+    const actions: Parameters<typeof Alert.alert>[2] = [
+      {
+        text: "Change photo",
+        onPress: chooseProfileImageSource,
+      },
+    ];
+
+    if (user?.avatar?.url || user?.avatar?.publicId) {
+      actions.push({
+        text: "Remove profile photo",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(
+            "Remove profile photo?",
+            "Your uploaded photo will be removed. Your default avatar will be shown instead.",
+            [
+              { text: "Keep photo", style: "cancel" },
+              {
+                text: "Remove photo",
+                style: "destructive",
+                onPress: () => void removeProfileImage(),
+              },
+            ],
+          );
+        },
+      });
+    }
+
+    actions.push({ text: "Cancel", style: "cancel" });
+
+    Alert.alert("Profile photo", "Manage your profile photo", actions);
+  };
+
+  const removeProfileImage = async () => {
+    if (!user || isAvatarBusy) return;
+
+    setIsRemovingAvatar(true);
+    try {
+      const response = await apiRequest("DELETE", "/users/me/avatar");
+      const result = await response.json();
+
+      if (!result?.success || !result.user) {
+        throw new Error(result?.message || "Unable to remove profile photo");
+      }
+
+      await updateUser(result.user);
+      setProfileImage("");
+    } catch (error) {
+      Alert.alert(
+        "Unable to remove profile photo",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsRemovingAvatar(false);
+    }
   };
 
   return (
@@ -132,29 +202,47 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
       />
       {/* Main content Container */}
       <View style={styles.contentContainer}>
-        {/* Theme Button */}
-        {/* <TouchableOpacity
-          style={[styles.themeButton, { backgroundColor: colors.card }]}
-          onPress={toggleTheme}
-        >
-          <Ionicons
-            name={theme === "dark" ? "sunny" : "moon"}
-            size={24}
-            color={colors.text}
-            style={styles.buttonIcon}
-          />
-          <Text style={[styles.buttonText, { color: colors.text }]}>
-            {theme === "dark" ? "Enable Light Mode" : "Enable Dark Mode"}
-          </Text>
-        </TouchableOpacity> */}
+        <View style={[styles.themeToggleCard, { backgroundColor: colors.card, borderColor: colors.border }]}> 
+          <View style={styles.themeToggleRow}>
+            <View style={styles.themeToggleTextWrap}>
+              <Text style={[styles.themeToggleLabel, { color: colors.text }]}>
+                Appearance
+              </Text>
+              <Text style={[styles.themeToggleHint, { color: colors.textMuted }]}>
+                {isDarkMode ? "Dark mode enabled" : "Light mode enabled"}
+              </Text>
+            </View>
 
-        <Ionicons
-          name={theme === "dark" ? "sunny" : "moon"}
-          size={24}
-          color={"white"}
-          style={{ position: "absolute", top: 10, right: 10 }}
-          onPress={toggleTheme}
-        />
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isDarkMode }}
+              onPress={toggleTheme}
+              style={[
+                styles.switchTrack,
+                {
+                  backgroundColor: isDarkMode ? "#1F2937" : "#E5E7EB",
+                  borderColor: isDarkMode ? "#374151" : "#D1D5DB",
+                },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.switchKnob,
+                  {
+                    backgroundColor: isDarkMode ? "#F8FAFC" : "#FFFFFF",
+                    transform: [{ translateX: knobPosition }],
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={isDarkMode ? "moon" : "sunny"}
+                  size={16}
+                  color={isDarkMode ? "#111827" : "#F59E0B"}
+                />
+              </Animated.View>
+            </Pressable>
+          </View>
+        </View>
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
@@ -178,21 +266,30 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
             </TouchableOpacity> */}
           </View>
           <View style={styles.avatarContainer}>
-            <Image
-              source={
-                profileImage
-                  ? { uri: profileImage }
-                  : user?.avatar?.url
-                    ? { uri: user.avatar.url }
-                    : user?.gender === "female"
-                      ? require("../../../assets/female 2.webp")
-                      : user?.gender === "male"
-                        ? require("../../../assets/male.png")
-                        : require("../../../assets/no-image 2.avif")
-              }
-              style={styles.profileImage}
-            />
-            {isUploadingImage && (
+            {profileImage || user?.avatar?.url ? (
+              <Image
+                source={{ uri: profileImage || user?.avatar?.url }}
+                style={styles.profileImage}
+              />
+            ) : user?.gender === "female" ? (
+              <Image
+                source={require("../../../assets/female 2.webp")}
+                style={styles.profileImage}
+              />
+            ) : user?.gender === "male" ? (
+              <Image
+                source={require("../../../assets/male.png")}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View
+                accessibilityLabel="Default profile avatar"
+                style={[styles.unknownAvatar, { backgroundColor: colors.card }]}
+              >
+                <Ionicons name="person" size={120} color={colors.textMuted} />
+              </View>
+            )}
+            {isAvatarBusy && (
               <View style={styles.uploadOverlay}>
                 <ActivityIndicator size="small" color="white" />
               </View>
@@ -201,10 +298,10 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
               <TouchableOpacity
                 style={styles.uploadIcon}
                 onPress={handleImageUpload}
-                disabled={isUploadingImage}
+                disabled={isAvatarBusy}
               >
                 <Ionicons
-                  name={isUploadingImage ? "cloud-upload" : "camera"}
+                  name={isAvatarBusy ? "cloud-upload" : "camera"}
                   size={24}
                   color="white"
                 />
@@ -405,14 +502,57 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 20,
   },
-  themeButton: {
+  themeToggleCard: {
+    width: "100%",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    marginTop: 8,
+    marginBottom: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  themeToggleRow: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
-    borderRadius: 10,
-    width: "100%",
-    elevation: 3,
-    marginVertical: 5,
+    justifyContent: "space-between",
+    paddingVertical: 12,
+  },
+  themeToggleTextWrap: {
+    flex: 1,
+  },
+  themeToggleLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  themeToggleHint: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  switchTrack: {
+    width: 72,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 4,
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  switchKnob: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
   },
   profileSection: {
     marginTop: 60,
@@ -470,6 +610,13 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 150,
+  },
+  unknownAvatar: {
+    width: 250,
+    height: 250,
+    borderRadius: 150,
+    alignItems: "center",
+    justifyContent: "center",
   },
   profileUsername: {
     fontWeight: "bold",

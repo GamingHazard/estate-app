@@ -9,6 +9,9 @@ export type PublicListerProfile = {
   bio: string;
   phoneNumber?: string;
   email?: string;
+  averageRating?: number;
+  totalReviews?: number;
+  ratingCount?: number;
 };
 
 export const mockListerProfiles: PublicListerProfile[] = [

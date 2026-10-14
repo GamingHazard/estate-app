@@ -1,4 +1,5 @@
-import React, { useSyncExternalStore, useState } from "react";
+import React, { useEffect, useSyncExternalStore, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Image,
@@ -12,30 +13,50 @@ import {
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../../shared/theme/ThemeContext";
+import { useAuth } from "../../auth/AuthContext";
+import { apiRequest, getQueryFn } from "../../../shared/queryClient";
 import { adminPropertyStore } from "../../../data/adminPropertyStore";
 import {
   getListingPriceLabel,
   getPropertyDisplayLocation,
   MarketplacePropertyRecord,
+  parsePropertyListResponse,
+  Property,
 } from "../../../data/property";
 
 type Props = { propertyId: string };
 
 export function MarketplacePropertyDetails({ propertyId }: Props) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const properties = useSyncExternalStore(
     adminPropertyStore.subscribeMarketplace,
     adminPropertyStore.getMarketplaceSnapshot,
     adminPropertyStore.getMarketplaceSnapshot,
   );
-  const property = properties.find((item) => item.id === propertyId);
+  const localProperty = properties.find((item) => item.id === propertyId);
+  const serverQuery = useQuery({
+    queryKey: ["properties", "marketplace", "manage"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !localProperty,
+    select: (response: unknown) =>
+      parsePropertyListResponse(response).properties,
+  });
+  const property =
+    localProperty ?? serverQuery.data?.find((item) => item.id === propertyId);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<MarketplacePropertyRecord | null>(
-    property ?? null,
-  );
+  const [draft, setDraft] = useState<
+    MarketplacePropertyRecord | Property | null
+  >(property ?? null);
+
+  useEffect(() => {
+    if (property) setDraft(property);
+  }, [property]);
 
   if (!property || !draft) {
+    if (serverQuery.isLoading) return null;
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.title, { color: colors.text }]}>
@@ -46,22 +67,71 @@ export function MarketplacePropertyDetails({ propertyId }: Props) {
   }
 
   const listing = draft.listings[0];
-  const updateDraft = (updates: Partial<MarketplacePropertyRecord>) => {
+  const isLocalProperty = Boolean(localProperty);
+  const canManage =
+    isLocalProperty ||
+    ["admin", "propertyManager"].includes(user?.role ?? "");
+  const updateDraft = (
+    updates: Partial<MarketplacePropertyRecord | Property>,
+  ) => {
     setDraft((current) => (current ? { ...current, ...updates } : current));
   };
   const updateListing = (updates: Partial<typeof listing>) => {
     updateDraft({ listings: [{ ...listing, ...updates }] });
   };
-  const save = () => {
-    adminPropertyStore.updateMarketplace(draft.id, draft);
-    setEditing(false);
-    Alert.alert("Listing updated", "The marketplace listing has been saved.");
+  const save = async () => {
+    try {
+      if (isLocalProperty) {
+        adminPropertyStore.updateMarketplace(
+          draft.id,
+          draft as MarketplacePropertyRecord,
+        );
+      } else {
+        await apiRequest("PATCH", `/properties/marketplace/${draft.id}`, {
+          property: { name: draft.name, description: draft.description },
+          listingId: listing.id,
+          listing: { price: listing.price },
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["properties", "marketplace", "manage"],
+        });
+        await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      }
+      setEditing(false);
+      Alert.alert("Listing updated", "The marketplace listing has been saved.");
+    } catch (error) {
+      Alert.alert(
+        "Update failed",
+        error instanceof Error ? error.message : "Unable to save changes.",
+      );
+    }
   };
   const updateModeration = (
-    status: MarketplacePropertyRecord["moderationStatus"],
+    status: NonNullable<MarketplacePropertyRecord["moderationStatus"]>,
   ) => {
-    adminPropertyStore.updateMarketplaceModeration(draft.id, status);
-    setEditing(false);
+    void (async () => {
+      try {
+        if (isLocalProperty) {
+          adminPropertyStore.updateMarketplaceModeration(draft.id, status);
+        } else {
+          await apiRequest(
+            "PATCH",
+            `/properties/marketplace/${draft.id}/moderation`,
+            { status },
+          );
+          await queryClient.invalidateQueries({
+            queryKey: ["properties", "marketplace", "manage"],
+          });
+          await queryClient.invalidateQueries({ queryKey: ["properties"] });
+        }
+        setEditing(false);
+      } catch (error) {
+        Alert.alert(
+          "Moderation failed",
+          error instanceof Error ? error.message : "Unable to update status.",
+        );
+      }
+    })();
   };
   const remove = () => {
     Alert.alert("Delete listing", "Delete this marketplace listing?", [
@@ -70,8 +140,28 @@ export function MarketplacePropertyDetails({ propertyId }: Props) {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          adminPropertyStore.removeMarketplace(draft.id);
-          navigation.goBack();
+          void (async () => {
+            try {
+              if (isLocalProperty) {
+                adminPropertyStore.removeMarketplace(draft.id);
+                navigation.goBack();
+                return;
+              }
+
+              await apiRequest("DELETE", `/properties/marketplace/${draft.id}`);
+              await queryClient.invalidateQueries({
+                queryKey: ["properties", "marketplace", "manage"],
+              });
+              await queryClient.invalidateQueries({ queryKey: ["properties"] });
+              navigation.goBack();
+              Alert.alert("Listing deleted", "The marketplace listing has been removed.");
+            } catch (error) {
+              Alert.alert(
+                "Delete failed",
+                error instanceof Error ? error.message : "Unable to delete listing.",
+              );
+            }
+          })();
         },
       },
     ]);
@@ -92,9 +182,15 @@ export function MarketplacePropertyDetails({ propertyId }: Props) {
         <Text style={[styles.title, { color: colors.text }]}>
           Manage listing
         </Text>
-        <Pressable onPress={remove} accessibilityLabel="Delete listing">
-          <Ionicons name="trash-outline" size={22} color={colors.destructive} />
-        </Pressable>
+        {isLocalProperty && (
+          <Pressable onPress={remove} accessibilityLabel="Delete listing">
+            <Ionicons
+              name="trash-outline"
+              size={22}
+              color={colors.destructive}
+            />
+          </Pressable>
+        )}
       </View>
 
       <View
@@ -196,7 +292,7 @@ export function MarketplacePropertyDetails({ propertyId }: Props) {
             Moderation
           </Text>
           <Text style={[styles.value, { color: colors.text }]}>
-            {draft.moderationStatus}
+            {draft.moderationStatus ?? "pending"}
           </Text>
         </View>
         <View style={styles.statusRow}>
@@ -207,34 +303,36 @@ export function MarketplacePropertyDetails({ propertyId }: Props) {
             {listing.status}
           </Text>
         </View>
-        <View style={styles.actions}>
-          <Pressable
-            style={[styles.action, { backgroundColor: colors.primary }]}
-            onPress={() => updateModeration("approved")}
-          >
-            <Text style={styles.actionText}>Approve</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.action, { backgroundColor: colors.warning }]}
-            onPress={() => updateModeration("pending")}
-          >
-            <Text style={styles.actionText}>Pending</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.action, { backgroundColor: colors.destructive }]}
-            onPress={() => updateModeration("rejected")}
-          >
-            <Text style={styles.actionText}>Reject</Text>
-          </Pressable>
-        </View>
-        {editing ? (
+        {canManage && (
+          <View style={styles.actions}>
+            <Pressable
+              style={[styles.action, { backgroundColor: colors.primary }]}
+              onPress={() => updateModeration("approved")}
+            >
+              <Text style={styles.actionText}>Approve</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.action, { backgroundColor: colors.warning }]}
+              onPress={() => updateModeration("pending")}
+            >
+              <Text style={styles.actionText}>Pending</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.action, { backgroundColor: colors.destructive }]}
+              onPress={() => updateModeration("rejected")}
+            >
+              <Text style={styles.actionText}>Reject</Text>
+            </Pressable>
+          </View>
+        )}
+        {editing && canManage ? (
           <Pressable
             style={[styles.save, { backgroundColor: colors.primary }]}
             onPress={save}
           >
             <Text style={styles.actionText}>Save changes</Text>
           </Pressable>
-        ) : (
+        ) : canManage ? (
           <Pressable
             style={[styles.save, { borderColor: colors.border }]}
             onPress={() => setEditing(true)}
@@ -244,7 +342,7 @@ export function MarketplacePropertyDetails({ propertyId }: Props) {
               Edit listing
             </Text>
           </Pressable>
-        )}
+        ) : null}
       </View>
 
       <View
