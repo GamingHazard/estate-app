@@ -1,4 +1,4 @@
-import React from "react";
+import React, { createContext, useContext, useState } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,10 @@ interface AdminLayoutProps {
   onToggleSidebar?: () => void;
 }
 
+export const AdminHeaderActionsContext = createContext<
+  (actions: React.ReactNode | null) => void
+>(() => undefined);
+
 export function AdminLayout({
   children,
   title = "",
@@ -26,6 +30,7 @@ export function AdminLayout({
 }: AdminLayoutProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const [headerActions, setHeaderActions] = useState<React.ReactNode | null>(null);
 
   const styles = StyleSheet.create({
     container: {
@@ -58,6 +63,13 @@ export function AdminLayout({
       alignItems: "center",
       gap: 12,
     },
+    headerActions: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-around",
+      gap: 8,
+    },
     menuButton: {
       padding: 8,
       borderRadius: 8,
@@ -76,7 +88,8 @@ export function AdminLayout({
   });
 
   return (
-    <View style={styles.container}>
+    <AdminHeaderActionsContext.Provider value={setHeaderActions}>
+      <View style={styles.container}>
       <View style={styles.layout}>
         {!isSidebarCollapsed && onToggleSidebar && (
           <Pressable
@@ -93,19 +106,25 @@ export function AdminLayout({
         <View style={styles.mainContainer}>
           <View style={styles.header}>
             <View style={styles.headerContent}>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={onToggleSidebar}
-              >
-                <MaterialIcons name="menu" size={24} color={colors.text} />
-              </TouchableOpacity>
-
-              <Text style={styles.title}>{title}</Text>
+              {headerActions ? (
+                <View style={styles.headerActions}>{headerActions}</View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.menuButton}
+                    onPress={onToggleSidebar}
+                  >
+                    <MaterialIcons name="menu" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={styles.title}>{title}</Text>
+                </>
+              )}
             </View>
           </View>
           <View style={styles.mainContent}>{children}</View>
         </View>
       </View>
-    </View>
+      </View>
+    </AdminHeaderActionsContext.Provider>
   );
 }

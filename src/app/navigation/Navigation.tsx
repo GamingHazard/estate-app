@@ -55,7 +55,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const TabNavigator = () => {
-  const { colors ,theme} = useTheme();
+  const { colors, theme } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -66,7 +66,11 @@ const TabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
           let iconSize = focused ? 28 : 22; // Larger when active
-          let iconColor = focused ? theme === 'light'?colors.bg:'white': colors.text;
+          let iconColor = focused
+            ? theme === "light"
+              ? colors.bg
+              : "white"
+            : colors.text;
 
           switch (route.name) {
             case "Home":
@@ -89,7 +93,11 @@ const TabNavigator = () => {
             case "Admin":
               iconName = focused ? "grid" : "grid-outline";
               iconSize = focused ? 26 : 20;
-              iconColor = focused ? theme === 'light' ? colors.bg : 'white' : colors.text;
+              iconColor = focused
+                ? theme === "light"
+                  ? colors.bg
+                  : "white"
+                : colors.text;
               break;
             default:
               iconName = "alert-circle";
@@ -135,20 +143,21 @@ const TabNavigator = () => {
           headerShown: false,
         }}
       />
-      <Tab.Screen name="Deals" component={DealsScreen} options={{
+      <Tab.Screen
+        name="Deals"
+        component={DealsScreen}
+        options={{
           headerShown: false,
-        }}/>
+        }}
+      />
       <Tab.Screen name="Saved" component={SavedScreen} />
-      {user && !(["admin", "landlord", "propertyManager"] as string[]).includes(
-        user.role,
-      ) && (
-        <Tab.Screen name="Messages" component={MessagesScreen} />
-      )}
+      {user &&
+        !(["admin", "landlord", "propertyManager"] as string[]).includes(
+          user.role,
+        ) && <Tab.Screen name="Messages" component={MessagesScreen} />}
       {!(["admin", "landlord", "propertyManager"] as string[]).includes(
         user?.role ?? "",
-      ) && (
-        <Tab.Screen name="Settings" component={SettingsScreen} />
-      )}
+      ) && <Tab.Screen name="Settings" component={SettingsScreen} />}
       {(["admin", "landlord", "propertyManager"] as string[]).includes(
         user?.role ?? "",
       ) && (
@@ -185,10 +194,7 @@ const AdminNavigator = () => {
           name="PropertiesManagement"
           component={PropertiesManagement}
         />
-        <AdminStack.Screen
-          name="DealsManagement"
-          component={DealsManagement}
-        />
+        <AdminStack.Screen name="DealsManagement" component={DealsManagement} />
         <AdminStack.Screen
           name="ReviewsManagement"
           component={ReviewsManagement}
@@ -278,7 +284,10 @@ const Navigation = () => {
         <Stack.Screen name="Add Card" component={AddCardScreen} />
         <Stack.Screen
           name="Chat Room"
-          children={({ route }: any) => <ChatRoom {...route.params} />}
+          options={{ headerShown: false }}
+          children={({ navigation, route }: any) => (
+            <ChatRoom {...route.params} onBack={() => navigation.goBack()} />
+          )}
         />
       </Stack.Navigator>
     </View>

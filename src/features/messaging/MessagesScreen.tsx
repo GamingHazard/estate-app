@@ -36,7 +36,15 @@ const MessagesScreen = ({ navigation }: any) => {
         navigation.navigate("Chat Room", {
           participantName: item.sender,
           participantAvatar: item.avatar,
-          initialMessages: item || [],
+          initialMessages: [
+            {
+              id: item.id,
+              sender: "other",
+              text: item.message,
+              timestamp: item.timestamp,
+              avatar: item.avatar,
+            },
+          ],
         });
       }}
     >
