@@ -37,6 +37,7 @@ import { AdminSettings } from "../../features/admin/screens/AdminSettings";
 import { Analytics } from "../../features/admin/screens/Analytics";
 import { AdminManual } from "../../features/admin/screens/AdminManual";
 import DealsManagement from "../../features/admin/screens/DealsManagement";
+import { ReviewsManagement } from "../../features/admin/screens/ReviewsManagement";
 
 import { RootStackParamList } from "../../shared/types";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
@@ -138,8 +139,16 @@ const TabNavigator = () => {
           headerShown: false,
         }}/>
       <Tab.Screen name="Saved" component={SavedScreen} />
-      <Tab.Screen name="Messages" component={MessagesScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      {user && !(["admin", "landlord", "propertyManager"] as string[]).includes(
+        user.role,
+      ) && (
+        <Tab.Screen name="Messages" component={MessagesScreen} />
+      )}
+      {!(["admin", "landlord", "propertyManager"] as string[]).includes(
+        user?.role ?? "",
+      ) && (
+        <Tab.Screen name="Settings" component={SettingsScreen} />
+      )}
       {(["admin", "landlord", "propertyManager"] as string[]).includes(
         user?.role ?? "",
       ) && (
@@ -179,6 +188,10 @@ const AdminNavigator = () => {
         <AdminStack.Screen
           name="DealsManagement"
           component={DealsManagement}
+        />
+        <AdminStack.Screen
+          name="ReviewsManagement"
+          component={ReviewsManagement}
         />
         <AdminStack.Screen
           name="PropertyCreation"

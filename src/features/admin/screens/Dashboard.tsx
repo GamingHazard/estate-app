@@ -78,21 +78,25 @@ export function Dashboard() {
   ];
 
   const quickActions = [
+    { label: "Add property", route: "PropertyCreation", icon: "add-circle" },
+
     { label: "Messages", route: "AdminMessages", icon: "mail" },
+    {
+      label: "Manual",
+      route: "AdminManual",
+      icon: "help-circle",
+    },
+    { label: "Reviews", route: "ReviewsManagement", icon: "star" },
+
+    { label: "Settings", route: "AdminSettings", icon: "settings" },
+
+    // { label: "Analytics", route: "Analytics", icon: "bar-chart" },
 
     {
       label: "Notifications",
       route: "AdminNotifications",
       icon: "notifications",
     },
-    {
-      label: "Manual",
-      route: "AdminManual",
-      icon: "help-circle",
-    },
-    { label: "Add property", route: "PropertyCreation", icon: "add-circle" },
-    { label: "Analytics", route: "Analytics", icon: "bar-chart" },
-    { label: "Settings", route: "AdminSettings", icon: "settings" },
   ] as const;
 
   const recentProperties = [...apiProperties]

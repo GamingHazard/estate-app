@@ -28,6 +28,7 @@ import {
 import { useProperties } from "./useProperties";
 import { useSavedProperties } from "./SavedPropertiesContext";
 import PropertyListingCard from "./PropertyListingCard";
+import { useAvatarUpload } from "../../shared/hooks/useAvatarUpload";
 
 const CATEGORIES = ["All", "Residential", "Commercial", "Land", "Special"];
 const PURPOSES = ["all", "rent", "sale"] as const;
@@ -79,6 +80,9 @@ const MarketplaceHomeScreen = () => {
   const route = useRoute<any>();
   const { colors,theme } = useTheme();
   const { user, openAuth } = useAuth();
+  const { chooseSource, isUploading } = useAvatarUpload();
+  const canManageProfileImage =
+    user?.role === "landlord" || user?.role === "propertyManager";
   const insets = useSafeAreaInsets();
   const {
     data: properties = [],
@@ -272,18 +276,38 @@ const MarketplaceHomeScreen = () => {
             {unreadCount > 0 && <View style={styles.notificationBadge} />}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.headerButton, { backgroundColor: colors.card }]}
-            accessibilityRole="button"
-            accessibilityLabel="Open profile"
-            onPress={() => navigation.navigate("Account")}
-          >
-            {user && user.avatar?.url ? (
-              <Image source={{ uri: user?.avatar?.url }} style={styles.avatar} />
-            ) : (
-              <Ionicons name="person-outline" size={20} color={colors.text} />
+          <View style={styles.headerAvatarWrap}>
+            <TouchableOpacity
+              style={[styles.headerButton, { backgroundColor: colors.card }]}
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
+              onPress={() => navigation.navigate("Account")}
+            >
+              {user && user.avatar?.url ? (
+                <Image source={{ uri: user.avatar.url }} style={styles.avatar} />
+              ) : (
+                <Ionicons name="person-outline" size={20} color={colors.text} />
+              )}
+            </TouchableOpacity>
+            {canManageProfileImage && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Change profile or business image"
+                onPress={chooseSource}
+                disabled={isUploading}
+                style={[
+                  styles.headerCameraButton,
+                  { backgroundColor: colors.primary, borderColor: colors.card },
+                ]}
+              >
+                {isUploading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="camera" size={12} color="#ffffff" />
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -755,6 +779,21 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerAvatarWrap: {
+    width: 42,
+    height: 42,
+  },
+  headerCameraButton: {
+    position: "absolute",
+    right: -3,
+    bottom: -3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -23,6 +23,7 @@ type AdminScreens = keyof Pick<
   | "Dashboard"
   | "PropertiesManagement"
   | "DealsManagement"
+  | "ReviewsManagement"
   | "PropertyCreation"
   | "AdminNotifications"
   | "AdminMessages"
@@ -72,6 +73,11 @@ export function AdminSidebar({
       icon: "pricetags-outline",
       label: "Deals",
       screen: "DealsManagement",
+    },
+    {
+      icon: "star-outline",
+      label: "Reviews",
+      screen: "ReviewsManagement",
     },
     {
       icon: "notifications-outline",
@@ -198,6 +204,8 @@ export function AdminSidebar({
         <TouchableOpacity
           key={index}
           style={[styles.menuItem]}
+          disabled={item.label === "Analytics"}
+          activeOpacity={item.label === "Analytics" ? 1 : 0.7}
           onPress={() => {
             (navigation.navigate(item.screen), onToggleCollapse());
           }} // Auto expand on navigation if collapsed
@@ -205,7 +213,15 @@ export function AdminSidebar({
           <View style={styles.menuIcon}>
             <Ionicons name={item.icon} size={24} color={colors.text} />
           </View>
-          {!isCollapsed && <Text style={styles.menuLabel}>{item.label}</Text>}
+          {!isCollapsed && (
+            <Text style={[
+              styles.menuLabel,
+              item.label === "Analytics" && { opacity: 0.5 },
+            ]}>
+              {item.label}
+              {item.label === "Analytics" ? " (coming soon...!)" : ""}
+            </Text>
+          )}
         </TouchableOpacity>
       ))}
     </Animated.View>

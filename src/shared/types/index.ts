@@ -14,6 +14,7 @@ export type RootStackParamList = {
   "Payment Method": undefined;
   "Add Card": undefined;
   "Sell Property": undefined;
+  ReviewsManagement: undefined;
   AdminPropertyDetails: { propertyId: string };
   "Chat Room": {
     participantName: string;

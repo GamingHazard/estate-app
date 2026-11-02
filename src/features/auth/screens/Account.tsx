@@ -22,6 +22,7 @@ import { apiRequest } from "../../../shared/queryClient";
 import ProfileEditForm, {
   ProfileData,
 } from "../../../shared/components/ProfileEditForm";
+import { useAvatarUpload } from "../../../shared/hooks/useAvatarUpload";
 
 interface AccountScreenProps {
   // Add props here if needed
@@ -30,6 +31,7 @@ interface AccountScreenProps {
 const AccountScreen: React.FC<AccountScreenProps> = () => {
   const { colors } = useTheme();
   const { logout, user, updateUser } = useAuth();
+  const { chooseSource, isUploading } = useAvatarUpload();
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -44,8 +46,9 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
   const [deleteCountdown, setDeleteCountdown] = useState(10);
   const [isCountdownStarted, setIsCountdownStarted] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const isElevatedRole =
-    user?.role === "landlord" || user?.role === "propertyManager";
+  const isElevatedRole = (
+    ["admin", "landlord", "propertyManager"] as string[]
+  ).includes(user?.role ?? "");
   const deleteTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const deleteRequestStarted = useRef(false);
 
@@ -186,14 +189,31 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={[styles.identityHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          {user?.avatar?.url ? (
-            <Image source={{ uri: user.avatar.url }} style={styles.avatarImage} />
-          ) : (
-            <Text style={styles.avatarInitials}>
-              {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
-              {user?.lastName?.[0]?.toUpperCase() || ""}
-            </Text>
+        <View style={styles.avatarWrap}>
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            {user?.avatar?.url ? (
+              <Image source={{ uri: user.avatar.url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarInitials}>
+                {(user?.firstName?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                {user?.lastName?.[0]?.toUpperCase() || ""}
+              </Text>
+            )}
+          </View>
+          {(user?.role === "landlord" || user?.role === "propertyManager") && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Change profile or business image"
+              onPress={chooseSource}
+              disabled={isUploading}
+              style={[styles.avatarCameraButton, { backgroundColor: colors.primary, borderColor: colors.card }]}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Ionicons name="camera" size={15} color="#ffffff" />
+              )}
+            </TouchableOpacity>
           )}
         </View>
         <View style={styles.identityText}>
@@ -238,47 +258,51 @@ const AccountScreen: React.FC<AccountScreenProps> = () => {
         ))}
       </View>
 
-      <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Change password"
-        onPress={() => setIsPasswordModalVisible(true)}
-        style={[styles.actionRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-      >
-        <View style={[styles.actionIcon, { backgroundColor: colors.primary + "18" }]}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
-        </View>
-        <View style={styles.actionCopy}>
-          <Text style={[styles.actionTitle, { color: colors.text }]}>Change password</Text>
-          <Text style={[styles.actionSubtitle, { color: colors.textMuted }]}>Update your sign-in credentials</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-      </Pressable>
+      {!isElevatedRole && (
+        <>
+          <View style={styles.sectionHeading}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Security</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Change password"
+            onPress={() => setIsPasswordModalVisible(true)}
+            style={[styles.actionRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: colors.primary + "18" }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.actionCopy}>
+              <Text style={[styles.actionTitle, { color: colors.text }]}>Change password</Text>
+              <Text style={[styles.actionSubtitle, { color: colors.textMuted }]}>Update your sign-in credentials</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Pressable>
 
-      <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Account actions</Text>
-      </View>
-      <View style={[styles.dangerSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.dangerCopy}>
-          <Text style={[styles.actionTitle, { color: colors.text }]}>Delete account</Text>
-          <Text style={[styles.actionSubtitle, { color: colors.textMuted }]}>
-            Your account and personal data will be removed.
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Delete account"
-          onPress={() => setIsDeleteModalVisible(true)}
-          disabled={isDeleting}
-          style={[styles.deleteButton, { borderColor: colors.destructive }]}
-        >
-          <Text style={[styles.deleteButtonText, { color: colors.destructive }]}>
-            {isDeleting ? "Deleting..." : "Delete account"}
-          </Text>
-        </Pressable>
-      </View>
+          <View style={styles.sectionHeading}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Account actions</Text>
+          </View>
+          <View style={[styles.dangerSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.dangerCopy}>
+              <Text style={[styles.actionTitle, { color: colors.text }]}>Delete account</Text>
+              <Text style={[styles.actionSubtitle, { color: colors.textMuted }]}>
+                Your account and personal data will be removed.
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              onPress={() => setIsDeleteModalVisible(true)}
+              disabled={isDeleting}
+              style={[styles.deleteButton, { borderColor: colors.destructive }]}
+            >
+              <Text style={[styles.deleteButtonText, { color: colors.destructive }]}>
+                {isDeleting ? "Deleting..." : "Delete account"}
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      )}
 
       <Pressable
         accessibilityRole="button"
@@ -479,9 +503,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  avatarWrap: {
+    width: 58,
+    height: 58,
+  },
   avatarImage: {
     width: "100%",
     height: "100%",
+  },
+  avatarCameraButton: {
+    position: "absolute",
+    right: -4,
+    bottom: -4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
   },
   avatarInitials: {
     color: "#ffffff",
