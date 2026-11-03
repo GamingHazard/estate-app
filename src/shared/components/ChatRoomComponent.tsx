@@ -18,17 +18,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../features/auth/AuthContext";
+import {
+  createMessagingSocket,
+  archiveConversation,
+  deleteServerMessage,
+  getMessages,
+  markConversationRead,
+  sendServerMessage,
+  ServerMessage,
+} from "../../features/messaging/messagingApi";
 
 interface ChatMessage {
   id: string;
+  clientMessageId?: string;
   sender: "you" | "other";
   text: string;
   timestamp: string;
   avatar: string;
-  deliveryStatus?: "sent" | "delivered" | "read";
+  deliveryStatus?: "sent" | "delivered" | "read" | "failed";
   replyTo?: {
     sender: "you" | "other";
     text: string;
+    messageId?: string;
   };
 }
 
@@ -37,13 +48,45 @@ interface ChatRoomProps {
   participantAvatar: string;
   initialMessages: ChatMessage[];
   onBack?: () => void;
+  conversationId?: string;
 }
+
+const toChatMessage = (
+  message: ServerMessage,
+  currentUserId?: string,
+): ChatMessage => {
+  return {
+    id: message._id,
+    clientMessageId: message.clientMessageId,
+    sender: String(message.sender) === String(currentUserId) ? "you" : "other",
+    text: message.deleted ? "This message was deleted." : message.text,
+    timestamp: new Date(message.createdAt).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    avatar: "https://randomuser.me/api/portraits/women/10.jpg",
+    deliveryStatus: message.status,
+    replyTo: message.replyTo?.deleted
+      ? { sender: "other", text: "This message was deleted." }
+      : message.replyTo
+        ? {
+            sender:
+              String(message.replyTo.sender) === String(currentUserId)
+                ? "you"
+                : "other",
+            text: message.replyTo.text,
+            messageId: message.replyTo._id,
+          }
+        : undefined,
+  };
+};
 
 const ChatRoom: React.FC<ChatRoomProps> = ({
   participantName,
   participantAvatar,
   initialMessages,
   onBack,
+  conversationId,
 }) => {
   const { colors } = useTheme();
   const { user, openAuth } = useAuth();
@@ -54,8 +97,88 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const replySwipeOffsets = useRef<Record<string, Animated.Value>>({});
   const flatListRef = useRef<FlatList>(null);
+  const messagingSocketRef = useRef<Awaited<ReturnType<typeof createMessagingSocket>> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    let active = true;
+    void getMessages(conversationId)
+      .then(({ messages: serverMessages }) => {
+        if (!active) return;
+        setMessages(
+          serverMessages.map((message) => toChatMessage(message, user?.id)),
+        );
+      })
+      .catch((error) => console.error("Unable to load chat messages:", error));
+    void markConversationRead(conversationId).catch((error) =>
+      console.error("Unable to mark conversation read:", error),
+    );
+
+    let socket: Awaited<ReturnType<typeof createMessagingSocket>>;
+    void createMessagingSocket().then((connectedSocket) => {
+      socket = connectedSocket;
+      messagingSocketRef.current = socket;
+      socket.emit("conversation:join", conversationId, () => undefined);
+      socket.on("message:new", (message: ServerMessage) => {
+        if (String(message.conversation) !== String(conversationId)) return;
+        setMessages((current) => {
+          const optimisticIndex = current.findIndex(
+            (item) => item.clientMessageId === message.clientMessageId,
+          );
+          if (optimisticIndex >= 0) {
+            return current.map((item, index) =>
+              index === optimisticIndex
+                ? toChatMessage(message, user?.id)
+                : item,
+            );
+          }
+          if (current.some((item) => item.id === message._id)) return current;
+          return [...current, toChatMessage(message, user?.id)];
+        });
+      });
+      socket.on("message:deleted", ({ messageId }: { messageId: string }) => {
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === messageId
+              ? { ...item, text: "This message was deleted." }
+              : item,
+          ),
+        );
+      });
+      socket.on("message:read", () => {
+        setMessages((current) =>
+          current.map((item) =>
+            item.sender === "you" && item.deliveryStatus !== "read"
+              ? { ...item, deliveryStatus: "read" }
+              : item,
+          ),
+        );
+      });
+      socket.on("message:status", ({ status }: { status?: "delivered" }) => {
+        if (status !== "delivered") return;
+        setMessages((current) =>
+          current.map((item) =>
+            item.sender === "you" && item.deliveryStatus === "sent"
+              ? { ...item, deliveryStatus: "delivered" }
+              : item,
+          ),
+        );
+      });
+      socket.on("typing:start", () => setIsTyping(true));
+      socket.on("typing:stop", () => setIsTyping(false));
+    });
+
+    return () => {
+      active = false;
+      messagingSocketRef.current = null;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      socket?.disconnect();
+    };
+  }, [conversationId, user?.id]);
 
   useEffect(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -64,8 +187,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const handleSendMessage = () => {
     if (inputText.trim().length === 0) return;
 
+    const clientMessageId =
+      conversationId && conversationId.length > 0
+        ? `${user?.id}-${conversationId}-${Date.now()}-${Math.random()}`
+        : `msg${Date.now()}`;
     const newMessage: ChatMessage = {
-      id: `msg${Date.now()}`,
+      id: clientMessageId,
+      clientMessageId,
       sender: "you",
       text: inputText,
       timestamp: new Date().toLocaleTimeString("en-US", {
@@ -76,27 +204,73 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
       avatar: "https://randomuser.me/api/portraits/women/10.jpg",
       deliveryStatus: "sent",
       replyTo: replyingTo
-        ? { sender: replyingTo.sender, text: replyingTo.text }
+        ? {
+            sender: replyingTo.sender,
+            text: replyingTo.text,
+            messageId: replyingTo.id,
+          }
         : undefined,
     };
 
     setMessages([...messages, newMessage]);
     setInputText("");
     setReplyingTo(null);
+    messagingSocketRef.current?.emit("typing:stop", conversationId);
+
+    if (conversationId) {
+      void sendServerMessage(
+        conversationId,
+        clientMessageId,
+        newMessage.text,
+        replyingTo?.id,
+      ).then(({ message }) => {
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === clientMessageId
+              ? toChatMessage(message, user?.id)
+              : item,
+          ),
+        );
+      }).catch((error) => {
+        console.error("Unable to send message:", error);
+        setMessages((current) =>
+          current.map((item) =>
+            item.clientMessageId === clientMessageId
+              ? { ...item, deliveryStatus: "failed" }
+              : item,
+          ),
+        );
+      });
+    }
   };
 
   const handleDeleteChat = () => {
     setMenuVisible(false);
+    if (conversationId) {
+      void archiveConversation(conversationId).catch((error) =>
+        console.error("Unable to remove conversation:", error),
+      );
+    }
     onBack?.();
   };
 
   const handleArchiveChat = () => {
     setMenuVisible(false);
+    if (conversationId) {
+      void archiveConversation(conversationId).catch((error) =>
+        console.error("Unable to archive conversation:", error),
+      );
+    }
     onBack?.();
   };
 
   const deleteSelectedMessage = () => {
     if (!selectedMessageId) return;
+    if (conversationId) {
+      void deleteServerMessage(conversationId, selectedMessageId).catch((error) =>
+        console.error("Unable to delete message:", error),
+      );
+    }
     setMessages((current) =>
       current.filter((message) => message.id !== selectedMessageId),
     );
@@ -306,6 +480,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
               <Text style={[styles.headerText, { color: colors.text }]}>
                 {participantName}
               </Text>
+              {isTyping && (
+                <Text style={[styles.typingText, { color: colors.textMuted }]}>
+                  typing...
+                </Text>
+              )}
             </>
           )}
         </View>
@@ -421,7 +600,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           placeholder="Type a message..."
           placeholderTextColor={colors.textMuted}
           value={inputText}
-          onChangeText={setInputText}
+          onChangeText={(text) => {
+            setInputText(text);
+            if (!conversationId || !messagingSocketRef.current) return;
+            if (text.length > 0) {
+              messagingSocketRef.current.emit("typing:start", conversationId);
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+              typingTimeoutRef.current = setTimeout(() => {
+                messagingSocketRef.current?.emit("typing:stop", conversationId);
+              }, 1500);
+            } else {
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+              messagingSocketRef.current.emit("typing:stop", conversationId);
+            }
+          }}
           multiline
         />
         <TouchableOpacity
@@ -475,6 +667,11 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  typingText: {
+    marginLeft: 8,
+    fontSize: 12,
+    fontStyle: "italic",
   },
   menuButton: {
     marginLeft: 14,

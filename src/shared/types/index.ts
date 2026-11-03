@@ -17,6 +17,7 @@ export type RootStackParamList = {
   ReviewsManagement: undefined;
   AdminPropertyDetails: { propertyId: string };
   "Chat Room": {
+    conversationId?: string;
     participantName: string;
     participantAvatar: string;
     initialMessages: any[];

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,60 @@ import {
   FlatList,
 } from "react-native";
 import { useTheme } from "../../shared/theme/ThemeContext";
-import { mockMessages } from "../../data/mockMessages";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../auth/AuthContext";
+import {
+  archiveConversation,
+  createMessagingSocket,
+  getConversations,
+  markConversationRead,
+  ServerConversation,
+} from "./messagingApi";
 
 const MessagesScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
-  const [messages, setMessages] = useState(mockMessages);
+  const [messages, setMessages] = useState<ServerConversation[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const { user, openAuth } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      setMessages([]);
+      return;
+    }
+
+    let active = true;
+    getConversations()
+      .then(({ conversations }) => {
+        if (active) setMessages(conversations);
+      })
+      .catch((error) => console.error("Unable to load conversations:", error));
+
+    let socket: Awaited<ReturnType<typeof createMessagingSocket>>;
+    void createMessagingSocket().then((connectedSocket) => {
+      socket = connectedSocket;
+      socket.on("conversation:updated", () => {
+        void getConversations()
+          .then(({ conversations }) => active && setMessages(conversations))
+          .catch((error) =>
+            console.error("Unable to refresh conversations:", error),
+          );
+      });
+    });
+
+    return () => {
+      active = false;
+      socket?.disconnect();
+    };
+  }, [user]);
 
   const closeActionBar = () => setSelectedChatId(null);
 
   const markSelectedRead = () => {
     if (!selectedChatId) return;
+    void markConversationRead(selectedChatId).catch((error) =>
+      console.error("Unable to mark conversation read:", error),
+    );
     setMessages((current) =>
       current.map((message) =>
         message.id === selectedChatId
@@ -34,21 +74,34 @@ const MessagesScreen = ({ navigation }: any) => {
 
   const archiveSelected = () => {
     if (!selectedChatId) return;
+    const conversationId = selectedChatId;
+    void archiveConversation(conversationId).catch((error) =>
+      console.error("Unable to archive conversation:", error),
+    );
     setMessages((current) =>
-      current.filter((message) => message.id !== selectedChatId),
+      current.filter((message) => message.id !== conversationId),
     );
     closeActionBar();
   };
 
   const deleteSelected = () => {
     if (!selectedChatId) return;
+    const conversationId = selectedChatId;
+    void archiveConversation(conversationId).catch((error) =>
+      console.error("Unable to remove conversation:", error),
+    );
     setMessages((current) =>
-      current.filter((message) => message.id !== selectedChatId),
+      current.filter((message) => message.id !== conversationId),
     );
     closeActionBar();
   };
 
   const markAllAsRead = () => {
+    void Promise.all(
+      messages.map((message) => markConversationRead(message.id)),
+    ).catch((error) =>
+      console.error("Unable to mark conversations read:", error),
+    );
     const updatedMessages = messages.map((msg) => ({
       ...msg,
       unread: false,
@@ -57,7 +110,25 @@ const MessagesScreen = ({ navigation }: any) => {
     setMessages(updatedMessages);
   };
 
-  const renderMessage = ({ item }: any) => (
+  const renderMessage = ({ item }: { item: ServerConversation }) => {
+    const participant =
+      item.participants.find((candidate) => String(candidate._id) !== String(user?.id)) ||
+      item.participants[0];
+    const sender = [participant?.firstName, participant?.lastName]
+      .filter(Boolean)
+      .join(" ") || "Property owner";
+    const avatar = participant?.avatar?.url || "";
+    const preview = item.lastMessage?.deleted
+      ? "This message was deleted."
+      : item.lastMessage?.text || "Start a conversation";
+    const timestamp = item.lastMessageAt
+      ? new Date(item.lastMessageAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "";
+
+    return (
     <TouchableOpacity
       style={[
         styles.messageItem,
@@ -93,31 +164,27 @@ const MessagesScreen = ({ navigation }: any) => {
               : message,
           ),
         );
+        void markConversationRead(item.id).catch((error) =>
+          console.error("Unable to mark conversation read:", error),
+        );
         navigation.navigate("Chat Room", {
-          participantName: item.sender,
-          participantAvatar: item.avatar,
-          initialMessages: [
-            {
-              id: item.id,
-              sender: "other",
-              text: item.message,
-              timestamp: item.timestamp,
-              avatar: item.avatar,
-            },
-          ],
+          conversationId: item.id,
+          participantName: sender,
+          participantAvatar: avatar,
+          initialMessages: [],
         });
       }}
     >
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Image source={{ uri: avatar }} style={styles.avatar} />
       <View style={styles.messageContent}>
         <Text style={[styles.sender, { color: colors.text }]}>
-          {item.sender}
+          {sender}
         </Text>
         <Text
           style={[styles.messageText, { color: colors.textMuted }]}
           numberOfLines={1}
         >
-          {item.message}
+          {preview}
         </Text>
       </View>
       <View style={styles.messageInfo}>
@@ -131,7 +198,7 @@ const MessagesScreen = ({ navigation }: any) => {
             ],
           ]}
         >
-          {item.timestamp}
+          {timestamp}
         </Text>
         {item.unreadCount > 0 ? (
           <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
@@ -142,7 +209,8 @@ const MessagesScreen = ({ navigation }: any) => {
         ) : null}
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

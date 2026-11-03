@@ -29,6 +29,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { useSavedProperties } from "./SavedPropertiesContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getOrCreatePropertyConversation } from "../messaging/messagingApi";
 
 const NO_IMAGE =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -104,6 +105,27 @@ const PropertyDetailsScreen = ({ route }: Props) => {
       (unit) => (unit.id ?? unit.unitNumber) === selectedUnitId,
     ) ?? null;
   const publishedListing = getPublishedListing(property);
+  const openPropertyChat = async () => {
+    if (!user) {
+      openAuth();
+      return;
+    }
+    const propertyId = String(property.id || (property as any)._id || "");
+    if (!propertyId) return;
+    const { conversation } = await getOrCreatePropertyConversation(propertyId);
+    const participant =
+      conversation.participants.find(
+        (candidate) => String(candidate._id) !== String(user.id),
+      ) || conversation.participants[0];
+    navigation.navigate("Chat Room", {
+      conversationId: conversation.id,
+      participantName:
+        [participant?.firstName, participant?.lastName].filter(Boolean).join(" ") ||
+        "Property owner",
+      participantAvatar: participant?.avatar?.url || "",
+      initialMessages: [],
+    });
+  };
   const displayListing: PropertyListing | undefined = publishedListing
     ? {
         ...publishedListing,
@@ -697,19 +719,30 @@ const PropertyDetailsScreen = ({ route }: Props) => {
         ]}
       >
         {property.ownerId ? (
-          <TouchableOpacity
-            style={[styles.contactButton, { backgroundColor: colors.primary }]}
-            onPress={() =>
-              navigation.navigate("Lister Profile", {
-                userId: String(property.ownerId),
-              })
-            }
-            accessibilityRole="button"
-          >
-            <Ionicons name="person-circle-outline" size={21} color="white" />
-            <Text style={styles.contactButtonText}>View lister</Text>
-            <Ionicons name="arrow-forward" size={18} color="white" />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.contactButton, { backgroundColor: colors.primary, marginBottom: 8 }]}
+              onPress={() => void openPropertyChat()}
+              accessibilityRole="button"
+            >
+              <Ionicons name="chatbubble-outline" size={21} color="white" />
+              <Text style={styles.contactButtonText}>Message owner</Text>
+              <Ionicons name="arrow-forward" size={18} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.contactButton, { backgroundColor: colors.card }]}
+              onPress={() =>
+                navigation.navigate("Lister Profile", {
+                  userId: String(property.ownerId),
+                })
+              }
+              accessibilityRole="button"
+            >
+              <Ionicons name="person-circle-outline" size={21} color={colors.text} />
+              <Text style={[styles.contactButtonText, { color: colors.text }]}>View lister</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.text} />
+            </TouchableOpacity>
+          </>
         ) : (
           <View
             style={[
