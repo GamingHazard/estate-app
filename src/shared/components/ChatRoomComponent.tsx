@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../features/auth/AuthContext";
 
 interface ChatMessage {
   id: string;
@@ -45,13 +46,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   onBack,
 }) => {
   const { colors } = useTheme();
+  const { user, openAuth } = useAuth();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [menuVisible, setMenuVisible] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const replySwipeOffset = useRef(new Animated.Value(0)).current;
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const replySwipeOffsets = useRef<Record<string, Animated.Value>>({});
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -92,14 +95,28 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
     onBack?.();
   };
 
+  const deleteSelectedMessage = () => {
+    if (!selectedMessageId) return;
+    setMessages((current) =>
+      current.filter((message) => message.id !== selectedMessageId),
+    );
+    setSelectedMessageId(null);
+  };
+
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isYourMessage = item.sender === "you";
+    if (!replySwipeOffsets.current[item.id]) {
+      replySwipeOffsets.current[item.id] = new Animated.Value(0);
+    }
+    const replySwipeOffset = replySwipeOffsets.current[item.id];
     const swipeResponder = PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) =>
         Math.abs(gesture.dx) > 15 && Math.abs(gesture.dy) < 10,
       onPanResponderMove: (_, gesture) => {
         if (gesture.dx > 0) {
           replySwipeOffset.setValue(Math.min(gesture.dx, 72));
+        } else {
+          replySwipeOffset.setValue(0);
         }
       },
       onPanResponderRelease: (_, gesture) => {
@@ -123,16 +140,39 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
     const noImage =
       "https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png";
     return (
-      <Animated.View
-        {...swipeResponder.panHandlers}
+      <TouchableOpacity
+        onLongPress={
+          isYourMessage
+            ? () => {
+                if (!user) {
+                  openAuth();
+                  return;
+                }
+                setSelectedMessageId((current) =>
+                  current === item.id ? null : item.id,
+                );
+              }
+            : undefined
+        }
+        delayLongPress={500}
         style={[
           styles.messageWrapper,
-          { transform: [{ translateX: replySwipeOffset }] },
           isYourMessage
             ? styles.yourMessageWrapper
             : styles.otherMessageWrapper,
+          selectedMessageId === item.id && [
+            styles.selectedMessage,
+            { borderColor: colors.primary },
+          ],
         ]}
       >
+        <Animated.View
+          {...swipeResponder.panHandlers}
+          style={[
+            styles.messageSwipeRow,
+            { transform: [{ translateX: replySwipeOffset }] },
+          ]}
+        >
         {!isYourMessage && (
           <Image
             source={{
@@ -142,24 +182,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           />
         )}
         <View style={isYourMessage ? styles.sentMessageColumn : undefined}>
-          {item.replyTo && (
-            <View
-              style={[
-                styles.replyQuote,
-                { backgroundColor: colors.background, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.replyQuoteAuthor, { color: colors.primary }]}>
-                {item.replyTo.sender === "you" ? "You" : participantName}
-              </Text>
-              <Text
-                style={[styles.replyQuoteText, { color: colors.textMuted }]}
-                numberOfLines={2}
-              >
-                {item.replyTo.text}
-              </Text>
-            </View>
-          )}
           <View
             style={[
               styles.messageBubble,
@@ -169,6 +191,38 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                 : [styles.otherMessage, { backgroundColor: colors.card }],
             ]}
           >
+            {item.replyTo && (
+              <View
+                style={[
+                  styles.replyQuote,
+                  {
+                    backgroundColor: isYourMessage
+                      ? "rgba(255, 255, 255, 0.14)"
+                      : colors.background,
+                    borderLeftColor: isYourMessage ? "#ffffff" : colors.primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.replyQuoteAuthor,
+                    { color: isYourMessage ? "#ffffff" : colors.primary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.replyTo.sender === "you" ? "You" : participantName}
+                </Text>
+                <Text
+                  style={[
+                    styles.replyQuoteText,
+                    { color: isYourMessage ? "rgba(255, 255, 255, 0.82)" : colors.textMuted },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {item.replyTo.text}
+                </Text>
+              </View>
+            )}
             <Text
               style={[
                 styles.messageText,
@@ -209,7 +263,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
         {isYourMessage && (
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
         )}
-      </Animated.View>
+        </Animated.View>
+      </TouchableOpacity>
     );
   };
 
@@ -222,30 +277,57 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        {onBack && (
+        {selectedMessageId ? (
+          <TouchableOpacity
+            style={styles.messageActionButton}
+            onPress={deleteSelectedMessage}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.destructive} />
+            <Text style={[styles.messageActionLabel, { color: colors.destructive }]}>
+              Delete
+            </Text>
+          </TouchableOpacity>
+        ) : onBack ? (
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
-        )}
+        ) : null}
         <View style={styles.headerContent}>
-          <Image
-            source={{ uri: participantAvatar }}
-            style={styles.headerAvatar}
-          />
-          <Text style={[styles.headerText, { color: colors.text }]}>
-            {participantName}
-          </Text>
+          {selectedMessageId ? (
+            <Text style={[styles.headerText, { color: colors.text }]}>
+              1 selected
+            </Text>
+          ) : (
+            <>
+              <Image
+                source={{ uri: participantAvatar }}
+                style={styles.headerAvatar}
+              />
+              <Text style={[styles.headerText, { color: colors.text }]}>
+                {participantName}
+              </Text>
+            </>
+          )}
         </View>
-        <TouchableOpacity>
+        {selectedMessageId ? (
+          <TouchableOpacity
+            style={styles.messageActionButton}
+            onPress={() => setSelectedMessageId(null)}
+            accessibilityLabel="Close message actions"
+          >
+            <Ionicons name="close-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.messageActionLabel}>Close</Text>
+          </TouchableOpacity>
+        ) : <TouchableOpacity>
           <Ionicons name="call" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity
+        </TouchableOpacity>}
+        {!selectedMessageId && <TouchableOpacity
           style={styles.menuButton}
           onPress={() => setMenuVisible(true)}
           accessibilityLabel="Open chat actions"
         >
           <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
-        </TouchableOpacity>
+        </TouchableOpacity>}
       </View>
 
       <Modal
@@ -441,6 +523,26 @@ const styles = StyleSheet.create({
   otherMessageWrapper: {
     justifyContent: "flex-start",
   },
+  messageSwipeRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  selectedMessage: {
+    borderRadius: 12,
+    borderWidth: 2,
+    marginHorizontal: 2,
+    paddingHorizontal: 2,
+  },
+  messageActionButton: {
+    minWidth: 54,
+    alignItems: "center",
+    gap: 3,
+  },
+  messageActionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#777777",
+  },
   avatar: {
     width: 32,
     height: 32,
@@ -520,8 +622,9 @@ const styles = StyleSheet.create({
   replyQuote: {
     maxWidth: "100%",
     borderLeftWidth: 3,
-    borderRadius: 6,
-    paddingHorizontal: 8,
+    borderRadius: 4,
+    paddingLeft: 8,
+    paddingRight: 10,
     paddingVertical: 5,
     marginBottom: 6,
   },

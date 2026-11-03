@@ -5,6 +5,7 @@ export const mockMessages = [
     message: 'Interested in the Spacious Family Home. Is it still available?',
     timestamp: '10:30 AM',
     unread: true,
+    unreadCount: 3,
     avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
   },
   {
@@ -13,6 +14,7 @@ export const mockMessages = [
     message: 'Can I schedule a visit for the Modern Downtown Apartment?',
     timestamp: 'Yesterday',
     unread: true,
+    unreadCount: 1,
     avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
   },
   {
@@ -21,6 +23,7 @@ export const mockMessages = [
     message: 'New listing matching your criteria: Luxury Beachfront Villa.',
     timestamp: '2 days ago',
     unread: false,
+    unreadCount: 0,
     avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
   },
   {
@@ -29,6 +32,7 @@ export const mockMessages = [
     message: 'Your account has been successfully verified.',
     timestamp: 'Last week',
     unread: false,
+    unreadCount: 0,
     avatar: 'https://randomuser.me/api/portraits/women/4.jpg',
   },
   {
@@ -37,6 +41,7 @@ export const mockMessages = [
     message: 'What are the amenities for the Creative Co-working Hub?',
     timestamp: 'May 15, 2024',
     unread: true,
+    unreadCount: 2,
     avatar: 'https://randomuser.me/api/portraits/men/5.jpg',
   },
 ];

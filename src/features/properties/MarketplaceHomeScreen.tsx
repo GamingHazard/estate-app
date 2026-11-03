@@ -78,7 +78,7 @@ const MOCK_NOTIFICATIONS: MockNotification[] = [
 const MarketplaceHomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<any>();
-  const { colors,theme } = useTheme();
+  const { colors, theme } = useTheme();
   const { user, openAuth } = useAuth();
   const { chooseSource, isUploading } = useAvatarUpload();
   const canManageProfileImage =
@@ -99,15 +99,16 @@ const MarketplaceHomeScreen = () => {
   const [sort, setSort] = useState<SortOption>("newest");
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
-  const [notifications, setNotifications] = useState<MockNotification[]>(
-    MOCK_NOTIFICATIONS,
-  );
+  const [notifications, setNotifications] =
+    useState<MockNotification[]>(MOCK_NOTIFICATIONS);
   const drawerTranslate = useRef(new Animated.Value(360)).current;
   const propertyListRef = useRef<FlatList<Property> | null>(null);
   const scrollToTopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const unreadCount = notifications.filter(
+    (notification) => !notification.read,
+  ).length;
 
   useEffect(() => {
     Animated.spring(drawerTranslate, {
@@ -118,13 +119,11 @@ const MarketplaceHomeScreen = () => {
     }).start();
   }, [drawerTranslate, notificationsVisible]);
 
-  useEffect(
-    () => () => {
-      if (scrollToTopTimer.current) {
-        clearTimeout(scrollToTopTimer.current);
-      }
-    },
-  );
+  useEffect(() => () => {
+    if (scrollToTopTimer.current) {
+      clearTimeout(scrollToTopTimer.current);
+    }
+  });
 
   const handleFeedScroll = (offsetY: number) => {
     if (offsetY <= 80) {
@@ -200,8 +199,11 @@ const MarketplaceHomeScreen = () => {
     if (route.params?.initialCategory) {
       setCategory(route.params.initialCategory);
     }
-
-  }, [route.params?.initialSearch, route.params?.initialPurpose, route.params?.initialCategory]);
+  }, [
+    route.params?.initialSearch,
+    route.params?.initialPurpose,
+    route.params?.initialCategory,
+  ]);
 
   const filteredProperties = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -262,17 +264,24 @@ const MarketplaceHomeScreen = () => {
             Hello, {user?.firstName ?? "there"} !
           </Text>
           <Text style={[styles.heading, { color: "white" }]}>
-            Find your next crib
+            Find your next Property
           </Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.notificationButton, { backgroundColor: colors.card }]}
+            style={[
+              styles.notificationButton,
+              { backgroundColor: colors.card },
+            ]}
             accessibilityRole="button"
             accessibilityLabel="Open notifications"
             onPress={() => setNotificationsVisible(true)}
           >
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            <Ionicons
+              name="notifications-outline"
+              size={22}
+              color={colors.text}
+            />
             {unreadCount > 0 && <View style={styles.notificationBadge} />}
           </TouchableOpacity>
 
@@ -284,7 +293,10 @@ const MarketplaceHomeScreen = () => {
               onPress={() => navigation.navigate("Account")}
             >
               {user && user.avatar?.url ? (
-                <Image source={{ uri: user.avatar.url }} style={styles.avatar} />
+                <Image
+                  source={{ uri: user.avatar.url }}
+                  style={styles.avatar}
+                />
               ) : (
                 <Ionicons name="person-outline" size={20} color={colors.text} />
               )}
@@ -529,9 +541,8 @@ const MarketplaceHomeScreen = () => {
             styles.scrollToTopButton,
             {
               backgroundColor: colors.bg,
-              borderColor: 'white',
+              borderColor: "white",
               bottom: insets.bottom + 98,
-              
             },
           ]}
           onPress={scrollFeedToTop}
@@ -539,7 +550,7 @@ const MarketplaceHomeScreen = () => {
           accessibilityLabel="Scroll to top"
           hitSlop={8}
         >
-          <Ionicons name="arrow-up" size={22} color={'white'} />
+          <Ionicons name="arrow-up" size={22} color={"white"} />
         </Pressable>
       )}
 
@@ -658,7 +669,9 @@ const MarketplaceHomeScreen = () => {
               <Text style={[styles.notificationTitle, { color: colors.text }]}>
                 Notifications
               </Text>
-              <Text style={[styles.notificationCount, { color: colors.textMuted }]}>
+              <Text
+                style={[styles.notificationCount, { color: colors.textMuted }]}
+              >
                 {notifications.length} total
               </Text>
             </View>
@@ -674,22 +687,32 @@ const MarketplaceHomeScreen = () => {
             <TouchableOpacity
               style={[
                 styles.notificationActionButton,
-                { borderColor: colors.border, backgroundColor: colors.background },
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                },
               ]}
               onPress={markAllNotificationsRead}
             >
-              <Text style={[styles.notificationActionText, { color: colors.text }]}>
+              <Text
+                style={[styles.notificationActionText, { color: colors.text }]}
+              >
                 Read all
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.notificationActionButton,
-                { borderColor: colors.border, backgroundColor: colors.background },
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                },
               ]}
               onPress={clearNotifications}
             >
-              <Text style={[styles.notificationActionText, { color: colors.text }]}>
+              <Text
+                style={[styles.notificationActionText, { color: colors.text }]}
+              >
                 Clear
               </Text>
             </TouchableOpacity>
@@ -702,7 +725,11 @@ const MarketplaceHomeScreen = () => {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyNotifications}>
-                <Ionicons name="notifications-off-outline" size={30} color={colors.textMuted} />
+                <Ionicons
+                  name="notifications-off-outline"
+                  size={30}
+                  color={colors.textMuted}
+                />
                 <Text style={[styles.emptyText, { color: colors.text }]}>
                   No notifications
                 </Text>
@@ -713,21 +740,35 @@ const MarketplaceHomeScreen = () => {
                 style={[
                   styles.notificationItem,
                   {
-                    backgroundColor: item.read ? colors.background : colors.card,
+                    backgroundColor: item.read
+                      ? colors.background
+                      : colors.card,
                     borderColor: item.read ? colors.border : colors.primary,
                   },
                 ]}
               >
                 {!item.read && <View style={styles.unreadDot} />}
                 <View style={styles.notificationContent}>
-                  <Text style={[styles.notificationItemTitle, { color: colors.text }]}>
+                  <Text
+                    style={[
+                      styles.notificationItemTitle,
+                      { color: colors.text },
+                    ]}
+                  >
                     {item.title}
                   </Text>
-                  <Text style={[styles.notificationItemMessage, { color: colors.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.notificationItemMessage,
+                      { color: colors.textMuted },
+                    ]}
+                  >
                     {item.message}
                   </Text>
                 </View>
-                <Text style={[styles.notificationTime, { color: colors.textMuted }]}>
+                <Text
+                  style={[styles.notificationTime, { color: colors.textMuted }]}
+                >
                   {item.time}
                 </Text>
               </View>
