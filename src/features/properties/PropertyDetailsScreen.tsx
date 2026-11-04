@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   Linking,
+  Alert,
   NativeScrollEvent,
   NativeSyntheticEvent,
   useWindowDimensions,
@@ -111,20 +112,28 @@ const PropertyDetailsScreen = ({ route }: Props) => {
       return;
     }
     const propertyId = String(property.id || (property as any)._id || "");
-    if (!propertyId) return;
-    const { conversation } = await getOrCreatePropertyConversation(propertyId);
-    const participant =
-      conversation.participants.find(
-        (candidate) => String(candidate._id) !== String(user.id),
-      ) || conversation.participants[0];
-    navigation.navigate("Chat Room", {
-      conversationId: conversation.id,
-      participantName:
-        [participant?.firstName, participant?.lastName].filter(Boolean).join(" ") ||
-        "Property owner",
-      participantAvatar: participant?.avatar?.url || "",
-      initialMessages: [],
-    });
+    if (!propertyId) {
+      Alert.alert("Unable to start chat", "This property has no valid identifier.");
+      return;
+    }
+    try {
+      const { conversation } = await getOrCreatePropertyConversation(propertyId);
+      const participant =
+        conversation.participants.find(
+          (candidate) => String(candidate._id) !== String(user.id),
+        ) || conversation.participants[0];
+      navigation.navigate("Chat Room", {
+        conversationId: conversation.id,
+        participantName:
+          [participant?.firstName, participant?.lastName].filter(Boolean).join(" ") ||
+          "Property owner",
+        participantAvatar: participant?.avatar?.url || "",
+        initialMessages: [],
+      });
+    } catch (error) {
+      console.error("Unable to open property conversation:", error);
+      Alert.alert("Unable to start chat", "Please try again.");
+    }
   };
   const displayListing: PropertyListing | undefined = publishedListing
     ? {

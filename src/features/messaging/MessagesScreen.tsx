@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -11,10 +12,12 @@ import { useTheme } from "../../shared/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../auth/AuthContext";
 import {
-  archiveConversation,
   createMessagingSocket,
+  getOrCreateSupportConversation,
   getConversations,
+  hideConversation,
   markConversationRead,
+  restoreConversation,
   ServerConversation,
 } from "./messagingApi";
 
@@ -22,6 +25,7 @@ const MessagesScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
   const [messages, setMessages] = useState<ServerConversation[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const { user, openAuth } = useAuth();
 
   useEffect(() => {
@@ -31,96 +35,127 @@ const MessagesScreen = ({ navigation }: any) => {
     }
 
     let active = true;
-    getConversations()
+    getConversations(showArchived)
       .then(({ conversations }) => {
         if (active) setMessages(conversations);
       })
-      .catch((error) => console.error("Unable to load conversations:", error));
+      .catch((error) => {
+        console.error("Unable to load conversations:", error);
+        if (active) Alert.alert("Unable to load messages", "Please try again.");
+      });
 
     let socket: Awaited<ReturnType<typeof createMessagingSocket>>;
-    void createMessagingSocket().then((connectedSocket) => {
-      socket = connectedSocket;
-      socket.on("conversation:updated", () => {
-        void getConversations()
-          .then(({ conversations }) => active && setMessages(conversations))
-          .catch((error) =>
-            console.error("Unable to refresh conversations:", error),
-          );
-      });
-    });
+    void createMessagingSocket()
+      .then((connectedSocket) => {
+        if (!active) {
+          connectedSocket.disconnect();
+          return;
+        }
+        socket = connectedSocket;
+        socket.on("conversation:updated", () => {
+          void getConversations(showArchived)
+            .then(({ conversations }) => active && setMessages(conversations))
+            .catch((error) =>
+              console.error("Unable to refresh conversations:", error),
+            );
+        });
+      })
+      .catch((error) =>
+        console.error("Unable to connect messaging updates:", error),
+      );
 
     return () => {
       active = false;
       socket?.disconnect();
     };
-  }, [user]);
+  }, [user, showArchived]);
+
+  const openSupportConversation = async () => {
+    if (!user) {
+      openAuth();
+      return;
+    }
+    try {
+      const { conversation } = await getOrCreateSupportConversation();
+      await restoreConversation(conversation.id);
+      navigation.navigate("Chat Room", {
+        conversationId: conversation.id,
+        participantName: "Estate support",
+        participantAvatar: "",
+        initialMessages: [],
+      });
+    } catch (error) {
+      console.error("Unable to open support conversation:", error);
+      Alert.alert("Unable to contact support", "Please try again.");
+    }
+  };
 
   const closeActionBar = () => setSelectedChatId(null);
 
   const markSelectedRead = () => {
     if (!selectedChatId) return;
-    void markConversationRead(selectedChatId).catch((error) =>
-      console.error("Unable to mark conversation read:", error),
-    );
-    setMessages((current) =>
-      current.map((message) =>
-        message.id === selectedChatId
-          ? { ...message, unread: false, unreadCount: 0 }
-          : message,
-      ),
-    );
+    void markConversationRead(selectedChatId)
+      .then(() =>
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === selectedChatId
+              ? { ...message, unreadCount: 0 }
+              : message,
+          ),
+        ),
+      )
+      .catch((error) => {
+        console.error("Unable to mark conversation read:", error);
+        Alert.alert("Unable to update messages", "Please try again.");
+      });
     closeActionBar();
   };
 
-  const archiveSelected = () => {
+  const archiveSelected = async () => {
     if (!selectedChatId) return;
     const conversationId = selectedChatId;
-    void archiveConversation(conversationId).catch((error) =>
-      console.error("Unable to archive conversation:", error),
-    );
-    setMessages((current) =>
-      current.filter((message) => message.id !== conversationId),
-    );
-    closeActionBar();
-  };
-
-  const deleteSelected = () => {
-    if (!selectedChatId) return;
-    const conversationId = selectedChatId;
-    void archiveConversation(conversationId).catch((error) =>
-      console.error("Unable to remove conversation:", error),
-    );
-    setMessages((current) =>
-      current.filter((message) => message.id !== conversationId),
-    );
-    closeActionBar();
+    try {
+      await hideConversation(conversationId);
+      setMessages((current) =>
+        current.filter((message) => message.id !== conversationId),
+      );
+      closeActionBar();
+    } catch (error) {
+      console.error("Unable to archive conversation:", error);
+      Alert.alert("Unable to archive conversation", "Please try again.");
+    }
   };
 
   const markAllAsRead = () => {
     void Promise.all(
       messages.map((message) => markConversationRead(message.id)),
-    ).catch((error) =>
-      console.error("Unable to mark conversations read:", error),
-    );
-    const updatedMessages = messages.map((msg) => ({
-      ...msg,
-      unread: false,
-      unreadCount: 0,
-    }));
-    setMessages(updatedMessages);
+    )
+      .then(() =>
+        setMessages((current) =>
+          current.map((message) => ({ ...message, unreadCount: 0 })),
+        ),
+      )
+      .catch((error) => {
+        console.error("Unable to mark conversations read:", error);
+        Alert.alert("Unable to update messages", "Please try again.");
+      });
   };
 
   const renderMessage = ({ item }: { item: ServerConversation }) => {
     const participant =
       item.participants.find((candidate) => String(candidate._id) !== String(user?.id)) ||
       item.participants[0];
-    const sender = [participant?.firstName, participant?.lastName]
-      .filter(Boolean)
-      .join(" ") || "Property owner";
+    const sender = item.type === "support"
+      ? "Estate support"
+      : [participant?.firstName, participant?.lastName]
+          .filter(Boolean)
+          .join(" ") || "Property owner";
     const avatar = participant?.avatar?.url || "";
     const preview = item.lastMessage?.deleted
       ? "This message was deleted."
-      : item.lastMessage?.text || "Start a conversation";
+      : item.lastMessage?.text ||
+        item.lastMessage?.attachment?.fileName ||
+        "Start a conversation";
     const timestamp = item.lastMessageAt
       ? new Date(item.lastMessageAt).toLocaleTimeString([], {
           hour: "2-digit",
@@ -157,25 +192,39 @@ const MessagesScreen = ({ navigation }: any) => {
           );
           return;
         }
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === item.id
-              ? { ...message, unread: false, unreadCount: 0 }
-              : message,
-          ),
-        );
-        void markConversationRead(item.id).catch((error) =>
-          console.error("Unable to mark conversation read:", error),
-        );
-        navigation.navigate("Chat Room", {
-          conversationId: item.id,
-          participantName: sender,
-          participantAvatar: avatar,
-          initialMessages: [],
-        });
+        void restoreConversation(item.id)
+          .then(() => {
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === item.id
+                  ? { ...message, unreadCount: 0 }
+                  : message,
+              ),
+            );
+            navigation.navigate("Chat Room", {
+              conversationId: item.id,
+              participantName: sender,
+              participantAvatar: avatar,
+              initialMessages: [],
+            });
+          })
+          .catch((error) => {
+            console.error("Unable to open conversation:", error);
+            Alert.alert("Unable to open conversation", "Please try again.");
+          });
       }}
     >
-      <Image source={{ uri: avatar }} style={styles.avatar} />
+      {avatar ? (
+        <Image source={{ uri: avatar }} style={styles.avatar} />
+      ) : (
+        <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.border }]}>
+          <Ionicons
+            name={item.type === "support" ? "help-circle-outline" : "person-outline"}
+            size={24}
+            color={colors.textMuted}
+          />
+        </View>
+      )}
       <View style={styles.messageContent}>
         <Text style={[styles.sender, { color: colors.text }]}>
           {sender}
@@ -222,17 +271,13 @@ const MessagesScreen = ({ navigation }: any) => {
       >
         {selectedChatId ? (
           <>
-            <TouchableOpacity style={styles.headerActionButton} onPress={archiveSelected}>
-              <Ionicons name="archive-outline" size={20} color={colors.text} />
-              <Text style={styles.headerActionLabel}>Archive</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.headerActionButton} onPress={markSelectedRead}>
               <Ionicons name="checkmark-done-outline" size={20} color={colors.primary} />
               <Text style={[styles.headerActionLabel, { color: colors.primary }]}>Read all</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerActionButton} onPress={deleteSelected}>
+            <TouchableOpacity style={styles.headerActionButton} onPress={archiveSelected}>
               <Ionicons name="trash-outline" size={20} color={colors.destructive} />
-              <Text style={[styles.headerActionLabel, { color: colors.destructive }]}>Delete</Text>
+              <Text style={[styles.headerActionLabel, { color: colors.destructive }]}>Hide</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerActionButton}
@@ -248,9 +293,19 @@ const MessagesScreen = ({ navigation }: any) => {
             <Text style={[styles.headerText, { color: colors.text }]}>
               Messages
             </Text>
-            <TouchableOpacity onPress={markAllAsRead}>
-              <Text style={styles.readAllButton}>Read All</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={() => setShowArchived((value) => !value)}>
+                <Text style={styles.readAllButton}>
+                  {showArchived ? "Inbox" : "Archived"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={openSupportConversation}>
+                <Text style={styles.readAllButton}>Contact support</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={markAllAsRead}>
+                <Text style={styles.readAllButton}>Read All</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </View>
@@ -269,7 +324,7 @@ const MessagesScreen = ({ navigation }: any) => {
             No Messages
           </Text>
           <Text style={[styles.emptySubText, { color: colors.text }]}>
-            Your message inbox is empty.
+            {showArchived ? "Your archive is empty." : "Your message inbox is empty."}
           </Text>
         </View>
       )}
@@ -280,6 +335,10 @@ const MessagesScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 16,
   },
   header: {
     flexDirection: "row",
@@ -317,6 +376,10 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 12,
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   messageContent: {
     flex: 1,

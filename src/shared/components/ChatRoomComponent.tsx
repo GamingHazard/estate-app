@@ -13,20 +13,36 @@ import {
   Pressable,
   PanResponder,
   Animated,
+  Alert,
+  Linking,
+  ActivityIndicator,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../features/auth/AuthContext";
 import {
   createMessagingSocket,
-  archiveConversation,
   deleteServerMessage,
   getMessages,
+  hideConversation,
   markConversationRead,
+  restoreConversation,
   sendServerMessage,
+  uploadMessageAttachment,
+  ServerAttachment,
   ServerMessage,
 } from "../../features/messaging/messagingApi";
+
+interface LocalAttachment {
+  uri: string;
+  name: string;
+  type: string;
+  kind: "image" | "video" | "file";
+  size?: number;
+}
 
 interface ChatMessage {
   id: string;
@@ -36,10 +52,15 @@ interface ChatMessage {
   timestamp: string;
   avatar: string;
   deliveryStatus?: "sent" | "delivered" | "read" | "failed";
+  messageType?: "text" | "image" | "video" | "file";
+  attachment?: ServerAttachment | null;
+  pendingAttachment?: LocalAttachment;
+  uploadProgress?: number;
   replyTo?: {
     sender: "you" | "other";
     text: string;
     messageId?: string;
+    deleted?: boolean;
   };
 }
 
@@ -54,20 +75,25 @@ interface ChatRoomProps {
 const toChatMessage = (
   message: ServerMessage,
   currentUserId?: string,
+  currentUserAvatar?: string,
+  participantAvatar?: string,
 ): ChatMessage => {
+  const isCurrentUser = String(message.sender) === String(currentUserId);
   return {
     id: message._id,
     clientMessageId: message.clientMessageId,
-    sender: String(message.sender) === String(currentUserId) ? "you" : "other",
+    sender: isCurrentUser ? "you" : "other",
     text: message.deleted ? "This message was deleted." : message.text,
     timestamp: new Date(message.createdAt).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     }),
-    avatar: "https://randomuser.me/api/portraits/women/10.jpg",
+    avatar: isCurrentUser ? currentUserAvatar || "" : participantAvatar || "",
     deliveryStatus: message.status,
+    messageType: message.messageType,
+    attachment: message.deleted ? null : message.attachment,
     replyTo: message.replyTo?.deleted
-      ? { sender: "other", text: "This message was deleted." }
+      ? { sender: "other", text: "This message was deleted.", deleted: true }
       : message.replyTo
         ? {
             sender:
@@ -94,35 +120,100 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [menuVisible, setMenuVisible] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [olderMessagesCursor, setOlderMessagesCursor] = useState<string | null>(null);
   const replySwipeOffsets = useRef<Record<string, Animated.Value>>({});
   const flatListRef = useRef<FlatList>(null);
   const messagingSocketRef = useRef<Awaited<ReturnType<typeof createMessagingSocket>> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressAutoScrollRef = useRef(false);
+  const connectErrorShownRef = useRef(false);
 
   useEffect(() => {
     if (!conversationId) return;
     let active = true;
-    void getMessages(conversationId)
-      .then(({ messages: serverMessages }) => {
-        if (!active) return;
-        setMessages(
-          serverMessages.map((message) => toChatMessage(message, user?.id)),
-        );
-      })
-      .catch((error) => console.error("Unable to load chat messages:", error));
-    void markConversationRead(conversationId).catch((error) =>
-      console.error("Unable to mark conversation read:", error),
-    );
+    setMessages([]);
+    setHasOlderMessages(false);
+    setOlderMessagesCursor(null);
+    void restoreConversation(conversationId).catch((error) => {
+      console.error("Unable to restore conversation:", error);
+      if (active) Alert.alert("Unable to reopen conversation", "Please try again.");
+    });
+    const refreshLatestMessages = async () => {
+      const result = await getMessages(conversationId);
+      if (!active) return;
+      const fetched = result.messages.map((message) =>
+        toChatMessage(message, user?.id, user?.avatar?.url, participantAvatar),
+      );
+      setMessages((current) => {
+        const merged = [...current];
+        for (const message of fetched) {
+          const index = merged.findIndex(
+            (item) =>
+              item.id === message.id ||
+              (item.clientMessageId &&
+                item.clientMessageId === message.clientMessageId),
+          );
+          if (index >= 0) merged[index] = message;
+          else merged.push(message);
+        }
+        return merged;
+      });
+      setHasOlderMessages(result.hasMore);
+      setOlderMessagesCursor(result.nextCursor);
+    };
+    void refreshLatestMessages().catch((error) => {
+      console.error("Unable to load chat messages:", error);
+      if (active) Alert.alert("Unable to load messages", "Please try again.");
+    });
+    void markConversationRead(conversationId).catch((error) => {
+      console.error("Unable to mark conversation read:", error);
+      if (active) Alert.alert("Unable to update read status", "Please try again.");
+    });
 
-    let socket: Awaited<ReturnType<typeof createMessagingSocket>>;
+    let socket: Awaited<ReturnType<typeof createMessagingSocket>> | undefined;
     void createMessagingSocket().then((connectedSocket) => {
+      if (!active) {
+        connectedSocket.disconnect();
+        return;
+      }
       socket = connectedSocket;
       messagingSocketRef.current = socket;
-      socket.emit("conversation:join", conversationId, () => undefined);
+      const joinConversation = () => {
+        connectErrorShownRef.current = false;
+        socket?.emit(
+          "conversation:join",
+          conversationId,
+          (result: { success?: boolean; message?: string }) => {
+            if (!result?.success) {
+              console.error("Unable to join messaging conversation:", result?.message);
+              return;
+            }
+            void refreshLatestMessages().catch((error) =>
+              console.error("Unable to recover messages after reconnect:", error),
+            );
+            void markConversationRead(conversationId).catch((error) =>
+              console.error("Unable to mark conversation read:", error),
+            );
+          },
+        );
+      };
+      socket.on("connect", joinConversation);
+      socket.on("connect_error", (error) => {
+        console.error("Chat socket connection failed:", error);
+        if (!connectErrorShownRef.current && active) {
+          connectErrorShownRef.current = true;
+          Alert.alert(
+            "Chat connection unavailable",
+            "Real-time updates will resume when the connection is restored.",
+          );
+        }
+      });
+      if (socket.connected) joinConversation();
       socket.on("message:new", (message: ServerMessage) => {
         if (String(message.conversation) !== String(conversationId)) return;
         setMessages((current) => {
@@ -132,24 +223,41 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           if (optimisticIndex >= 0) {
             return current.map((item, index) =>
               index === optimisticIndex
-                ? toChatMessage(message, user?.id)
+                ? toChatMessage(message, user?.id, user?.avatar?.url, participantAvatar)
                 : item,
             );
           }
           if (current.some((item) => item.id === message._id)) return current;
-          return [...current, toChatMessage(message, user?.id)];
+          return [...current, toChatMessage(message, user?.id, user?.avatar?.url, participantAvatar)];
         });
+        if (String(message.sender) !== String(user?.id)) {
+          socket?.emit("message:delivered", {
+            conversationId,
+            messageId: message._id,
+          });
+          void markConversationRead(conversationId).catch((error) => {
+            console.error("Unable to mark incoming message read:", error);
+            Alert.alert("Unable to update read status", "Please try again.");
+          });
+        }
       });
       socket.on("message:deleted", ({ messageId }: { messageId: string }) => {
         setMessages((current) =>
           current.map((item) =>
             item.id === messageId
-              ? { ...item, text: "This message was deleted." }
+              ? { ...item, text: "This message was deleted.", attachment: null }
               : item,
           ),
         );
       });
-      socket.on("message:read", () => {
+      socket.on("message:read", ({ readerId, conversationId: eventConversationId }: {
+        readerId?: string;
+        conversationId?: string;
+      }) => {
+        if (
+          String(eventConversationId) !== String(conversationId) ||
+          String(readerId) === String(user?.id)
+        ) return;
         setMessages((current) =>
           current.map((item) =>
             item.sender === "you" && item.deliveryStatus !== "read"
@@ -158,8 +266,16 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           ),
         );
       });
-      socket.on("message:status", ({ status }: { status?: "delivered" }) => {
-        if (status !== "delivered") return;
+      socket.on("message:status", ({ status, receiverId, conversationId: eventConversationId }: {
+        status?: "delivered";
+        receiverId?: string;
+        conversationId?: string;
+      }) => {
+        if (
+          status !== "delivered" ||
+          String(eventConversationId) !== String(conversationId) ||
+          String(receiverId) === String(user?.id)
+        ) return;
         setMessages((current) =>
           current.map((item) =>
             item.sender === "you" && item.deliveryStatus === "sent"
@@ -170,10 +286,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
       });
       socket.on("typing:start", () => setIsTyping(true));
       socket.on("typing:stop", () => setIsTyping(false));
+    }).catch((error) => {
+      console.error("Unable to connect chat:", error);
+      if (active) Alert.alert("Chat connection unavailable", "Messages will retry when you reopen the conversation.");
     });
 
     return () => {
       active = false;
+      socket?.emit("typing:stop", conversationId);
       messagingSocketRef.current = null;
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       socket?.disconnect();
@@ -181,100 +301,282 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   }, [conversationId, user?.id]);
 
   useEffect(() => {
+    if (suppressAutoScrollRef.current) {
+      suppressAutoScrollRef.current = false;
+      return;
+    }
     flatListRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (inputText.trim().length === 0) return;
+  const loadOlderMessages = async () => {
+    if (!conversationId || !olderMessagesCursor || loadingOlderMessages) return;
+    setLoadingOlderMessages(true);
+    suppressAutoScrollRef.current = true;
+    try {
+      const result = await getMessages(conversationId, olderMessagesCursor);
+      const older = result.messages.map((message) =>
+        toChatMessage(message, user?.id, user?.avatar?.url, participantAvatar),
+      );
+      setMessages((current) => {
+        const knownIds = new Set(current.map((message) => message.id));
+        return [
+          ...older.filter((message) => !knownIds.has(message.id)),
+          ...current,
+        ];
+      });
+      setHasOlderMessages(result.hasMore);
+      setOlderMessagesCursor(result.nextCursor);
+    } catch (error) {
+      suppressAutoScrollRef.current = false;
+      console.error("Unable to load older messages:", error);
+      Alert.alert("Unable to load earlier messages", "Please try again.");
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  };
 
-    const clientMessageId =
-      conversationId && conversationId.length > 0
-        ? `${user?.id}-${conversationId}-${Date.now()}-${Math.random()}`
-        : `msg${Date.now()}`;
-    const newMessage: ChatMessage = {
-      id: clientMessageId,
-      clientMessageId,
-      sender: "you",
-      text: inputText,
-      timestamp: new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
-      avatar: "https://randomuser.me/api/portraits/women/10.jpg",
-      deliveryStatus: "sent",
-      replyTo: replyingTo
-        ? {
-            sender: replyingTo.sender,
-            text: replyingTo.text,
-            messageId: replyingTo.id,
-          }
-        : undefined,
-    };
-
-    setMessages([...messages, newMessage]);
-    setInputText("");
-    setReplyingTo(null);
-    messagingSocketRef.current?.emit("typing:stop", conversationId);
-
-    if (conversationId) {
-      void sendServerMessage(
-        conversationId,
-        clientMessageId,
-        newMessage.text,
-        replyingTo?.id,
-      ).then(({ message }) => {
-        setMessages((current) =>
-          current.map((item) =>
-            item.id === clientMessageId
-              ? toChatMessage(message, user?.id)
-              : item,
-          ),
+  const sendChatMessage = async (
+    text: string,
+    attachment: LocalAttachment | undefined,
+    clientMessageId: string,
+    replyToId?: string,
+  ) => {
+    if (!conversationId) {
+      Alert.alert("Unable to send message", "This chat is not connected to a conversation.");
+      return;
+    }
+    try {
+      if (attachment) {
+        const formData = new FormData();
+        formData.append("attachment", {
+          uri: attachment.uri,
+          name: attachment.name,
+          type: attachment.type,
+        } as any);
+        formData.append("text", text);
+        if (replyToId && /^[a-f\d]{24}$/i.test(replyToId)) {
+          formData.append("replyTo", replyToId);
+        }
+        const { message } = await uploadMessageAttachment(
+          conversationId,
+          clientMessageId,
+          formData,
+          (progress) =>
+            setMessages((current) =>
+              current.map((item) =>
+                item.clientMessageId === clientMessageId
+                  ? { ...item, uploadProgress: progress }
+                  : item,
+              ),
+            ),
         );
-      }).catch((error) => {
-        console.error("Unable to send message:", error);
         setMessages((current) =>
           current.map((item) =>
             item.clientMessageId === clientMessageId
-              ? { ...item, deliveryStatus: "failed" }
+              ? toChatMessage(message, user?.id, user?.avatar?.url, participantAvatar)
               : item,
           ),
         );
-      });
+      } else {
+        const { message } = await sendServerMessage(
+          conversationId,
+          clientMessageId,
+          text,
+          replyToId && /^[a-f\d]{24}$/i.test(replyToId) ? replyToId : undefined,
+        );
+        setMessages((current) =>
+          current.map((item) =>
+            item.clientMessageId === clientMessageId
+              ? toChatMessage(message, user?.id, user?.avatar?.url, participantAvatar)
+              : item,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Unable to send message:", error);
+      setMessages((current) =>
+        current.map((item) =>
+          item.clientMessageId === clientMessageId
+            ? { ...item, deliveryStatus: "failed" }
+            : item,
+        ),
+      );
+      Alert.alert("Message not sent", "Check your connection and tap Retry.");
     }
   };
 
-  const handleDeleteChat = () => {
-    setMenuVisible(false);
-    if (conversationId) {
-      void archiveConversation(conversationId).catch((error) =>
-        console.error("Unable to remove conversation:", error),
-      );
-    }
-    onBack?.();
+  const createOutgoingMessage = (
+    text: string,
+    attachment?: LocalAttachment,
+    clientMessageId = `${user?.id}-${conversationId}-${Date.now()}-${Math.random()}`,
+    reply = replyingTo,
+  ) => {
+    const message: ChatMessage = {
+      id: clientMessageId,
+      clientMessageId,
+      sender: "you",
+      text,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      avatar: user?.avatar?.url || "",
+      deliveryStatus: "sent",
+      pendingAttachment: attachment,
+      replyTo: reply
+        ? {
+            sender: reply.sender,
+            text: reply.text,
+            messageId: reply.id,
+          }
+        : undefined,
+    };
+    setMessages((current) => [...current, message]);
+    void sendChatMessage(text, attachment, clientMessageId, reply?.id);
   };
 
-  const handleArchiveChat = () => {
-    setMenuVisible(false);
-    if (conversationId) {
-      void archiveConversation(conversationId).catch((error) =>
-        console.error("Unable to archive conversation:", error),
-      );
+  const handleSendMessage = () => {
+    const text = inputText.trim();
+    if (!text) return;
+    if (!user) {
+      openAuth();
+      return;
     }
-    onBack?.();
+    createOutgoingMessage(text);
+    setInputText("");
+    setReplyingTo(null);
+    messagingSocketRef.current?.emit("typing:stop", conversationId);
   };
 
-  const deleteSelectedMessage = () => {
-    if (!selectedMessageId) return;
-    if (conversationId) {
-      void deleteServerMessage(conversationId, selectedMessageId).catch((error) =>
-        console.error("Unable to delete message:", error),
-      );
-    }
+  const retryMessage = (message: ChatMessage) => {
+    if (!message.clientMessageId || message.deliveryStatus !== "failed") return;
     setMessages((current) =>
-      current.filter((message) => message.id !== selectedMessageId),
+      current.map((item) =>
+        item.clientMessageId === message.clientMessageId
+          ? { ...item, deliveryStatus: "sent", uploadProgress: 0 }
+          : item,
+      ),
     );
-    setSelectedMessageId(null);
+    void sendChatMessage(
+      message.text,
+      message.pendingAttachment,
+      message.clientMessageId,
+      message.replyTo?.messageId,
+    );
+  };
+
+  const sendAttachment = (attachment: LocalAttachment) => {
+    if (!user) {
+      openAuth();
+      return;
+    }
+    if (attachment.size && attachment.size > 20 * 1024 * 1024) {
+      Alert.alert("Attachment too large", "Attachments must be 20 MB or smaller.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "video/mp4", "video/quicktime", "application/pdf", "text/plain"].includes(attachment.type)) {
+      Alert.alert("Unsupported attachment", "Choose an image, MP4/MOV video, PDF, or text file.");
+      return;
+    }
+    createOutgoingMessage(inputText.trim(), attachment);
+    setInputText("");
+    setReplyingTo(null);
+  };
+
+  const pickPhotoOrVideo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images", "videos"],
+        quality: 0.85,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType ||
+        (asset.type === "video" ? "video/mp4" : "image/jpeg");
+      sendAttachment({
+        uri: asset.uri,
+        name: asset.fileName || `attachment-${Date.now()}`,
+        type: mimeType,
+        kind: asset.type === "video" ? "video" : "image",
+        size: asset.fileSize,
+      });
+    } catch (error) {
+      console.error("Unable to select photo or video:", error);
+      Alert.alert("Unable to select attachment", "Please try again.");
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "text/plain"],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const inferredType = asset.mimeType ||
+        (asset.name.toLowerCase().endsWith(".pdf")
+          ? "application/pdf"
+          : "text/plain");
+      sendAttachment({
+        uri: asset.uri,
+        name: asset.name,
+        type: inferredType,
+        kind: "file",
+        size: asset.size,
+      });
+    } catch (error) {
+      console.error("Unable to select document:", error);
+      Alert.alert("Unable to select attachment", "Please try again.");
+    }
+  };
+
+  const chooseAttachment = () => {
+    Alert.alert("Add attachment", "Choose a photo, video, or document.", [
+      {
+        text: "Photo or video",
+        onPress: () => void pickPhotoOrVideo(),
+      },
+      {
+        text: "Document",
+        onPress: () => void pickDocument(),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleArchiveChat = async () => {
+    setMenuVisible(false);
+    if (!conversationId) return;
+    try {
+      await hideConversation(conversationId);
+      onBack?.();
+    } catch (error) {
+      console.error("Unable to archive conversation:", error);
+      Alert.alert("Unable to archive conversation", "Please try again.");
+    }
+  };
+
+  const deleteSelectedMessage = async () => {
+    if (!selectedMessageId) return;
+    if (!conversationId || !/^[a-f\d]{24}$/i.test(selectedMessageId)) {
+      Alert.alert("Unable to delete message", "Only sent messages can be deleted.");
+      return;
+    }
+    try {
+      await deleteServerMessage(conversationId, selectedMessageId);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === selectedMessageId
+            ? { ...message, text: "This message was deleted.", attachment: null }
+            : message,
+        ),
+      );
+      setSelectedMessageId(null);
+    } catch (error) {
+      console.error("Unable to delete message:", error);
+      Alert.alert("Unable to delete message", "Please try again.");
+    }
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -311,8 +613,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
         }).start();
       },
     });
-    const noImage =
-      "https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png";
     return (
       <TouchableOpacity
         onLongPress={
@@ -347,14 +647,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
             { transform: [{ translateX: replySwipeOffset }] },
           ]}
         >
-        {!isYourMessage && (
-          <Image
-            source={{
-              uri: "https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png",
-            }}
-            style={styles.avatar}
-          />
-        )}
+        {!isYourMessage && participantAvatar ? (
+          <Image source={{ uri: participantAvatar }} style={styles.avatar} />
+        ) : null}
         <View style={isYourMessage ? styles.sentMessageColumn : undefined}>
           <View
             style={[
@@ -397,16 +692,76 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                 </Text>
               </View>
             )}
-            <Text
-              style={[
-                styles.messageText,
-                {
-                  color: isYourMessage ? "#fff" : colors.text,
-                },
-              ]}
-            >
-              {item.text}
-            </Text>
+            {item.attachment?.mimeType?.startsWith("image/") ? (
+              <TouchableOpacity
+                onPress={() =>
+                  void Linking.openURL(item.attachment!.url).catch((error) => {
+                    console.error("Unable to open attachment:", error);
+                    Alert.alert("Unable to open attachment", "Please try again.");
+                  })
+                }
+              >
+                <Image
+                  source={{ uri: item.attachment.url }}
+                  style={styles.messageAttachmentImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ) : item.attachment ? (
+              <TouchableOpacity
+                style={styles.messageAttachmentFile}
+                onPress={() =>
+                  void Linking.openURL(item.attachment!.url).catch((error) => {
+                    console.error("Unable to open attachment:", error);
+                    Alert.alert("Unable to open attachment", "Please try again.");
+                  })
+                }
+              >
+                <Ionicons
+                  name={item.messageType === "video" ? "videocam-outline" : "document-outline"}
+                  size={20}
+                  color={isYourMessage ? "#ffffff" : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.messageAttachmentName,
+                    { color: isYourMessage ? "#ffffff" : colors.text },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.attachment.fileName || "Open attachment"}
+                </Text>
+              </TouchableOpacity>
+            ) : item.pendingAttachment ? (
+              <View style={styles.messageAttachmentFile}>
+                <Ionicons
+                  name={item.pendingAttachment.kind === "video" ? "videocam-outline" : item.pendingAttachment.kind === "image" ? "image-outline" : "document-outline"}
+                  size={20}
+                  color={isYourMessage ? "#ffffff" : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.messageAttachmentName,
+                    { color: isYourMessage ? "#ffffff" : colors.text },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.pendingAttachment.name}
+                </Text>
+              </View>
+            ) : null}
+            {item.text ? (
+              <Text
+                style={[
+                  styles.messageText,
+                  {
+                    color: isYourMessage ? "#fff" : colors.text,
+                  },
+                ]}
+              >
+                {item.text}
+              </Text>
+            ) : null}
             {!isYourMessage && (
               <Text style={[styles.receivedTimestamp, { color: colors.textMuted }]}>
                 {item.timestamp}
@@ -419,20 +774,44 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                 {item.timestamp}
               </Text>
               <View style={styles.deliveryTicks}>
-                <Ionicons
-                  name={
-                    item.deliveryStatus === "sent"
-                      ? "checkmark"
-                      : "checkmark-done"
-                  }
-                  size={16}
-                  color={
-                    item.deliveryStatus === "read" ? "#53BDEB" : "#B8B8B8"
-                  }
-                />
+                {item.uploadProgress !== undefined &&
+                item.deliveryStatus === "sent" ? (
+                  <Text style={[styles.timestamp, { color: colors.textMuted }]}>
+                    {item.uploadProgress}%
+                  </Text>
+                ) : (
+                  <Ionicons
+                    name={
+                      item.deliveryStatus === "failed"
+                        ? "alert-circle"
+                        : item.deliveryStatus === "sent"
+                          ? "checkmark"
+                          : "checkmark-done"
+                    }
+                    size={16}
+                    color={
+                      item.deliveryStatus === "failed"
+                        ? colors.destructive
+                        : item.deliveryStatus === "read"
+                          ? "#53BDEB"
+                          : "#B8B8B8"
+                    }
+                  />
+                )}
               </View>
             </View>
           )}
+          {isYourMessage && item.deliveryStatus === "failed" ? (
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => retryMessage(item)}
+              accessibilityLabel="Retry sending message"
+            >
+              <Text style={[styles.retryText, { color: colors.destructive }]}>
+                Retry
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
         {isYourMessage && (
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
@@ -473,10 +852,16 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
             </Text>
           ) : (
             <>
-              <Image
-                source={{ uri: participantAvatar }}
-                style={styles.headerAvatar}
-              />
+              {participantAvatar ? (
+                <Image
+                  source={{ uri: participantAvatar }}
+                  style={styles.headerAvatar}
+                />
+              ) : (
+                <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder, { backgroundColor: colors.border }]}>
+                  <Ionicons name="person-outline" size={22} color={colors.textMuted} />
+                </View>
+              )}
               <Text style={[styles.headerText, { color: colors.text }]}>
                 {participantName}
               </Text>
@@ -497,9 +882,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
             <Ionicons name="close-outline" size={20} color={colors.textMuted} />
             <Text style={styles.messageActionLabel}>Close</Text>
           </TouchableOpacity>
-        ) : <TouchableOpacity>
-          <Ionicons name="call" size={24} color={colors.text} />
-        </TouchableOpacity>}
+        ) : null}
         {!selectedMessageId && <TouchableOpacity
           style={styles.menuButton}
           onPress={() => setMenuVisible(true)}
@@ -522,27 +905,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           <View style={[styles.menuDialog, { backgroundColor: colors.card }]}>
             <TouchableOpacity style={styles.menuAction} onPress={handleArchiveChat}>
               <Ionicons name="archive-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuActionText, { color: colors.text }]}>Archive</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuAction}
-              onPress={() => {
-                setIsMuted((muted) => !muted);
-                setMenuVisible(false);
-              }}
-            >
-              <Ionicons
-                name={isMuted ? "notifications-outline" : "notifications-off-outline"}
-                size={20}
-                color={colors.text}
-              />
-              <Text style={[styles.menuActionText, { color: colors.text }]}>
-                {isMuted ? "Unmute" : "Mute"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.menuAction} onPress={handleDeleteChat}>
-              <Ionicons name="trash-outline" size={20} color={colors.destructive} />
-              <Text style={[styles.menuActionText, { color: colors.destructive }]}>Delete</Text>
+              <Text style={[styles.menuActionText, { color: colors.text }]}>Hide from inbox</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -555,8 +918,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesList}
-        onEndReached={() =>
-          flatListRef.current?.scrollToEnd({ animated: true })
+        maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+        ListHeaderComponent={
+          hasOlderMessages ? (
+            <TouchableOpacity
+              style={styles.loadOlderButton}
+              onPress={() => void loadOlderMessages()}
+              disabled={loadingOlderMessages}
+            >
+              {loadingOlderMessages ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={[styles.loadOlderText, { color: colors.primary }]}>
+                  Load earlier messages
+                </Text>
+              )}
+            </TouchableOpacity>
+          ) : null
         }
       />
 
@@ -588,6 +966,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
           </View>
         )}
         <View style={styles.composerRow}>
+        <TouchableOpacity
+          style={styles.attachmentButton}
+          onPress={chooseAttachment}
+          accessibilityLabel="Add attachment"
+        >
+          <Ionicons name="attach-outline" size={22} color={colors.primary} />
+        </TouchableOpacity>
         <TextInput
           style={[
             styles.input,
@@ -663,6 +1048,10 @@ const styles = StyleSheet.create({
     height: 45,
     borderRadius: 22.5,
     marginRight: 12,
+  },
+  headerAvatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerText: {
     fontSize: 16,
@@ -762,6 +1151,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
   },
+  messageAttachmentImage: {
+    width: 220,
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  messageAttachmentFile: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 6,
+  },
+  messageAttachmentName: {
+    maxWidth: 200,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  retryButton: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 6,
+    paddingTop: 4,
+  },
+  retryText: { fontSize: 12, fontWeight: "700" },
+  loadOlderButton: {
+    alignSelf: "center",
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  loadOlderText: { fontSize: 13, fontWeight: "600" },
   timestamp: {
     fontSize: 12,
     opacity: 0.7,
@@ -804,6 +1223,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
+  },
+  attachmentButton: {
+    width: 36,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   replyComposer: {
     flexDirection: "row",

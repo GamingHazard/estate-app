@@ -6,7 +6,7 @@ export type AuthUser = {
   lastName?: string;
   username: string;
   email: string;
-  role: UserRole;
+  role: UserRole | "admin";
   phoneNumber?: string;
   bio?: string;
   publicContact?: { showPhone: boolean; showEmail: boolean };

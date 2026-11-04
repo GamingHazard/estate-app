@@ -1,19 +1,32 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { io, Socket } from "socket.io-client";
-import { apiRequest } from "../../shared/queryClient";
+import { apiRequest, uploadRequest } from "../../shared/queryClient";
+
+export interface ServerAttachment {
+  url: string;
+  publicId?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  resourceType?: string | null;
+}
 
 export interface ServerMessage {
   _id: string;
   clientMessageId: string;
   conversation: string;
   sender: string;
-  receiver: string;
+  receiver: string | null;
   text: string;
+  messageType?: "text" | "image" | "video" | "file";
+  attachment?: ServerAttachment | null;
   status: "sent" | "delivered" | "read";
   replyTo?: {
     _id: string;
     sender: string;
     text: string;
+    messageType?: string;
+    attachment?: ServerAttachment | null;
     deleted?: boolean;
   } | null;
   deleted?: boolean;
@@ -23,7 +36,10 @@ export interface ServerMessage {
 
 export interface ServerConversation {
   id: string;
-  property: unknown;
+  type?: "property" | "support";
+  property: unknown | null;
+  supportUser?: ServerConversation["participants"][number] | string | null;
+  supportAssignee?: ServerConversation["participants"][number] | string | null;
   participants: Array<{
     _id: string;
     firstName?: string;
@@ -41,18 +57,33 @@ export async function getOrCreatePropertyConversation(propertyId: string) {
   return response.json() as Promise<{ conversation: ServerConversation }>;
 }
 
-export async function getConversations() {
-  const response = await apiRequest("GET", "/conversations");
+export async function getOrCreateSupportConversation() {
+  const response = await apiRequest("POST", "/conversations/support");
+  return response.json() as Promise<{ conversation: ServerConversation }>;
+}
+
+export async function getConversations(archived = false) {
+  const query = archived ? "?archived=true" : "";
+  const response = await apiRequest("GET", `/conversations${query}`);
   return response.json() as Promise<{ conversations: ServerConversation[] }>;
 }
 
-export async function getMessages(conversationId: string, before?: string) {
-  const query = before ? `?before=${encodeURIComponent(before)}` : "";
+export async function getMessages(
+  conversationId: string,
+  before?: string,
+  limit = 30,
+) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (before) params.set("before", before);
   const response = await apiRequest(
     "GET",
-    `/conversations/${conversationId}/messages${query}`,
+    `/conversations/${conversationId}/messages?${params.toString()}`,
   );
-  return response.json() as Promise<{ messages: ServerMessage[] }>;
+  return response.json() as Promise<{
+    messages: ServerMessage[];
+    hasMore: boolean;
+    nextCursor: string | null;
+  }>;
 }
 
 export async function sendServerMessage(
@@ -75,6 +106,38 @@ export async function markConversationRead(conversationId: string) {
 
 export async function archiveConversation(conversationId: string) {
   await apiRequest("PATCH", `/conversations/${conversationId}/archive`);
+}
+
+export async function hideConversation(conversationId: string) {
+  await apiRequest("DELETE", `/conversations/${conversationId}`);
+}
+
+export async function restoreConversation(conversationId: string) {
+  await apiRequest("PATCH", `/conversations/${conversationId}/restore`);
+}
+
+export async function claimSupportConversation(conversationId: string) {
+  const response = await apiRequest(
+    "POST",
+    `/conversations/${conversationId}/claim`,
+  );
+  return response.json() as Promise<{ conversation: ServerConversation }>;
+}
+
+export async function uploadMessageAttachment(
+  conversationId: string,
+  clientMessageId: string,
+  attachment: FormData,
+  onProgress?: (progress: number) => void,
+) {
+  attachment.append("clientMessageId", clientMessageId);
+  const result = await uploadRequest(
+    "POST",
+    `/conversations/${conversationId}/messages/attachment`,
+    attachment,
+    onProgress,
+  );
+  return result as { message: ServerMessage };
 }
 
 export async function deleteServerMessage(
