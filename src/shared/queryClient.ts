@@ -42,7 +42,14 @@ axiosClient.interceptors.request.use((config) => {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let message = text;
+    try {
+      const body = JSON.parse(text);
+      message = body.message || body.error || text;
+    } catch {
+      // Keep plain-text server errors readable.
+    }
+    throw new Error(`${res.status}: ${message}`);
   }
 }
 

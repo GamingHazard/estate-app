@@ -112,16 +112,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const resp = await apiRequest("POST", "/auth/register", data);
       const result = await resp.json();
-      if (result?.success && result.user) {
-        const user = normalizeUser(result.user);
-        await persistSession(user, result.token);
-        setUser(user);
-        setIsGuest(false);
+
+      if (!result?.success || !result.user || !result.token) {
+        return {
+          success: false,
+          message: result?.message || "Registration did not return a valid session.",
+        };
       }
-      return result as AuthResult;
+
+      const user = normalizeUser(result.user);
+      await persistSession(user, result.token);
+      setUser(user);
+      setIsGuest(false);
+      return { success: true, user };
     } catch (error) {
       console.error("Registration error:", error);
-      throw error;
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to complete registration. Please try again.",
+      };
     } finally {
       setIsLoading(false);
     }

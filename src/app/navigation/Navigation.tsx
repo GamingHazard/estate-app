@@ -63,14 +63,8 @@ const TabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: IconName;
-          let iconSize = focused ? 28 : 22; // Larger when active
-          let iconColor = focused
-            ? theme === "light"
-              ? colors.bg
-              : "white"
-            : colors.text;
 
           switch (route.name) {
             case "Home":
@@ -92,45 +86,56 @@ const TabNavigator = () => {
               break;
             case "Admin":
               iconName = focused ? "grid" : "grid-outline";
-              iconSize = focused ? 26 : 20;
-              iconColor = focused
-                ? theme === "light"
-                  ? colors.bg
-                  : "white"
-                : colors.text;
               break;
             default:
               iconName = "alert-circle";
           }
 
-          return <Ionicons name={iconName} size={iconSize} color={iconColor} />;
+          return (
+            <View
+              style={{
+                width: 40,
+                height: 30,
+                borderRadius: 15,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused
+                  ? `${colors.primary}${theme === "dark" ? "33" : "1A"}`
+                  : "transparent",
+              }}
+            >
+              <Ionicons name={iconName} size={21} color={color} />
+            </View>
+          );
         },
         tabBarShowLabel: true,
-        tabBarActiveTintColor: theme === "dark" ? "white" : colors.bg,
-        tabBarInactiveTintColor: colors.tabInactive + "99",
+        tabBarActiveTintColor: colors.tabActive,
+        tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
-          marginBottom: 3,
+          fontSize: 11,
+          fontWeight: "500",
+          marginBottom: 0,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
         tabBarStyle: {
           position: "absolute",
           left: 16,
           right: 16,
-          bottom: 16,
-          height: 65 + insets.bottom,
-          borderRadius: 28,
+          bottom: Math.max(insets.bottom, 12),
+          height: 68,
+          borderRadius: 24,
           backgroundColor: colors.card,
-          borderWidth: 0,
-          borderColor: colors.border + "33",
+          borderWidth: 1,
+          borderColor: colors.border,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 8,
-          elevation: 8,
-          paddingHorizontal: 12,
-          paddingBottom: insets.bottom + 8,
-          paddingTop: 0,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: theme === "dark" ? 0.28 : 0.1,
+          shadowRadius: 14,
+          elevation: 7,
+          paddingHorizontal: 8,
+          paddingVertical: 6,
           alignItems: "center",
           justifyContent: "center",
         },

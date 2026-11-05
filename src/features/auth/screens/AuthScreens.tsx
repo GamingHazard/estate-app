@@ -286,26 +286,46 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
 
   const handleRegister = async () => {
-    try {
-      if (formData.password !== formData.confirmPassword) {
-        return;
-      }
+    setRegistrationError("");
 
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.email.trim() ||
+      !formData.contact.trim() ||
+      !formData.password
+    ) {
+      setRegistrationError("Please complete all required fields.");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setRegistrationError("Passwords do not match.");
+      return;
+    }
+
+    try {
       const registrationData: RegisterInput = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
-        phone: Number(formData.contact),
+        phone: formData.contact.trim(),
         dob: formData.dateOfBirth,
         gender: formData.gender,
         ...(formData.role !== "user" ? { nin: formData.nin } : {}),
       };
 
-      await register(registrationData);
+      const result = await register(registrationData);
+      if (!result.success) {
+        setRegistrationError(result.message);
+        return;
+      }
+
       setFormData({
         firstName: "",
         lastName: "",
@@ -320,7 +340,13 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
       });
 
       navigation.navigate("Home");
-    } catch (error) {}
+    } catch (error) {
+      setRegistrationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to complete registration. Please try again.",
+      );
+    }
   };
 
   const updateField = (field: string, value: string) => {
@@ -440,6 +466,9 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
       <Text style={styles.description}>
         Fill in your details to get started
       </Text>
+      {registrationError ? (
+        <Text style={styles.errorText}>{registrationError}</Text>
+      ) : null}
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>First Name</Text>

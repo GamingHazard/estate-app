@@ -27,8 +27,8 @@ export type RegisterInput = {
   email: string;
   password: string;
   role: UserRole;
-  phone: number;
-  dob: any;
+  phone: string;
+  dob: string;
   gender: string;
   nin?: string;
 };
