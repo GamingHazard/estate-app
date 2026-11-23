@@ -142,14 +142,17 @@ export default function PropertyListingCard({
 
 const styles = StyleSheet.create({
   card: {
+    width: "100%",
     borderWidth: 1,
     borderRadius: 12,
     overflow: "hidden",
     marginBottom: 16,
-    marginHorizontal: 16,
+    maxWidth: 720,
+    alignSelf: "center",
   },
   imageWrap: {
-    height: 210,
+    width: "100%",
+    aspectRatio: 1.6,
     position: "relative",
   },
   image: {

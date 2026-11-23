@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { useProperties } from "../../properties/useProperties";
+import { getErrorMessage } from "../../../shared/queryClient";
 
 export function Analytics() {
   const { colors } = useTheme();
@@ -120,9 +121,7 @@ export function Analytics() {
         ) : isError ? (
           <View style={styles.status}>
             <Text style={styles.statsLabel}>
-              {error instanceof Error
-                ? error.message
-                : "Unable to load property metrics."}
+              {getErrorMessage(error, "Unable to load property metrics. Please try again.")}
             </Text>
             <TouchableOpacity onPress={() => void refetch()}>
               <Text style={{ color: colors.primary, marginTop: 10 }}>

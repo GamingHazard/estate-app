@@ -71,6 +71,7 @@ const PaymentMethodScreen = ({ navigation }: Props) => {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.contentContainer}
     >
       <Text style={[styles.title, { color: colors.text }]}>
         Payment Methods
@@ -142,6 +143,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    width: "100%",
+    maxWidth: 640,
+    alignSelf: "center",
+  },
+  contentContainer: {
+    paddingBottom: 24,
   },
   title: {
     fontSize: 24,
@@ -168,12 +175,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   methodTitle: {
+    flex: 1,
+    minWidth: 0,
     fontSize: 18,
     fontWeight: "600",
   },
   methodDescription: {
     fontSize: 14,
     opacity: 0.7,
+    lineHeight: 20,
+    paddingRight: 28,
   },
   checkContainer: {
     position: "absolute",

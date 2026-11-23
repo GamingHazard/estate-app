@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -45,7 +45,8 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const sidebarWidth = 250;
+  const { width: screenWidth } = useWindowDimensions();
+  const sidebarWidth = Math.min(280, Math.max(220, screenWidth * 0.72));
   const slideAnimation = useRef(
     new Animated.Value(isCollapsed ? -sidebarWidth : 0),
   ).current;

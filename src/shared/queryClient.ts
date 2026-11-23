@@ -2,7 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4444/api";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // simple in-memory rate limit tracker (requests per window)
 const REQUEST_THRESHOLD = parseInt(
@@ -32,6 +32,77 @@ const axiosClient = axios.create({
   baseURL: BASE_URL,
 });
 
+const getPayloadMessage = (payload: unknown): string | undefined => {
+  if (typeof payload === "string") {
+    const message = payload.trim();
+    if (!message || message.includes("[object Object]")) return undefined;
+
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed !== payload) return getPayloadMessage(parsed);
+    } catch {
+      // Plain-text server messages should be shown as-is.
+    }
+
+    return message;
+  }
+
+  if (Array.isArray(payload)) {
+    const messages = payload
+      .map(getPayloadMessage)
+      .filter((message): message is string => Boolean(message));
+    return messages.length ? messages.join("\n") : undefined;
+  }
+
+  if (typeof payload === "object" && payload !== null) {
+    const record = payload as Record<string, unknown>;
+    for (const key of [
+      "message",
+      "error",
+      "detail",
+      "details",
+      "errors",
+      "msg",
+    ]) {
+      const message = getPayloadMessage(record[key]);
+      if (message) return message;
+    }
+  }
+
+  return undefined;
+};
+
+export const getErrorMessage = (
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+): string => {
+  let responseStatus: number | undefined;
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (
+      error as { response?: { data?: unknown; status?: number } }
+    ).response;
+    responseStatus = response?.status;
+    const serverMessage = getPayloadMessage(response?.data);
+    if (serverMessage) return serverMessage;
+  }
+
+  const message =
+    error instanceof Error
+      ? getPayloadMessage(error.message)
+      : getPayloadMessage(error);
+  if (message && /^Request failed with status code \d+$/i.test(message)) {
+    const status = responseStatus ? ` (${responseStatus})` : "";
+    return `The server could not complete the request${status}. Please try again.`;
+  }
+  if (
+    message?.toLowerCase() === "network error" ||
+    message?.toLowerCase().includes("network request failed")
+  ) {
+    return "Unable to connect to the server. Check your connection and try again.";
+  }
+  return message || fallback;
+};
+
 // attach rate limit check to every request
 axiosClient.interceptors.request.use((config) => {
   checkRateLimit();
@@ -41,15 +112,17 @@ axiosClient.interceptors.request.use((config) => {
 // ✅ Throws error if response is not OK
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    let message = text;
+    const text = await res.text();
+    let payload: unknown = text;
     try {
-      const body = JSON.parse(text);
-      message = body.message || body.error || text;
+      payload = JSON.parse(text);
     } catch {
       // Keep plain-text server errors readable.
     }
-    throw new Error(`${res.status}: ${message}`);
+    const message =
+      getPayloadMessage(payload) ||
+      `The server could not complete the request (${res.status}). Please try again.`;
+    throw new Error(message);
   }
 }
 
@@ -125,7 +198,9 @@ export async function uploadRequest(
         resolve(result);
       } else {
         reject(
-          new Error(`${xhr.status}: ${result.message || "Upload failed"}`),
+          new Error(
+            `${xhr.status}: ${getPayloadMessage(result) || "Upload failed. Please try again."}`,
+          ),
         );
       }
     };
@@ -141,8 +216,9 @@ type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
   timeout?: number; // optional timeout in ms
+  authenticated?: boolean;
 }) => QueryFunction<T> =
-  ({ on401, timeout = 5000 }) =>
+  ({ on401, timeout = 5000, authenticated = false }) =>
   async ({ queryKey, signal }) => {
     // React Query passes its own abort signal
     const controller = new AbortController();
@@ -155,8 +231,14 @@ export const getQueryFn: <T>(options: {
 
     try {
       const url = `/${queryKey.join("/")}`;
+      const headers: Record<string, string> = {};
+      if (authenticated) {
+        const token = await AsyncStorage.getItem("authToken");
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
 
       const response = await axiosClient.get(url, {
+        headers,
         signal: controller.signal,
         withCredentials: false, // Explicitly disable credentials for GET requests
       });
@@ -171,7 +253,12 @@ export const getQueryFn: <T>(options: {
         return null;
       }
 
-      throw new Error(error.response?.data || error.message);
+      throw new Error(
+        getErrorMessage(
+          error,
+          "Unable to load data from the server. Please try again.",
+        ),
+      );
     } finally {
       clearTimeout(timer);
     }

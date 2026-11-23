@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "new-estate-app",
-    "slug": "new-estate-app",
+    "name": "property fit",
+    "slug": "property-fit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/ic_launcher.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-img9.png",
-      "backgroundColor": "#ffffff",
+      "image": "./assets/icon.png",
+      "backgroundColor": "#1F2937",
       "resizeMode": "cover"
     },
     "assetBundlePatterns": [
@@ -20,7 +20,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/ic_launcher_foreground.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1F2937"
       },
       "package": "com.gost150.newestateapp"
     },
@@ -29,7 +29,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "7b4d4319-e388-40e2-bce8-59df9474f186"
+        "projectId": "d15af840-f365-4e50-9d0b-4e681836e954"
       }
     },
     "plugins": [

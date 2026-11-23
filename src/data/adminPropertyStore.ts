@@ -94,6 +94,92 @@ export type PropertyDraft = Omit<
   "id" | "status" | "createdAt" | "updatedAt"
 >;
 
+export const adaptAdminPropertyForMarketplace = (
+  property: AdminProperty,
+): MarketplacePropertyRecord => {
+  const price = Number(property.price_per_unit) || 0;
+  const status =
+    property.status === "active"
+      ? "published"
+      : property.status === "rejected"
+        ? "closed"
+        : "draft";
+  const specifications = property.specifications.map((item) => ({
+    title: item.title,
+    value: item.value,
+  }));
+  const units = property.detailedUnits.map((unit) => ({
+    unitNumber: unit.unitNumber,
+    rent: unit.rent,
+    unitType: unit.unitType,
+    description: "",
+    price: unit.rent,
+    currency: "UGX",
+    billingPeriod: "monthly" as const,
+    isAvailable: true,
+    specifications: unit.specifications.map((item) => ({
+      title: item.label,
+      value: item.value,
+    })),
+    images: unit.images.map((image) => ({
+      title: image.name,
+      url: image.url,
+      publicId: image.public_id,
+    })),
+  }));
+
+  return {
+    id: property.id,
+    name: property.name,
+    address: property.address,
+    city: property.city,
+    country: property.country,
+    category: property.category,
+    estate: property.estate,
+    pricePerUnit: price,
+    propertyType: property.propertyType,
+    description: property.description,
+    images: property.images.map((image) => ({
+      url: image.url,
+      publicId: image.public_id,
+    })),
+    features: property.features,
+    specifications,
+    location: property.location,
+    policies: {
+      pets: property.policies.petPolicy,
+      parking: property.policies.parkingPolicy,
+      lease: property.policies.leasePolicy,
+      other: property.policies.otherPolicies,
+    },
+    serviceFee: property.serviceFee,
+    unitsAvailable: property.units_available,
+    customizeUnits: property.customizeUnits,
+    units,
+    listings: [
+      {
+        id: `${property.id}-local-listing`,
+        propertyId: property.id,
+        purpose: "rent",
+        status,
+        price,
+        currency: "UGX",
+        billingPeriod: "monthly",
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt,
+      },
+    ],
+    moderationStatus:
+      property.status === "active"
+        ? "approved"
+        : property.status === "rejected"
+          ? "rejected"
+          : "pending",
+    createdAt: property.createdAt,
+    updatedAt: property.updatedAt,
+  };
+};
+
 const listeners = new Set<() => void>();
 const PROPERTY_STORAGE_KEY = "admin-properties";
 const MARKETPLACE_PROPERTY_STORAGE_KEY = "marketplace-properties";

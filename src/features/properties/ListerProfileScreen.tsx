@@ -15,7 +15,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { apiRequest, getQueryFn } from "../../shared/queryClient";
+import {
+  apiRequest,
+  getErrorMessage,
+  getQueryFn,
+} from "../../shared/queryClient";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { NavigationProp, RootStackParamList } from "../../shared/types";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
@@ -82,6 +86,7 @@ const ListerProfileScreen = ({ route }: Props) => {
     data: properties = [],
     isLoading: propertiesLoading,
     isError: propertiesError,
+    error: propertiesQueryError,
     refetch: refetchProperties,
   } = useProperties();
   const isConnected = useInternetConnection();
@@ -91,6 +96,7 @@ const ListerProfileScreen = ({ route }: Props) => {
     data: profileResponse,
     isLoading: profileLoading,
     isError: profileError,
+    error: profileQueryError,
     refetch: refetchProfile,
   } = useQuery({
     queryKey: ["users", userId, "public"],
@@ -164,10 +170,10 @@ const ListerProfileScreen = ({ route }: Props) => {
       setDraftRating(5);
       setEditingReviewId(null);
       await refreshReviews();
-    } catch (error: any) {
+    } catch (error) {
       Alert.alert(
         editingReviewId ? "Unable to update review" : "Unable to submit review",
-        error?.message || "Please try again.",
+        getErrorMessage(error, "Please try again."),
       );
     } finally {
       setIsSubmittingReview(false);
@@ -184,8 +190,11 @@ const ListerProfileScreen = ({ route }: Props) => {
           try {
             await apiRequest("DELETE", `/reviews/${reviewId}`);
             await refreshReviews();
-          } catch (error: any) {
-            Alert.alert("Delete failed", error?.message || "Please try again.");
+          } catch (error) {
+            Alert.alert(
+              "Delete failed",
+              getErrorMessage(error, "Please try again."),
+            );
           }
         },
       },
@@ -251,7 +260,12 @@ const ListerProfileScreen = ({ route }: Props) => {
                 <Text style={[styles.stateCopy, { color: colors.textMuted }]}>
                   {!isConnected
                     ? "You are offline. Reconnect and try again."
-                    : "This profile could not be loaded. Please try again."}
+                    : profileError
+                      ? getErrorMessage(
+                          profileQueryError,
+                          "This profile could not be loaded. Please try again.",
+                        )
+                      : "This profile is not available."}
                 </Text>
                 {isConnected && (
                   <TouchableOpacity
@@ -533,7 +547,10 @@ const ListerProfileScreen = ({ route }: Props) => {
           !isLoading && lister && propertiesError ? (
             <View style={styles.listingError}>
               <Text style={[styles.emptyListings, { color: colors.textMuted }]}>
-                Active listings could not be loaded.
+                {getErrorMessage(
+                  propertiesQueryError,
+                  "Active listings could not be loaded. Please try again.",
+                )}
               </Text>
               <TouchableOpacity
                 style={[

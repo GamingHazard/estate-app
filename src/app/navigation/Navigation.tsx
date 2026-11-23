@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View } from "react-native";
+import { View, useWindowDimensions } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -58,6 +58,9 @@ const TabNavigator = () => {
   const { colors, theme } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const tabBarWidth = Math.max(0, Math.min(width - 24, 520));
+  const isCompact = width < 360;
 
   return (
     <Tab.Navigator
@@ -94,48 +97,55 @@ const TabNavigator = () => {
           return (
             <View
               style={{
-                width: 40,
-                height: 30,
-                borderRadius: 15,
+                width: 36,
+                height: 24,
+                borderRadius: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: focused
-                  ? `${colors.primary}${theme === "dark" ? "33" : "1A"}`
+                  ? `${colors.primary}${theme === "dark" ? "2E" : "14"}`
                   : "transparent",
               }}
             >
-              <Ionicons name={iconName} size={21} color={color} />
+              <Ionicons name={iconName} size={20} color={color} />
             </View>
           );
         },
         tabBarShowLabel: true,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "500",
-          marginBottom: 0,
+          fontSize: isCompact ? 9 : 10,
+          fontWeight: "600",
+          marginTop: 0,
+          marginBottom: 9,
+        },
+        tabBarIconStyle: {
+          marginBottom: -3,
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 0,
+          flex: 1,
+          minWidth: 0,
         },
         tabBarStyle: {
           position: "absolute",
-          left: 16,
-          right: 16,
-          bottom: Math.max(insets.bottom, 12),
-          height: 68,
-          borderRadius: 24,
+          left: (width - tabBarWidth) / 2,
+          bottom: Math.max(insets.bottom, 8),
+          height: isCompact ? 62 : 66,
+          borderRadius: 22,
+          width: tabBarWidth,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.border,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 5 },
-          shadowOpacity: theme === "dark" ? 0.28 : 0.1,
-          shadowRadius: 14,
-          elevation: 7,
-          paddingHorizontal: 8,
-          paddingVertical: 6,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: theme === "dark" ? 0.24 : 0.09,
+          shadowRadius: 12,
+          elevation: 6,
+          paddingHorizontal: isCompact ? 2 : 6,
+          paddingVertical: 4,
           alignItems: "center",
           justifyContent: "center",
         },
@@ -229,15 +239,12 @@ const AdminNavigator = () => {
           name="AdminPropertyDetails"
           children={({ route }: any) => {
             const propertyId = route.params?.propertyId;
-            const isMarketplaceProperty = adminPropertyStore
-              .getMarketplaceSnapshot()
-              .some((property) => property.id === propertyId);
 
             return (
               <MarketplacePropertyDetails
                 propertyId={propertyId ?? ""}
-                // Legacy local property detail screen was removed; marketplace details
-                // are now the active admin detail view for all property records.
+                propertySource={route.params?.propertySource}
+                propertySnapshot={route.params?.propertySnapshot}
               />
             );
           }}

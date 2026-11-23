@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import {
@@ -20,9 +21,12 @@ import { useNavigation } from "@react-navigation/native";
 import { NavigationProp } from "../../shared/types";
 import SkeletonLoader from "../../shared/components/SkeletonLoader";
 import { useProperties } from "./useProperties";
+import { getErrorMessage } from "../../shared/queryClient";
 
 const DealsScreen = () => {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const dealCardWidth = Math.min(width * 0.78, 360);
   const navigation = useNavigation<NavigationProp>();
   const {
     data: properties = [],
@@ -128,9 +132,7 @@ const DealsScreen = () => {
       ) : isError ? (
         <View style={styles.section}>
           <Text style={{ color: colors.text, marginBottom: 12 }}>
-            {error instanceof Error
-              ? error.message
-              : "Unable to load properties."}
+            {getErrorMessage(error, "Unable to load properties. Please try again.")}
           </Text>
           <TouchableOpacity onPress={() => void refetch()}>
             <Text style={{ color: colors.primary }}>Try again</Text>
@@ -146,7 +148,7 @@ const DealsScreen = () => {
               {propertiesWithUnits.map((property) => (
                 <TouchableOpacity
                   key={property.id}
-                  style={styles.card}
+                  style={[styles.card, { width: dealCardWidth }]}
                   onPress={() =>
                     navigation.navigate("PropertyDetails", { property })
                   }
@@ -216,7 +218,9 @@ const DealsScreen = () => {
               ))
             ) : (
               <Text style={{ color: colors.textMuted }}>
-                No properties found.
+                {properties.length === 0
+                  ? "No property profiles are available yet."
+                  : "No published property listings are available yet."}
               </Text>
             )}
           </View>
@@ -249,8 +253,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   card: {
-    width: 250,
-    height: 200,
+    aspectRatio: 1.25,
     borderRadius: 10,
     marginRight: 15,
     overflow: "hidden",
@@ -291,6 +294,8 @@ const styles = StyleSheet.create({
     height: 100,
   },
   listItemContent: {
+    flex: 1,
+    minWidth: 0,
     padding: 10,
     justifyContent: "center",
   },

@@ -16,6 +16,7 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -117,6 +118,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const { colors } = useTheme();
   const { user, openAuth } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const messageImageWidth = Math.min(220, screenWidth * 0.56);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [menuVisible, setMenuVisible] = useState(false);
@@ -703,7 +706,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
               >
                 <Image
                   source={{ uri: item.attachment.url }}
-                  style={styles.messageAttachmentImage}
+                  style={[
+                    styles.messageAttachmentImage,
+                    {
+                      width: messageImageWidth,
+                      height: messageImageWidth / 1.22,
+                    },
+                  ]}
                   resizeMode="cover"
                 />
               </TouchableOpacity>
@@ -941,6 +950,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
       {/* Input Area */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={insets.top}
         style={[
           styles.inputContainer,
           {
@@ -1152,8 +1162,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   messageAttachmentImage: {
-    width: 220,
-    height: 180,
     borderRadius: 8,
     marginBottom: 6,
   },
@@ -1161,9 +1169,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    minWidth: 0,
     paddingVertical: 6,
   },
   messageAttachmentName: {
+    flexShrink: 1,
     maxWidth: 200,
     fontSize: 14,
     fontWeight: "600",

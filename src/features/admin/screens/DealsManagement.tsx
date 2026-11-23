@@ -14,7 +14,12 @@ import {
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest, getQueryFn, queryClient } from "../../../shared/queryClient";
+import {
+  apiRequest,
+  getErrorMessage,
+  getQueryFn,
+  queryClient,
+} from "../../../shared/queryClient";
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import {
   getPropertyDisplayLocation,
@@ -104,11 +109,17 @@ const DealsManagement: React.FC = () => {
 
   const dealsQuery = useQuery({
     queryKey: ["deals", "manage"],
-    queryFn: getQueryFn<DealsResponse>({ on401: "throw" }),
+    queryFn: getQueryFn<DealsResponse>({
+      on401: "throw",
+      authenticated: true,
+    }),
   });
   const propertiesQuery = useQuery({
     queryKey: ["properties", "marketplace", "manage"],
-    queryFn: getQueryFn<PropertiesResponse>({ on401: "throw" }),
+    queryFn: getQueryFn<PropertiesResponse>({
+      on401: "throw",
+      authenticated: true,
+    }),
   });
 
   const deals = dealsQuery.data?.deals ?? [];
@@ -253,7 +264,10 @@ const DealsManagement: React.FC = () => {
       await invalidateDealQueries();
       setFormVisible(false);
     } catch (error) {
-      Alert.alert("Unable to save deal", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(
+        "Unable to save deal",
+        getErrorMessage(error, "Please try again."),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -265,7 +279,10 @@ const DealsManagement: React.FC = () => {
         await apiRequest("PATCH", `/deals/${deal.id}/status`, { status });
         await invalidateDealQueries();
       } catch (error) {
-        Alert.alert("Unable to update deal", error instanceof Error ? error.message : "Please try again.");
+        Alert.alert(
+          "Unable to update deal",
+          getErrorMessage(error, "Please try again."),
+        );
       }
     };
 
@@ -427,7 +444,7 @@ const DealsManagement: React.FC = () => {
       {dealsQuery.isError && (
         <Pressable onPress={() => void dealsQuery.refetch()}>
           <Text style={{ color: colors.error, marginBottom: 10 }}>
-            {dealsQuery.error instanceof Error ? dealsQuery.error.message : "Unable to load deals. Tap to retry."}
+            {getErrorMessage(dealsQuery.error, "Unable to load deals. Tap to retry.")}
           </Text>
         </Pressable>
       )}
@@ -548,7 +565,12 @@ const DealsManagement: React.FC = () => {
             <Text style={styles.pickerTitle}>Choose a published listing</Text>
             {propertiesQuery.isLoading ? <ActivityIndicator color={colors.primary} /> : propertiesQuery.isError ? (
               <View style={{ alignItems: "center", gap: 10, paddingVertical: 20 }}>
-                <Text style={styles.pickerEmpty}>Unable to load eligible listings.</Text>
+                <Text style={styles.pickerEmpty}>
+                  {getErrorMessage(
+                    propertiesQuery.error,
+                    "Unable to load eligible listings. Please try again.",
+                  )}
+                </Text>
                 <Pressable style={styles.actionButton} onPress={() => void propertiesQuery.refetch()}>
                   <Ionicons name="refresh-outline" size={15} color={colors.primary} />
                   <Text style={[styles.actionText, { color: colors.primary }]}>Try again</Text>

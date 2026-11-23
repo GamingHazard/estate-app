@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
 import { NavigationProp } from "../../shared/types";
-import { apiRequest } from "../../shared/queryClient";
+import { apiRequest, getErrorMessage } from "../../shared/queryClient";
 import {
   getPublishedListing,
   getPropertyDisplayLocation,
@@ -101,7 +101,7 @@ const MarketplaceHomeScreen = () => {
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [notifications, setNotifications] =
     useState<MockNotification[]>(MOCK_NOTIFICATIONS);
-  const drawerTranslate = useRef(new Animated.Value(360)).current;
+  const drawerTranslate = useRef(new Animated.Value(460)).current;
   const propertyListRef = useRef<FlatList<Property> | null>(null);
   const scrollToTopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -112,7 +112,7 @@ const MarketplaceHomeScreen = () => {
 
   useEffect(() => {
     Animated.spring(drawerTranslate, {
-      toValue: notificationsVisible ? 0 : 360,
+      toValue: notificationsVisible ? 0 : 460,
       useNativeDriver: true,
       tension: 120,
       friction: 12,
@@ -290,7 +290,9 @@ const MarketplaceHomeScreen = () => {
               style={[styles.headerButton, { backgroundColor: colors.card }]}
               accessibilityRole="button"
               accessibilityLabel="Open profile"
-              onPress={() => navigation.navigate("Account")}
+              onPress={() =>
+                user ? navigation.navigate("Account") : openAuth()
+              }
             >
               {user && user.avatar?.url ? (
                 <Image
@@ -463,16 +465,52 @@ const MarketplaceHomeScreen = () => {
         data={filteredProperties}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PropertyListingCard
-            property={item}
-            saved={isSaved(item.id)}
-            onPress={() =>
-              navigation.navigate("PropertyDetails", { property: item })
-            }
-            onToggleSaved={() => handleToggleSaved(item.id)}
-          />
+          <View style={styles.cardOuter}>
+            <PropertyListingCard
+              property={item}
+              saved={isSaved(item.id)}
+              onPress={() =>
+                navigation.navigate("PropertyDetails", { property: item })
+              }
+              onToggleSaved={() => handleToggleSaved(item.id)}
+            />
+          </View>
         )}
-        ListHeaderComponent={renderHeader()}
+        ListHeaderComponent={
+          <>
+            {renderHeader()}
+            {isError && filteredProperties.length > 0 && (
+              <View
+                style={[
+                  {
+                    marginHorizontal: 16,
+                    marginTop: 12,
+                    padding: 12,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.stateCopy, { color: colors.textMuted }]}>
+                  {getErrorMessage(
+                    error,
+                    "Unable to refresh listings. Showing available results.",
+                  )}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => void refetch()}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.retryText, { color: colors.primary }]}>
+                    Try again
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        }
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.centerState}>
@@ -489,7 +527,7 @@ const MarketplaceHomeScreen = () => {
                 Unable to load listings
               </Text>
               <Text style={[styles.stateCopy, { color: colors.textMuted }]}>
-                {error instanceof Error ? error.message : "Please try again."}
+                {getErrorMessage(error, "Unable to load listings. Please try again.")}
               </Text>
               <TouchableOpacity
                 onPress={() => void refetch()}
@@ -509,10 +547,14 @@ const MarketplaceHomeScreen = () => {
                 color={colors.textMuted}
               />
               <Text style={[styles.stateTitle, { color: colors.text }]}>
-                No matching listings
+                {search.trim() || purpose !== "all" || category !== "All"
+                  ? "No matching listings"
+                  : "No property profiles available"}
               </Text>
               <Text style={[styles.stateCopy, { color: colors.textMuted }]}>
-                Try another search or remove a filter.
+                {search.trim() || purpose !== "all" || category !== "All"
+                  ? "Try another search or remove a filter."
+                  : "There are no property listings available right now."}
               </Text>
             </View>
           )
@@ -558,6 +600,7 @@ const MarketplaceHomeScreen = () => {
         visible={filtersVisible}
         transparent
         animationType="slide"
+        statusBarTranslucent={false}
         onRequestClose={() => setFiltersVisible(false)}
       >
         <View style={styles.modalBackdrop}>
@@ -648,6 +691,7 @@ const MarketplaceHomeScreen = () => {
         visible={notificationsVisible}
         transparent
         animationType="none"
+        statusBarTranslucent={false}
         onRequestClose={() => setNotificationsVisible(false)}
       >
         <Pressable
@@ -660,6 +704,10 @@ const MarketplaceHomeScreen = () => {
             styles.notificationDrawer,
             {
               backgroundColor: colors.card,
+              top: insets.top,
+              bottom: insets.bottom,
+              paddingTop: Math.max(16, insets.top + 8),
+              paddingBottom: Math.max(18, insets.bottom + 8),
               transform: [{ translateX: drawerTranslate }],
             },
           ]}
@@ -782,6 +830,12 @@ const MarketplaceHomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  cardOuter: {
+    width: "100%",
+    maxWidth: 752,
+    alignSelf: "center",
+    paddingHorizontal: 16,
+  },
   scrollToTopButton: {
     position: "absolute",
     right: 18,
@@ -983,6 +1037,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: "86%",
+    maxWidth: 440,
     paddingTop: 28,
     paddingHorizontal: 18,
     paddingBottom: 18,

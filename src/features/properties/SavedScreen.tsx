@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import {
@@ -19,7 +20,12 @@ import { useSavedProperties } from "./SavedPropertiesContext";
 const SavedScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { savedProperties } = useSavedProperties();
+  const {
+    savedProperties,
+    isLoading,
+    loadError,
+    reloadSavedProperties,
+  } = useSavedProperties();
 
   const noImage =
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -33,7 +39,25 @@ const SavedScreen = () => {
       </View>
 
       <View style={styles.content}>
-        {savedProperties.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : loadError ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Unable to load saved properties.
+            </Text>
+            <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
+              {loadError}
+            </Text>
+            <TouchableOpacity onPress={reloadSavedProperties}>
+              <Text style={[styles.emptySubText, { color: colors.primary }]}>
+                Try again
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : savedProperties.length > 0 ? (
           savedProperties.map((property) => (
             <TouchableOpacity
               key={property.id}
@@ -45,10 +69,16 @@ const SavedScreen = () => {
                 style={styles.cardImage}
               />
               <View style={styles.cardContent}>
-                <Text style={[styles.cardTitle, { color: colors.text }]}>
+                <Text
+                  style={[styles.cardTitle, { color: colors.text }]}
+                  numberOfLines={2}
+                >
                   {property.name}
                 </Text>
-                <Text style={[styles.cardLocation, { color: colors.textMuted }]}>
+                <Text
+                  style={[styles.cardLocation, { color: colors.textMuted }]}
+                  numberOfLines={2}
+                >
                   {getPropertyDisplayLocation(property)}
                 </Text>
                 <Text style={[styles.cardPrice, { color: colors.primary }]}>
@@ -100,6 +130,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   card: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
     flexDirection: "row",
     borderRadius: 10,
     marginBottom: 20,
@@ -107,11 +140,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardImage: {
-    width: 120,
-    height: "100%",
+    width: 112,
+    aspectRatio: 1,
   },
   cardContent: {
     flex: 1,
+    minWidth: 0,
     padding: 15,
   },
   cardTitle: {

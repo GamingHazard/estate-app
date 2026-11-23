@@ -61,14 +61,15 @@ export function AdminLayout({
     headerContent: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      minWidth: 0,
     },
     headerActions: {
       flex: 1,
+      minWidth: 0,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-around",
-      gap: 8,
+      justifyContent: "flex-start",
+      flexWrap: "wrap",
     },
     menuButton: {
       padding: 8,

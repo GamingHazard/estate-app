@@ -14,7 +14,8 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../../shared/types/navigation";
 import { useAdminNotifications } from "../../../shared/hooks/useAdminNotifications";
 import { adminPropertyStore } from "../../../data/adminPropertyStore";
-import { useProperties } from "../../properties/useProperties";
+import { useManagedProperties } from "../../properties/useProperties";
+import { getErrorMessage } from "../../../shared/queryClient";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -22,11 +23,13 @@ export function Dashboard() {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { notifications, unreadCount } = useAdminNotifications();
-  const {
-    data: apiProperties = [],
-    isLoading: isPropertiesLoading,
-    isError: isPropertiesError,
-  } = useProperties();
+  const propertiesQuery = useManagedProperties();
+  const databaseProperties = propertiesQuery.data ?? [];
+  const isPropertiesLoading = propertiesQuery.isLoading;
+  const isPropertiesError = propertiesQuery.isError;
+  const propertiesError = propertiesQuery.error;
+  const refetchProperties = propertiesQuery.refetch;
+  const hasServerData = propertiesQuery.data !== undefined;
   const localProperties = useSyncExternalStore(
     adminPropertyStore.subscribe,
     adminPropertyStore.getSnapshot,
@@ -35,36 +38,36 @@ export function Dashboard() {
   const formatServerMetric = (value: number) =>
     isPropertiesLoading
       ? "..."
-      : isPropertiesError
+      : isPropertiesError && !hasServerData
         ? "Unavailable"
         : value.toLocaleString();
 
   const stats = [
     {
-      label: "Server properties",
-      value: formatServerMetric(apiProperties.length),
-      description: "Live property feed",
+      label: "Properties",
+      value: formatServerMetric(databaseProperties.length),
+      description: "Database property profiles",
       icon: "home" as const,
       tint: colors.primary,
     },
     {
       label: "Units available",
       value: formatServerMetric(
-        apiProperties.reduce(
+        databaseProperties.reduce(
           (total, property) => total + property.unitsAvailable,
           0,
         ),
       ),
-      description: "Across server properties",
+      description: "Across database property profiles",
       icon: "business" as const,
       tint: "#10b981",
     },
     {
       label: "Categories",
       value: formatServerMetric(
-        new Set(apiProperties.map((property) => property.category)).size,
+        new Set(databaseProperties.map((property) => property.category)).size,
       ),
-      description: "In the server feed",
+      description: "In database property profiles",
       icon: "timer" as const,
       tint: colors.warning,
     },
@@ -99,7 +102,7 @@ export function Dashboard() {
     },
   ] as const;
 
-  const recentProperties = [...apiProperties]
+  const recentProperties = [...databaseProperties]
     .sort(
       (left, right) =>
         (Date.parse(right.createdAt ?? "") || 0) -
@@ -135,7 +138,9 @@ export function Dashboard() {
       columnGap: 12,
     },
     statCard: {
-      width: "48%",
+      flexGrow: 1,
+      flexBasis: "48%",
+      minWidth: 132,
       backgroundColor: colors.card,
       borderRadius: 14,
       padding: 16,
@@ -357,6 +362,19 @@ export function Dashboard() {
       </View>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recent properties</Text>
+        {isPropertiesError && (
+          <View>
+            <Text style={styles.subtitle}>
+              {getErrorMessage(
+                propertiesError,
+                "Unable to load server properties. Please try again.",
+              )}
+            </Text>
+            <Pressable onPress={() => void refetchProperties()}>
+              <Text style={[styles.viewAll, { marginTop: 8 }]}>Try again</Text>
+            </Pressable>
+          </View>
+        )}
         {recentProperties.length > 0 ? (
           recentProperties.map((property) => (
             <Pressable
@@ -372,11 +390,11 @@ export function Dashboard() {
               </Text>
             </Pressable>
           ))
-        ) : (
+        ) : isPropertiesError ? null : (
           <Text style={styles.subtitle}>
             {isPropertiesLoading
               ? "Loading properties..."
-              : "No server properties available."}
+              : "No property profiles are available yet."}
           </Text>
         )}
       </View>

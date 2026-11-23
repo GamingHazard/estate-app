@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
+import { StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ThemeProvider } from "../shared/theme/ThemeContext";
+import { ThemeProvider, useTheme } from "../shared/theme/ThemeContext";
 import { AuthProvider } from "../features/auth/AuthContext";
 import { SavedPropertiesProvider } from "../features/properties/SavedPropertiesContext";
 import { queryClient } from "../shared/queryClient";
@@ -12,23 +12,34 @@ import SplashScreen from "../shared/components/SplashScreen";
 import { preloadImages } from "../shared/utils/imagePreloader";
 // ...existing code...
 
+const AppStatusBar = () => {
+  const { colors, theme } = useTheme();
+
+  return (
+    <StatusBar
+      barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      backgroundColor={colors.background}
+      translucent={false}
+    />
+  );
+};
+
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    initializeApp();
+    void initializeApp();
   }, []);
 
   const initializeApp = async () => {
     try {
-      await preloadImages();
+      void preloadImages();
+      await new Promise((resolve) => setTimeout(resolve, 1400));
     } catch (error) {
       console.error("Error during initialization:", error);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleLoadComplete = () => {
-    setIsLoading(false);
   };
 
   return (
@@ -39,11 +50,11 @@ const App = () => {
             <SafeAreaProvider>
               <NavigationContainer>
                 {isLoading ? (
-                  <SplashScreen onLoadComplete={handleLoadComplete} />
+                  <SplashScreen />
                 ) : (
                   <ThemedNavigation />
                 )}
-                <StatusBar style="light" />
+                <AppStatusBar />
               </NavigationContainer>
             </SafeAreaProvider>
           </SavedPropertiesProvider>

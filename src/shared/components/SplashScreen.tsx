@@ -4,21 +4,21 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
   ActivityIndicator,
   ImageBackground,
+  useWindowDimensions,
 } from "react-native";
-import { useTheme } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const { width, height } = Dimensions.get("window");
-
-const SplashScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
-  const { colors } = useTheme();
+const SplashScreen = () => {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(50)).current;
+  const logoSize = width < 360 ? 72 : 80;
 
   useEffect(() => {
     // Start animations
@@ -42,12 +42,6 @@ const SplashScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
       ]),
     ]).start();
 
-    // Simulate loading time (you'll replace this with actual image preloading)
-    const timer = setTimeout(() => {
-      onLoadComplete();
-    }, 3000);
-
-    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -57,28 +51,40 @@ const SplashScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
         source={{
           uri: "https://t4.ftcdn.net/jpg/04/73/72/11/360_F_473721132_I9LNMCvx7Du6EdJNH91EywcNHzgtEclz.jpg",
         }}
-        style={styles.backgroundImage}
+        style={[styles.backgroundImage, { width, height }]}
         resizeMode="cover"
       />
 
       {/* Gradient Overlay */}
       <LinearGradient
         colors={["rgba(0,0,0,0.6)", "rgba(0,0,0,0.35)"]}
-        style={styles.gradient}
+        style={[styles.gradient, { height }]}
       />
 
       {/* Main Content */}
-      <View style={styles.content} pointerEvents="none">
+      <View
+        style={[
+          styles.content,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 },
+        ]}
+        pointerEvents="none"
+      >
         {/* Logo and Icon */}
         <Animated.View
           style={[
             styles.logoContainer,
             {
+              width: logoSize + 40,
+              height: logoSize + 40,
               transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          <MaterialCommunityIcons name="home-city" size={80} color="white" />
+          <MaterialCommunityIcons
+            name="home-city"
+            size={logoSize}
+            color="white"
+          />
         </Animated.View>
 
         {/* App Name and Tagline */}
@@ -91,19 +97,29 @@ const SplashScreen = ({ onLoadComplete }: { onLoadComplete: () => void }) => {
             },
           ]}
         >
-          <Text style={styles.title}>Property Consultants</Text>
-          <Text style={styles.subtitle}>Your Dream Property Awaits</Text>
+          <Text style={[styles.title, { fontSize: width < 360 ? 26 : 32 }]}>
+            Property Consultants
+          </Text>
+          <Text style={[styles.subtitle, { fontSize: width < 360 ? 16 : 18 }]}>
+            Your Dream Property Awaits
+          </Text>
         </Animated.View>
       </View>
 
       {/* Loading Indicator */}
-      <View style={styles.loaderContainer} pointerEvents="none">
+      <View
+        style={[styles.loaderContainer, { bottom: 88 + insets.bottom }]}
+        pointerEvents="none"
+      >
         <ActivityIndicator size="large" color="white" />
         <Text style={styles.loadingText}>Loading app settings...</Text>
       </View>
 
       {/* Background Design Elements */}
-      <View style={styles.backgroundElements} pointerEvents="none">
+      <View
+        style={[styles.backgroundElements, { width, height }]}
+        pointerEvents="none"
+      >
         <MaterialCommunityIcons
           name="office-building"
           size={40}
@@ -139,8 +155,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    width: width,
-    height: height,
     // slightly dim the image visually (gradient sits on top for stronger dim)
     opacity: 1,
   },
@@ -149,18 +163,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: height,
   },
   content: {
+    width: "100%",
+    maxWidth: 440,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    alignSelf: "center",
   },
   logoContainer: {
     alignItems: "center",
     justifyContent: "center",
-    width: 120,
-    height: 120,
     borderRadius: 60,
     backgroundColor: "rgba(255,255,255,0.18)",
     marginBottom: 30,
@@ -172,6 +186,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     alignItems: "center",
+    width: "100%",
   },
   title: {
     fontSize: 32,
@@ -200,8 +215,6 @@ const styles = StyleSheet.create({
   },
   backgroundElements: {
     position: "absolute",
-    width: width,
-    height: height,
     opacity: 0.12,
   },
   bgIcon1: {

@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   Pressable,
   Animated,
+  useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInternetConnection } from "../../shared/hooks/useInternetConnection";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
@@ -21,6 +23,9 @@ import { apiRequest, uploadRequest } from "../../shared/queryClient";
 const SettingsScreen = ({ navigation }: { navigation: any }) => {
   const { colors, theme, toggleTheme } = useTheme();
   const { user, openAuth, updateUser } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const avatarSize = Math.min(250, Math.max(160, width * 0.62));
   const [profileImage, setProfileImage] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
@@ -190,7 +195,10 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={styles.scrollContainer}
+      contentContainerStyle={[
+        styles.scrollContainer,
+        { paddingTop: insets.top + 12, paddingBottom: 100 + insets.bottom },
+      ]}
     >
       <View
         style={[
@@ -265,32 +273,34 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
               />
             </TouchableOpacity> */}
           </View>
-          <View style={styles.avatarContainer}>
+          <View style={[styles.avatarContainer, { width: avatarSize, height: avatarSize }]}>
             {profileImage || user?.avatar?.url ? (
               <Image
                 source={{ uri: profileImage || user?.avatar?.url }}
-                style={styles.profileImage}
+                style={[styles.profileImage, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}
               />
             ) : user?.gender === "female" ? (
               <Image
                 source={require("../../../assets/female 2.webp")}
-                style={styles.profileImage}
+                style={[styles.profileImage, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}
               />
             ) : user?.gender === "male" ? (
               <Image
                 source={require("../../../assets/male.png")}
-                style={styles.profileImage}
+                style={[styles.profileImage, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}
               />
             ) : (
               <View
                 accessibilityLabel="Default profile avatar"
-                style={[styles.unknownAvatar, { backgroundColor: colors.card }]}
+                style={[styles.unknownAvatar, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, backgroundColor: colors.card }]}
               >
-                <Ionicons name="person" size={120} color={colors.textMuted} />
+                <Ionicons name="person" size={avatarSize * 0.48} color={colors.textMuted} />
               </View>
             )}
             {isAvatarBusy && (
-              <View style={styles.uploadOverlay}>
+              <View
+                style={[styles.uploadOverlay, { borderRadius: avatarSize / 2 }]}
+              >
                 <ActivityIndicator size="small" color="white" />
               </View>
             )}
@@ -497,6 +507,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     width: "100%",
+    maxWidth: 600,
+    alignSelf: "center",
     paddingHorizontal: 10,
     alignItems: "center",
     paddingVertical: 10,
@@ -555,7 +567,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   profileSection: {
-    marginTop: 60,
+    marginTop: 32,
     width: "100%",
     backgroundColor: "transparent",
     justifyContent: "center",
@@ -584,7 +596,7 @@ const styles = StyleSheet.create({
     position: "relative",
     marginBottom: 20,
     backgroundColor: "white",
-    borderRadius: 150,
+    borderRadius: 999,
   },
   uploadOverlay: {
     position: "absolute",
@@ -592,7 +604,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 150,
+    borderRadius: 999,
     backgroundColor: "rgba(0, 0, 0, 0.62)",
     alignItems: "center",
     justifyContent: "center",
@@ -607,33 +619,36 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   profileImage: {
-    width: 250,
-    height: 250,
-    borderRadius: 150,
+    width: "100%",
+    height: "100%",
   },
   unknownAvatar: {
-    width: 250,
-    height: 250,
-    borderRadius: 150,
     alignItems: "center",
     justifyContent: "center",
   },
   profileUsername: {
     fontWeight: "bold",
-    fontSize: 35,
+    fontSize: 28,
+    textAlign: "center",
+    paddingHorizontal: 12,
+    maxWidth: "100%",
   },
   profileEmail: {
     fontWeight: "400",
-    fontSize: 20,
+    fontSize: 16,
+    textAlign: "center",
+    paddingHorizontal: 12,
+    flexShrink: 1,
+    maxWidth: "100%",
   },
   btns: {
     flexDirection: "row",
     alignItems: "center",
     padding: 15,
     width: "100%",
+    minHeight: 64,
     elevation: 3,
     marginVertical: 2,
-    height: 80,
   },
   buttonIcon: {
     marginRight: 10,

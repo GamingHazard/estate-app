@@ -7,7 +7,9 @@ import {
   Image,
   TouchableOpacity,
   FlatList,
+  useWindowDimensions,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../auth/AuthContext";
@@ -23,6 +25,8 @@ import {
 
 const MessagesScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ServerConversation[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -262,11 +266,15 @@ const MessagesScreen = ({ navigation }: any) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View
         style={[
           styles.header,
           { borderBottomColor: colors.border },
+          width < 420 && styles.compactHeader,
         ]}
       >
         {selectedChatId ? (
@@ -285,7 +293,11 @@ const MessagesScreen = ({ navigation }: any) => {
               accessibilityLabel="Close chat actions"
             >
               <Ionicons name="close-outline" size={20} color={colors.textMuted} />
-              <Text style={styles.headerActionLabel}>Close</Text>
+              <Text
+                style={[styles.headerActionLabel, { color: colors.textMuted }]}
+              >
+                Close
+              </Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -295,15 +307,19 @@ const MessagesScreen = ({ navigation }: any) => {
             </Text>
             <View style={styles.headerActions}>
               <TouchableOpacity onPress={() => setShowArchived((value) => !value)}>
-                <Text style={styles.readAllButton}>
+                <Text style={[styles.readAllButton, { color: colors.primary }]}>
                   {showArchived ? "Inbox" : "Archived"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={openSupportConversation}>
-                <Text style={styles.readAllButton}>Contact support</Text>
+                <Text style={[styles.readAllButton, { color: colors.primary }]}>
+                  Contact support
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={markAllAsRead}>
-                <Text style={styles.readAllButton}>Read All</Text>
+                <Text style={[styles.readAllButton, { color: colors.primary }]}>
+                  Read All
+                </Text>
               </TouchableOpacity>
             </View>
           </>
@@ -315,7 +331,10 @@ const MessagesScreen = ({ navigation }: any) => {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageList}
+          contentContainerStyle={[
+            styles.messageList,
+            { paddingBottom: insets.bottom + 90 },
+          ]}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -328,7 +347,7 @@ const MessagesScreen = ({ navigation }: any) => {
           </Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -338,15 +357,22 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
-    gap: 16,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 10,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
+  },
+  compactHeader: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    gap: 12,
   },
   headerText: {
     fontSize: 24,
@@ -383,6 +409,7 @@ const styles = StyleSheet.create({
   },
   messageContent: {
     flex: 1,
+    minWidth: 0,
   },
   sender: {
     fontSize: 16,

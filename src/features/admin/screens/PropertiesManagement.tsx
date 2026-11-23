@@ -1,5 +1,4 @@
 import React, { useState, useSyncExternalStore } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Modal,
   View,
@@ -27,14 +26,12 @@ import {
   Property,
 } from "../../../data/property";
 import { MarketplacePropertyCreation } from "./MarketplacePropertyCreation";
-import { useProperties } from "../../properties/useProperties";
-import { parsePropertyListResponse } from "../../../data/property";
-import { getQueryFn } from "../../../shared/queryClient";
+import { useManagedProperties } from "../../properties/useProperties";
+import { getErrorMessage } from "../../../shared/queryClient";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type ManagementProperty =
   | { source: "local"; property: AdminProperty }
-  | { source: "api"; property: Property }
   | { source: "marketplace" | "server-marketplace"; property: MarketplacePropertyRecord | Property };
 
 export function PropertiesManagement() {
@@ -51,34 +48,23 @@ export function PropertiesManagement() {
     adminPropertyStore.getMarketplaceSnapshot,
     adminPropertyStore.getMarketplaceSnapshot,
   );
-  const {
-    data: apiProperties = [],
-    isLoading: isApiLoading,
-    isError: isApiError,
-    error: apiError,
-    refetch,
-  } = useProperties();
-  const reviewQuery = useQuery({
-    queryKey: ["properties", "marketplace", "manage"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    select: (response: unknown) =>
-      parsePropertyListResponse(response).properties,
-  });
-  const reviewedPropertyIds = new Set(
-    (reviewQuery.data ?? []).map((property) => property.id),
+  const managedPropertiesQuery = useManagedProperties();
+  const databaseProperties = managedPropertiesQuery.data ?? [];
+  const databasePropertyIds = new Set(
+    databaseProperties.map((property) => property.id),
   );
+  const isPropertyDataLoading = managedPropertiesQuery.isLoading;
+  const isPropertyDataError = managedPropertiesQuery.isError;
+  const propertyDataError = managedPropertiesQuery.error;
+  const refetchPropertyData = managedPropertiesQuery.refetch;
   const displayProperties: ManagementProperty[] = [
-    ...apiProperties
-      .filter((property) => !reviewedPropertyIds.has(property.id))
-      .map((property) => ({ source: "api" as const, property })),
-    ...(reviewQuery.data ?? []).map((property) => ({
+    ...databaseProperties.map((property) => ({
       source: "server-marketplace" as const,
       property,
     })),
-    ...marketplaceProperties.map((property) => ({
-      source: "marketplace" as const,
-      property,
-    })),
+    ...marketplaceProperties
+      .filter((property) => !databasePropertyIds.has(property.id))
+      .map((property) => ({ source: "marketplace" as const, property })),
     ...properties.map((property) => ({ source: "local" as const, property })),
   ];
 
@@ -227,15 +213,26 @@ export function PropertiesManagement() {
       marginTop: 8,
     },
     button: {
+      flex: 1,
+      alignItems: "center",
       paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 4,
+      paddingVertical: 9,
+      borderRadius: 7,
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    primaryButton: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
     },
     buttonText: {
       fontSize: 14,
       color: colors.text,
+    },
+    primaryButtonText: {
+      fontSize: 14,
+      color: "white",
+      fontWeight: "700",
     },
   });
 
@@ -255,51 +252,48 @@ export function PropertiesManagement() {
   }: {
     item: ManagementProperty;
   }) => {
-    const isApiProperty = property.source === "api";
     const isMarketplaceProperty =
       property.source === "marketplace" ||
       property.source === "server-marketplace";
     const details = property.property;
     const location =
-      property.source === "api" || isMarketplaceProperty
+      isMarketplaceProperty
         ? getPropertyDisplayLocation(property.property)
         : [property.property.city, property.property.country]
             .filter(Boolean)
             .join(", ") || property.property.address;
     const openProperty = () => {
-      if (property.source === "api") {
-        navigation.navigate("PropertyDetails", {
-          property: property.property,
-        });
-      } else if (isMarketplaceProperty) {
-        navigation.navigate("AdminPropertyDetails", {
-          propertyId: property.property.id,
-        });
-      } else {
-        navigation.navigate("AdminPropertyDetails", {
-          propertyId: property.property.id,
-        });
-      }
+      navigation.navigate("AdminPropertyDetails", {
+        propertyId: property.property.id,
+        propertySource: property.source,
+        propertySnapshot: property.property,
+      });
+    };
+    const editProperty = () => {
+      navigation.navigate("PropertyCreation", {
+        mode: "edit",
+        propertyId: property.property.id,
+        propertySource: property.source,
+        propertySnapshot: property.property,
+      });
     };
 
     return (
-      <Pressable style={styles.propertyCard} onPress={openProperty}>
-        <View style={styles.propertyHeader}>
+      <View style={styles.propertyCard}>
+        <Pressable
+          style={styles.propertyHeader}
+          onPress={openProperty}
+          accessibilityRole="button"
+          accessibilityLabel={`View details for ${details.name}`}
+        >
           <Image
-            source={{ uri: details.images[0]?.url }}
+            source={details.images[0]?.url ? { uri: details.images[0].url } : undefined}
             style={styles.propertyImage}
           />
           <View style={styles.propertyInfo}>
             <Text style={styles.propertyTitle}>{details.name}</Text>
             <Text style={styles.propertyLocation}>{location}</Text>
-            {property.source === "api" ? (
-              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.badgeText}>
-                  {property.property.category}
-                </Text>
-              </View>
-            ) : property.source === "marketplace" ||
-              property.source === "server-marketplace" ? (
+            {isMarketplaceProperty ? (
               <View
                 style={[
                   styles.badge,
@@ -340,21 +334,26 @@ export function PropertiesManagement() {
               </Text>
             )}
           </View>
-        </View>
+        </Pressable>
         <View style={styles.actionButtons}>
-          <Pressable style={styles.button} onPress={openProperty}>
+          <Pressable
+            style={styles.button}
+            onPress={openProperty}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${details.name}`}
+          >
             <Text style={styles.buttonText}>View Details</Text>
           </Pressable>
-          {!isApiProperty && !isMarketplaceProperty && (
-            <Pressable
-              style={[styles.button, { padding: 8 }]}
-              onPress={() => {}}
-            >
-              <MaterialIcons name="more-vert" size={16} color={colors.text} />
-            </Pressable>
-          )}
+          <Pressable
+            style={[styles.button, styles.primaryButton]}
+            onPress={editProperty}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${details.name}`}
+          >
+            <Text style={styles.primaryButtonText}>Edit Property</Text>
+          </Pressable>
         </View>
-      </Pressable>
+      </View>
     );
   };
 
@@ -385,7 +384,7 @@ export function PropertiesManagement() {
           </View>
           <Text style={styles.statsValue}>{displayProperties.length}</Text>
           <Text style={styles.statsDescription}>
-            API listings and dashboard drafts
+            Database profiles and local drafts
           </Text>
         </View>
 
@@ -405,7 +404,7 @@ export function PropertiesManagement() {
               marketplaceProperties.filter(
                 (property) => property.moderationStatus === "pending",
               ).length +
-              (reviewQuery.data ?? []).filter(
+              databaseProperties.filter(
                 (property) => property.moderationStatus === "pending",
               ).length}
           </Text>
@@ -429,6 +428,9 @@ export function PropertiesManagement() {
               .length +
               marketplaceProperties.filter(
                 (property) => property.moderationStatus === "rejected",
+              ).length +
+              databaseProperties.filter(
+                (property) => property.moderationStatus === "rejected",
               ).length}
           </Text>
           <Text style={styles.statsDescription}>
@@ -437,7 +439,7 @@ export function PropertiesManagement() {
         </View>
       </View>
 
-      {isApiLoading ? (
+      {isPropertyDataLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -449,15 +451,29 @@ export function PropertiesManagement() {
           style={styles.propertiesList}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
-            isApiError ? (
-              <Pressable onPress={() => void refetch()}>
+            isPropertyDataError ? (
+              <Pressable onPress={() => void refetchPropertyData()}>
                 <Text style={{ color: colors.destructive, marginBottom: 12 }}>
-                  {apiError instanceof Error
-                    ? apiError.message
-                    : "Unable to load server properties. Tap to retry."}
+                  {getErrorMessage(
+                    propertyDataError,
+                    "Unable to load server properties. Tap to retry.",
+                  )}
                 </Text>
               </Pressable>
             ) : null
+          }
+          ListEmptyComponent={
+            <Text
+              style={{
+                color: colors.textMuted,
+                paddingVertical: 24,
+                textAlign: "center",
+              }}
+            >
+              {isPropertyDataError
+                ? "No server property data could be loaded."
+                : "No property profiles are available yet."}
+            </Text>
           }
         />
       )}

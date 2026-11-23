@@ -1,5 +1,9 @@
 import { ParamListBase } from "@react-navigation/native";
+import { AdminProperty } from "../../data/adminPropertyStore";
 import { Property } from "../../data/property";
+
+export type PropertySource = "local" | "marketplace" | "server-marketplace";
+type PropertySnapshot = Property | AdminProperty;
 
 export interface RootStackParamList extends ParamListBase {
   // Main Tabs
@@ -16,14 +20,25 @@ export interface RootStackParamList extends ParamListBase {
   PropertiesManagement: undefined;
   DealsManagement: undefined;
   ReviewsManagement: undefined;
-  PropertyCreation: undefined;
+  PropertyCreation:
+    | {
+        mode?: "edit";
+        propertyId?: string;
+        propertySource?: PropertySource;
+        propertySnapshot?: PropertySnapshot;
+      }
+    | undefined;
   AdminNotifications: undefined;
   AdminNotificationDetails: { notificationId: string };
   AdminMessages: undefined;
   AdminSettings: undefined;
   Analytics: undefined;
   AdminManual: undefined;
-  AdminPropertyDetails: { propertyId: string };
+  AdminPropertyDetails: {
+    propertyId: string;
+    propertySource?: PropertySource;
+    propertySnapshot?: PropertySnapshot;
+  };
 
   // Stack Screens
   Account: undefined;

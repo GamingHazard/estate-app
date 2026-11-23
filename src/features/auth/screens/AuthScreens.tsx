@@ -8,8 +8,8 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
-  Dimensions,
   Image,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -38,6 +38,7 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { login, isLoading } = useAuth();
+  const { theme } = useTheme();
 
   const handleLogin = async () => {
     setError("");
@@ -172,9 +173,11 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
   return (
     <View style={styles.formContainer}>
       <Image
-        source={{
-          uri: "https://t3.ftcdn.net/jpg/08/38/58/42/360_F_838584205_dDGwNQ1xJ8GsilZONeQwwM260WoyjNx2.jpg",
-        }}
+        source={
+          theme === "light"
+            ? require("../../../../assets/logo-light.png")
+            : require("../../../../assets/logo-dark.png")
+        }
         style={styles.logo}
         resizeMode="contain"
       />
@@ -227,7 +230,10 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
         </View>
       </View>
 
-      <TouchableOpacity style={styles.forgotPassword} onPress={onForgotPassword}>
+      <TouchableOpacity
+        style={styles.forgotPassword}
+        onPress={onForgotPassword}
+      >
         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
       </TouchableOpacity>
 
@@ -248,13 +254,13 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
         </LinearGradient>
       </TouchableOpacity>
 
-      <View style={styles.divider}>
+      {/* <View style={styles.divider}>
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>or continue with</Text>
         <View style={styles.dividerLine} />
-      </View>
+      </View> */}
 
-      <View style={styles.socialButtonsContainer}>
+      {/* <View style={styles.socialButtonsContainer}>
         <TouchableOpacity style={styles.socialButton}>
           <MaterialIcons name="facebook" size={24} color="#1877F2" />
         </TouchableOpacity>
@@ -264,7 +270,7 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
         <TouchableOpacity style={styles.socialButton}>
           <MaterialIcons name="phone" size={24} color="#000000" />
         </TouchableOpacity>
-      </View>
+      </View> */}
     </View>
   );
 };
@@ -691,7 +697,7 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
         </LinearGradient>
       </TouchableOpacity>
 
-      <View style={styles.divider}>
+      {/* <View style={styles.divider}>
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>or sign up with</Text>
         <View style={styles.dividerLine} />
@@ -707,7 +713,7 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
         <TouchableOpacity style={styles.socialButton}>
           <MaterialIcons name="phone" size={24} color="#000000" />
         </TouchableOpacity>
-      </View>
+      </View> */}
     </View>
   );
 };
@@ -844,10 +850,10 @@ const EmailVerificationForm: React.FC<{ colors: any }> = ({ colors }) => {
   );
 };
 
-const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> = ({
-  colors,
-  onBackToLogin,
-}) => {
+const AccountRecoveryForm: React.FC<{
+  colors: any;
+  onBackToLogin: () => void;
+}> = ({ colors, onBackToLogin }) => {
   const [step, setStep] = useState<"request" | "verify" | "reset">("request");
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -876,20 +882,28 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
 
     try {
       setIsSubmitting(true);
-      const response = await apiRequest("POST", "/auth/password-reset/request", {
-        email,
-      });
+      const response = await apiRequest(
+        "POST",
+        "/auth/password-reset/request",
+        {
+          email,
+        },
+      );
       const result = await response.json();
 
       if (!result?.success) {
         throw new Error(result?.message || "Unable to send the reset code");
       }
 
-      setStatusMessage(result.message || "A reset code has been sent to your email.");
+      setStatusMessage(
+        result.message || "A reset code has been sent to your email.",
+      );
       setStep("verify");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to send the reset code.",
+        error instanceof Error
+          ? error.message
+          : "Unable to send the reset code.",
       );
     } finally {
       setIsSubmitting(false);
@@ -965,7 +979,9 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
       setTimeout(() => onBackToLogin(), 1200);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to reset your password.",
+        error instanceof Error
+          ? error.message
+          : "Unable to reset your password.",
       );
     } finally {
       setIsSubmitting(false);
@@ -976,13 +992,17 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
     <>
       <Text style={styles.formTitle}>Reset Password</Text>
       <Text style={styles.description}>
-        Don&apos;t worry! It happens. Please enter the email address associated with your account.
+        Don&apos;t worry! It happens. Please enter the email address associated
+        with your account.
       </Text>
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Email Address</Text>
         <TextInput
-          style={[styles.input, focusedInput === "email" && styles.inputFocused]}
+          style={[
+            styles.input,
+            focusedInput === "email" && styles.inputFocused,
+          ]}
           placeholder="Enter your email"
           value={email}
           onChangeText={setEmail}
@@ -993,10 +1013,18 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
         />
       </View>
 
-      {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {statusMessage ? (
+        <Text style={styles.successText}>{statusMessage}</Text>
+      ) : null}
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleRequestCode} disabled={isSubmitting}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleRequestCode}
+        disabled={isSubmitting}
+      >
         <LinearGradient
           colors={[colors.primary, colors.secondary]}
           style={styles.gradientButton}
@@ -1032,10 +1060,18 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
         />
       </View>
 
-      {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {statusMessage ? (
+        <Text style={styles.successText}>{statusMessage}</Text>
+      ) : null}
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleVerifyCode} disabled={isSubmitting}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleVerifyCode}
+        disabled={isSubmitting}
+      >
         <LinearGradient
           colors={[colors.primary, colors.secondary]}
           style={styles.gradientButton}
@@ -1048,7 +1084,10 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
         </LinearGradient>
       </TouchableOpacity>
 
-      <TouchableOpacity style={{ marginTop: 20, alignItems: "center" }} onPress={handleRequestCode}>
+      <TouchableOpacity
+        style={{ marginTop: 20, alignItems: "center" }}
+        onPress={handleRequestCode}
+      >
         <Text style={{ color: "#4A90E2", fontSize: 14 }}>
           {isSubmitting ? "Sending..." : "Resend code"}
         </Text>
@@ -1059,13 +1098,18 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
   const renderResetStep = () => (
     <>
       <Text style={styles.formTitle}>Create New Password</Text>
-      <Text style={styles.description}>Choose a new password for your account.</Text>
+      <Text style={styles.description}>
+        Choose a new password for your account.
+      </Text>
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>New Password</Text>
         <View>
           <TextInput
-            style={[styles.input, focusedInput === "newPassword" && styles.inputFocused]}
+            style={[
+              styles.input,
+              focusedInput === "newPassword" && styles.inputFocused,
+            ]}
             placeholder="Enter new password"
             value={password}
             onChangeText={setPassword}
@@ -1078,7 +1122,11 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
             style={{ position: "absolute", right: 15, top: 15 }}
             onPress={() => setShowPassword(!showPassword)}
           >
-            <MaterialIcons name={showPassword ? "visibility" : "visibility-off"} size={24} color="#666" />
+            <MaterialIcons
+              name={showPassword ? "visibility" : "visibility-off"}
+              size={24}
+              color="#666"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -1087,7 +1135,10 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
         <Text style={styles.inputLabel}>Confirm New Password</Text>
         <View>
           <TextInput
-            style={[styles.input, focusedInput === "confirmPassword" && styles.inputFocused]}
+            style={[
+              styles.input,
+              focusedInput === "confirmPassword" && styles.inputFocused,
+            ]}
             placeholder="Confirm new password"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -1109,17 +1160,27 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
         </View>
       </View>
 
-      {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {statusMessage ? (
+        <Text style={styles.successText}>{statusMessage}</Text>
+      ) : null}
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={isSubmitting}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleResetPassword}
+        disabled={isSubmitting}
+      >
         <LinearGradient
           colors={[colors.primary, colors.secondary]}
           style={styles.gradientButton}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          <Text style={styles.buttonText}>{isSubmitting ? "Updating..." : "Update Password"}</Text>
+          <Text style={styles.buttonText}>
+            {isSubmitting ? "Updating..." : "Update Password"}
+          </Text>
         </LinearGradient>
       </TouchableOpacity>
     </>
@@ -1234,7 +1295,10 @@ const AccountRecoveryForm: React.FC<{ colors: any; onBackToLogin: () => void }> 
         <View style={styles.dividerLine} />
       </View>
 
-      <TouchableOpacity style={{ marginTop: 10, alignItems: "center" }} onPress={onBackToLogin}>
+      <TouchableOpacity
+        style={{ marginTop: 10, alignItems: "center" }}
+        onPress={onBackToLogin}
+      >
         <Text style={{ color: "#4A90E2", fontSize: 14 }}>
           Remember your password? Login
         </Text>
@@ -1248,7 +1312,7 @@ const AuthScreens: React.FC<AuthScreensProps> = () => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { continueAsGuest } = useAuth();
-  const { width } = Dimensions.get("window");
+  const { width } = useWindowDimensions();
 
   const styles = StyleSheet.create({
     container: {
@@ -1257,9 +1321,12 @@ const AuthScreens: React.FC<AuthScreensProps> = () => {
     },
     scrollContainer: {
       flexGrow: 1,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 40 + insets.bottom,
+      width: "100%",
+      maxWidth: 600,
+      alignSelf: "center",
+      paddingHorizontal: width < 360 ? 12 : 20,
+      paddingTop: 16,
+      paddingBottom: 24 + insets.bottom,
     },
     tabContainer: {
       flexDirection: "row",
@@ -1300,27 +1367,40 @@ const AuthScreens: React.FC<AuthScreensProps> = () => {
   const renderForm = () => {
     switch (activeScreen) {
       case "login":
-        return <LoginForm colors={colors} onForgotPassword={() => setActiveScreen("recovery")} />;
+        return (
+          <LoginForm
+            colors={colors}
+            onForgotPassword={() => setActiveScreen("recovery")}
+          />
+        );
       case "register":
         return <RegistrationForm colors={colors} />;
       case "verify":
         return <EmailVerificationForm colors={colors} />;
       case "recovery":
-        return <AccountRecoveryForm colors={colors} onBackToLogin={() => setActiveScreen("login")} />;
+        return (
+          <AccountRecoveryForm
+            colors={colors}
+            onBackToLogin={() => setActiveScreen("login")}
+          />
+        );
     }
   };
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={insets.top}
         style={[styles.container, { backgroundColor: colors.background }]}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          showsVerticalScrollIndicator={false}
         >
           <View style={[styles.tabContainer, { backgroundColor: colors.card }]}>
             <TouchableOpacity
@@ -1380,7 +1460,9 @@ const AuthScreens: React.FC<AuthScreensProps> = () => {
               </Text>
             </TouchableOpacity>
           </View>
-          {renderForm()}
+          <View style={{ width: "100%", maxWidth: 520, alignSelf: "center" }}>
+            {renderForm()}
+          </View>
           <TouchableOpacity style={styles.guestLink} onPress={continueAsGuest}>
             <Text style={styles.guestLinkText}>
               Continue without signing in

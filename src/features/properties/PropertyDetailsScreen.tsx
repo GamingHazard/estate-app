@@ -80,6 +80,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
   const { user, openAuth } = useAuth();
   const { isSaved, toggleSaved } = useSavedProperties();
   const { width } = useWindowDimensions();
+  const galleryHeight = Math.min(360, Math.max(220, width * 0.72));
   const insets = useSafeAreaInsets();
   const { property } = route.params;
   const galleryRef = useRef<ScrollView | null>(null);
@@ -286,13 +287,13 @@ const PropertyDetailsScreen = ({ route }: Props) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.galleryContainer}>
+        <View style={[styles.galleryContainer, { height: galleryHeight }]}>
           <ScrollView
             ref={galleryRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            style={[styles.gallery, { width }]}
+            style={[styles.gallery, { width, height: galleryHeight }]}
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
@@ -303,10 +304,18 @@ const PropertyDetailsScreen = ({ route }: Props) => {
                 onPress={() => openImageModal(image)}
                 accessibilityLabel={`Open ${image.name}`}
               >
-                <View style={[styles.galleryImageContainer, { width }]}>
+                <View
+                  style={[
+                    styles.galleryImageContainer,
+                    { width, height: galleryHeight },
+                  ]}
+                >
                   <Image
                     source={{ uri: image.url }}
-                    style={[styles.galleryImage, { width }]}
+                    style={[
+                      styles.galleryImage,
+                      { width, height: galleryHeight },
+                    ]}
                     resizeMode="cover"
                   />
                 </View>
@@ -354,7 +363,12 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           </View>
         </View>
 
-        <View style={styles.detailsContainer}>
+        <View
+          style={[
+            styles.detailsContainer,
+            { width: "100%", maxWidth: 900, alignSelf: "center" },
+          ]}
+        >
           <View style={styles.summaryHeader}>
             <View style={styles.summaryTitleContainer}>
               <Text style={[styles.eyebrow, { color: colors.primary }]}>
