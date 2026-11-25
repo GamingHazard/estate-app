@@ -21,12 +21,12 @@ import {
   Deal,
   formatDealMoney,
   getDealTimeRemaining,
-  parseDealListResponse,
 } from "../../data/deal";
 import { getPropertyDisplayLocation } from "../../data/property";
-import { getErrorMessage, getQueryFn } from "../../shared/queryClient";
+import { getErrorMessage } from "../../shared/queryClient";
 import { NavigationProp } from "../../shared/types";
 import { useTheme } from "../../shared/theme/ThemeContext";
+import { marketplaceDealsQueryOptions } from "./marketplaceQueries";
 
 const NO_IMAGE =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -81,17 +81,7 @@ const DealsScreen = () => {
   const featuredIndexRef = useRef(0);
   const featuredListRef = useRef<FlatList<Deal>>(null);
 
-  const dealsQuery = useQuery({
-    queryKey: ["deals", "marketplace"],
-    queryFn: async (context) =>
-      parseDealListResponse(
-        await getQueryFn<unknown>({
-          on401: "returnNull",
-          path: "/deals",
-        })(context),
-      ),
-    staleTime: 30_000,
-  });
+  const dealsQuery = useQuery(marketplaceDealsQueryOptions());
   const deals = dealsQuery.data?.deals ?? [];
 
   const featuredDeals = useMemo(

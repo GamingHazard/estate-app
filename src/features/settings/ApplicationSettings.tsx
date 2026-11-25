@@ -18,15 +18,15 @@ import appConfig from "../../../app.json";
 import { useTheme } from "../../shared/theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
 import {
-  DEFAULT_GENERAL_SETTINGS,
-  GeneralSettingsPreferences,
   SavedSearchFrequency,
-  loadGeneralSettings,
-  saveGeneralSettings,
 } from "./generalSettingsStore";
+import { useNotificationPreferences } from "./useNotificationPreferences";
 
 type PermissionStatus = "granted" | "not-requested" | "not-allowed" | "blocked";
-type PermissionState = Record<"camera" | "photos" | "location", PermissionStatus>;
+type PermissionState = Record<
+  "camera" | "photos" | "location",
+  PermissionStatus
+>;
 
 const permissionLabel: Record<PermissionStatus, string> = {
   granted: "Allowed",
@@ -48,37 +48,23 @@ const normalizePermission = (permission: {
 const ApplicationSettings: React.FC = () => {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const isPropertyOwner =
+    user?.role === "landlord" || user?.role === "propertyManager";
+  const {
+    preferences,
+    preferencesLoading,
+    preferencesLoadError,
+    isSavingPreferences,
+    preferencesSaveError,
+    updatePreference,
+    retrySync,
+    reloadPreferences,
+  } = useNotificationPreferences(user?.id ?? null, user?.role ?? null);
+  const notificationsMasterDescription =
+    "Turn on optional in-app and push notifications. Push also requires permission from your device.";
   const [permissions, setPermissions] = useState<PermissionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [preferences, setPreferences] = useState(DEFAULT_GENERAL_SETTINGS);
-  const [preferencesLoading, setPreferencesLoading] = useState(true);
-  const [preferencesLoadError, setPreferencesLoadError] = useState(false);
-  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
-  const [preferencesSaveError, setPreferencesSaveError] = useState(false);
-  const [preferenceLoadRequest, setPreferenceLoadRequest] = useState(0);
-
-  useEffect(() => {
-    let isCurrent = true;
-    setPreferencesLoading(true);
-    setPreferencesLoadError(false);
-    setPreferences(DEFAULT_GENERAL_SETTINGS);
-
-    void loadGeneralSettings(user?.id ?? null)
-      .then((storedPreferences) => {
-        if (isCurrent) setPreferences(storedPreferences);
-      })
-      .catch(() => {
-        if (isCurrent) setPreferencesLoadError(true);
-      })
-      .finally(() => {
-        if (isCurrent) setPreferencesLoading(false);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [user?.id, preferenceLoadRequest]);
 
   const loadPermissions = useCallback(async () => {
     setIsLoading(true);
@@ -124,24 +110,6 @@ const ApplicationSettings: React.FC = () => {
     }
   };
 
-  const updatePreference = async <Key extends keyof GeneralSettingsPreferences>(
-    key: Key,
-    value: GeneralSettingsPreferences[Key],
-  ) => {
-    const updatedPreferences = { ...preferences, [key]: value };
-    setIsSavingPreferences(true);
-    setPreferencesSaveError(false);
-
-    try {
-      await saveGeneralSettings(user?.id ?? null, updatedPreferences);
-      setPreferences(updatedPreferences);
-    } catch {
-      setPreferencesSaveError(true);
-    } finally {
-      setIsSavingPreferences(false);
-    }
-  };
-
   const renderPreferenceRow = (
     title: string,
     description: string,
@@ -149,6 +117,7 @@ const ApplicationSettings: React.FC = () => {
     value: boolean,
     onValueChange: (nextValue: boolean) => void,
     last = false,
+    disabled = false,
   ) => (
     <View
       key={title}
@@ -161,7 +130,10 @@ const ApplicationSettings: React.FC = () => {
       ]}
     >
       <View
-        style={[styles.permissionIcon, { backgroundColor: `${colors.primary}18` }]}
+        style={[
+          styles.permissionIcon,
+          { backgroundColor: `${colors.primary}18` },
+        ]}
       >
         <Ionicons name={icon} size={19} color={colors.primary} />
       </View>
@@ -174,38 +146,59 @@ const ApplicationSettings: React.FC = () => {
       <Switch
         value={value}
         onValueChange={onValueChange}
-        disabled={preferencesLoading || preferencesLoadError || isSavingPreferences}
+        disabled={
+          preferencesLoading ||
+          preferencesLoadError ||
+          isSavingPreferences ||
+          disabled
+        }
         accessibilityRole="switch"
         accessibilityLabel={title}
         accessibilityHint={description}
         accessibilityState={{
           checked: value,
-          disabled: preferencesLoading || preferencesLoadError || isSavingPreferences,
+          disabled:
+            preferencesLoading ||
+            preferencesLoadError ||
+            isSavingPreferences ||
+            disabled,
         }}
-        trackColor={{ false: `${colors.textMuted}55`, true: `${colors.primary}66` }}
+        trackColor={{
+          false: `${colors.textMuted}55`,
+          true: `${colors.primary}66`,
+        }}
         thumbColor={value ? colors.primary : colors.card}
         ios_backgroundColor={`${colors.textMuted}55`}
       />
     </View>
   );
 
-  const renderFrequencyOption = (value: SavedSearchFrequency, label: string) => {
+  const renderFrequencyOption = (
+    value: SavedSearchFrequency,
+    label: string,
+  ) => {
     const selected = preferences.savedSearchFrequency === value;
+    const disabled =
+      preferencesLoading ||
+      preferencesLoadError ||
+      isSavingPreferences ||
+      !preferences.notificationsEnabled ||
+      !preferences.savedSearchMatches;
+
     return (
       <Pressable
         key={value}
         accessibilityRole="radio"
-        accessibilityState={{
-          selected,
-          disabled: preferencesLoading || preferencesLoadError || isSavingPreferences,
-        }}
-        disabled={preferencesLoading || preferencesLoadError || isSavingPreferences}
+        accessibilityState={{ selected, disabled }}
+        disabled={disabled}
         onPress={() => void updatePreference("savedSearchFrequency", value)}
         style={[
           styles.frequencyOption,
           {
             borderColor: selected ? colors.primary : colors.border,
-            backgroundColor: selected ? `${colors.primary}18` : colors.background,
+            backgroundColor: selected
+              ? `${colors.primary}18`
+              : colors.background,
           },
         ]}
       >
@@ -272,16 +265,51 @@ const ApplicationSettings: React.FC = () => {
       contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.pageHeader}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>General settings</Text>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>
+          General settings
+        </Text>
         <Text style={[styles.pageDescription, { color: colors.textMuted }]}>
           Manage your preferences, device permissions, and app information.
         </Text>
       </View>
 
       <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Notifications</Text>
+        <View style={styles.sectionTitleRow}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Notifications
+          </Text>
+          <Switch
+            value={preferences.notificationsEnabled}
+            onValueChange={(value) =>
+              void updatePreference("notificationsEnabled", value)
+            }
+            disabled={
+              preferencesLoading ||
+              preferencesLoadError ||
+              isSavingPreferences
+            }
+            accessibilityRole="switch"
+            accessibilityLabel="Enable notifications"
+            accessibilityHint={notificationsMasterDescription}
+            accessibilityState={{
+              checked: preferences.notificationsEnabled,
+              disabled:
+                preferencesLoading ||
+                preferencesLoadError ||
+                isSavingPreferences,
+            }}
+            trackColor={{
+              false: `${colors.textMuted}55`,
+              true: `${colors.primary}66`,
+            }}
+            thumbColor={
+              preferences.notificationsEnabled ? colors.primary : colors.card
+            }
+            ios_backgroundColor={`${colors.textMuted}55`}
+          />
+        </View>
         <Text style={[styles.sectionDescription, { color: colors.textMuted }]}>
-          Preferences are saved on this device. Push and email delivery are not connected yet.
+          {notificationsMasterDescription}
         </Text>
       </View>
       <View
@@ -291,39 +319,118 @@ const ApplicationSettings: React.FC = () => {
         ]}
       >
         {renderPreferenceRow(
-          "Push notifications",
-          "Preference only. Device permission and notification delivery are managed separately.",
-          "notifications-outline",
-          preferences.pushNotifications,
-          (value) => void updatePreference("pushNotifications", value),
+          "Messages and viewing updates",
+          "Get alerts for new messages, replies, and viewing-request changes.",
+          "chatbubble-ellipses-outline",
+          preferences.messageAndViewingUpdates,
+          (value) => void updatePreference("messageAndViewingUpdates", value),
+          false,
+          !preferences.notificationsEnabled,
         )}
+        {renderPreferenceRow(
+          "Deals",
+          "Get alerts about new and expiring deals on properties you have saved.",
+          "pricetag-outline",
+          preferences.deals,
+          (value) => void updatePreference("deals", value),
+          false,
+          !preferences.notificationsEnabled,
+        )}
+        {renderPreferenceRow(
+          "New listings from owners you have messaged",
+          "Hear when an owner you contacted posts another property.",
+          "home-outline",
+          preferences.contactedOwnerListings,
+          (value) => void updatePreference("contactedOwnerListings", value),
+          false,
+          !preferences.notificationsEnabled,
+        )}
+        {renderPreferenceRow(
+          "Saved-search matches",
+          "Get alerts when new properties match searches you choose to save.",
+          "search-outline",
+          preferences.savedSearchMatches,
+          (value) => void updatePreference("savedSearchMatches", value),
+          false,
+          !preferences.notificationsEnabled,
+        )}
+        {renderPreferenceRow(
+          "Saved-property price and availability changes",
+          "Get an alert when the price or availability changes on a property you saved.",
+          "cash-outline",
+          preferences.savedPropertyUpdates,
+          (value) => void updatePreference("savedPropertyUpdates", value),
+          false,
+          !preferences.notificationsEnabled,
+        )}
+        {renderPreferenceRow(
+          "Saved-property reminders",
+          "Get occasional reminders about saved properties that are still available.",
+          "bookmark-outline",
+          preferences.savedPropertyReminders,
+          (value) => void updatePreference("savedPropertyReminders", value),
+          false,
+          !preferences.notificationsEnabled,
+        )}
+        {renderPreferenceRow(
+          "Terms and conditions updates",
+          "Get optional alerts about terms updates. Required notices will still appear.",
+          "document-text-outline",
+          preferences.termsAndConditionsUpdates,
+          (value) => void updatePreference("termsAndConditionsUpdates", value),
+          false,
+          !preferences.notificationsEnabled,
+        )}
+        {renderPreferenceRow(
+          "Customer care updates",
+          "Get notified when customer care replies to your support request.",
+          "help-circle-outline",
+          preferences.customerCareUpdates,
+          (value) => void updatePreference("customerCareUpdates", value),
+          !isPropertyOwner,
+          !preferences.notificationsEnabled,
+        )}
+        {isPropertyOwner
+          ? renderPreferenceRow(
+              "New property reviews",
+              "Get notified when someone posts a review of your property.",
+              "star-outline",
+              preferences.ownerPropertyReviews,
+              (value) => void updatePreference("ownerPropertyReviews", value),
+              false,
+              !preferences.notificationsEnabled,
+            )
+          : null}
+        {isPropertyOwner
+          ? renderPreferenceRow(
+              "Property save activity",
+              "Get aggregate alerts when users save your properties; saver identities are not shared.",
+              "heart-outline",
+              preferences.ownerPropertySaves,
+              (value) => void updatePreference("ownerPropertySaves", value),
+              true,
+              !preferences.notificationsEnabled,
+            )
+          : null}
+      </View>
+
+      <View style={styles.sectionHeading}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Email preferences
+        </Text>
+      </View>
+      <View
+        style={[
+          styles.group,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         {renderPreferenceRow(
           "Email notifications",
           "Preference for account and property updates by email.",
           "mail-outline",
           preferences.emailNotifications,
           (value) => void updatePreference("emailNotifications", value),
-        )}
-        {renderPreferenceRow(
-          "Saved-search matches",
-          "Keep this preference for alerts when listings match your searches.",
-          "search-outline",
-          preferences.savedSearchMatches,
-          (value) => void updatePreference("savedSearchMatches", value),
-        )}
-        {renderPreferenceRow(
-          "Saved-property updates",
-          "Preference for price changes and status updates on saved listings.",
-          "pricetag-outline",
-          preferences.savedPropertyUpdates,
-          (value) => void updatePreference("savedPropertyUpdates", value),
-        )}
-        {renderPreferenceRow(
-          "Messages and viewing updates",
-          "Preference for replies and viewing-request updates.",
-          "chatbubble-ellipses-outline",
-          preferences.messageAndViewingUpdates,
-          (value) => void updatePreference("messageAndViewingUpdates", value),
         )}
         {renderPreferenceRow(
           "Product news and offers",
@@ -341,9 +448,12 @@ const ApplicationSettings: React.FC = () => {
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}
       >
-        <Text style={[styles.rowTitle, { color: colors.text }]}>Saved-search alert frequency</Text>
+        <Text style={[styles.rowTitle, { color: colors.text }]}>
+          Saved-search alert frequency
+        </Text>
         <Text style={[styles.rowDescription, { color: colors.textMuted }]}>
-          Choose how often matching-property alerts should be sent when delivery is available.
+          Choose how often matching-property alerts should be sent when
+          saved-search delivery is available.
         </Text>
         <View
           accessibilityRole="radiogroup"
@@ -357,7 +467,9 @@ const ApplicationSettings: React.FC = () => {
       </View>
 
       <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Search and discovery</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Search and discovery
+        </Text>
       </View>
       <View
         style={[
@@ -376,7 +488,9 @@ const ApplicationSettings: React.FC = () => {
       </View>
 
       <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Privacy</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Privacy
+        </Text>
         <Text style={[styles.sectionDescription, { color: colors.textMuted }]}>
           Listing views are not currently shared with property owners.
         </Text>
@@ -400,7 +514,9 @@ const ApplicationSettings: React.FC = () => {
       {preferencesLoading ? (
         <View style={styles.preferenceStatusRow}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.preferenceStatusText, { color: colors.textMuted }]}>
+          <Text
+            style={[styles.preferenceStatusText, { color: colors.textMuted }]}
+          >
             Loading saved preferences…
           </Text>
         </View>
@@ -412,17 +528,30 @@ const ApplicationSettings: React.FC = () => {
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setPreferenceLoadRequest((request) => request + 1)}
+            onPress={reloadPreferences}
             hitSlop={8}
           >
-            <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+            <Text style={[styles.retryText, { color: colors.primary }]}>
+              Retry
+            </Text>
           </Pressable>
         </View>
       ) : null}
       {preferencesSaveError ? (
-        <Text style={[styles.preferenceError, { color: colors.error }]}>
-          Could not save that change, so it was not applied. Please try again.
-        </Text>
+        <View style={styles.errorRow}>
+          <Text style={[styles.errorText, { color: colors.error }]}>
+            Preferences could not be saved or synced. Please retry.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void retrySync()}
+            hitSlop={8}
+          >
+            <Text style={[styles.retryText, { color: colors.primary }]}>
+              Retry
+            </Text>
+          </Pressable>
+        </View>
       ) : null}
 
       <View style={styles.sectionHeading}>
@@ -430,7 +559,8 @@ const ApplicationSettings: React.FC = () => {
           Device permissions
         </Text>
         <Text style={[styles.sectionDescription, { color: colors.textMuted }]}>
-          Permission status is read from your device. Change access in system settings.
+          Permission status is read from your device. Change access in system
+          settings.
         </Text>
       </View>
       <View
@@ -470,7 +600,9 @@ const ApplicationSettings: React.FC = () => {
             onPress={() => void loadPermissions()}
             hitSlop={8}
           >
-            <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+            <Text style={[styles.retryText, { color: colors.primary }]}>
+              Retry
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -498,13 +630,17 @@ const ApplicationSettings: React.FC = () => {
         ]}
       >
         <View style={[styles.aboutRow, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>App name</Text>
+          <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>
+            App name
+          </Text>
           <Text style={[styles.aboutValue, { color: colors.text }]}>
             {appConfig.expo.name}
           </Text>
         </View>
         <View style={styles.aboutRow}>
-          <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>Version</Text>
+          <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>
+            Version
+          </Text>
           <Text style={[styles.aboutValue, { color: colors.text }]}>
             {appConfig.expo.version}
           </Text>
@@ -543,6 +679,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   sectionDescription: {
     fontSize: 13,

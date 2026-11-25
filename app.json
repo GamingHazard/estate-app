@@ -5,11 +5,16 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/ic_launcher.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/icon.png",
-      "backgroundColor": "#1F2937",
-      "resizeMode": "cover"
+      "image": "./assets/ic_launcher.png",
+      "backgroundColor": "#FFFFFF",
+      "imageWidth": 200,
+      "resizeMode": "contain",
+      "dark": {
+        "image": "./assets/ic_launcher.png",
+        "backgroundColor": "#1F2937"
+      }
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {

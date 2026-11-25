@@ -3,11 +3,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type SavedSearchFrequency = "off" | "daily" | "weekly";
 
 export type GeneralSettingsPreferences = {
-  pushNotifications: boolean;
+  notificationsEnabled: boolean;
   emailNotifications: boolean;
+  messageAndViewingUpdates: boolean;
+  deals: boolean;
+  contactedOwnerListings: boolean;
   savedSearchMatches: boolean;
   savedPropertyUpdates: boolean;
-  messageAndViewingUpdates: boolean;
+  savedPropertyReminders: boolean;
+  termsAndConditionsUpdates: boolean;
+  customerCareUpdates: boolean;
+  customerCareRequests: boolean;
+  ownerPropertyReviews: boolean;
+  ownerPropertySaves: boolean;
   promotionalEmails: boolean;
   savedSearchFrequency: SavedSearchFrequency;
   locationRecommendations: boolean;
@@ -17,11 +25,19 @@ export type GeneralSettingsPreferences = {
 const STORAGE_KEY_PREFIX = "general-settings:v1:";
 
 export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsPreferences = {
-  pushNotifications: false,
-  emailNotifications: false,
+  notificationsEnabled: true,
+  emailNotifications: true,
+  messageAndViewingUpdates: true,
+  deals: true,
+  contactedOwnerListings: true,
   savedSearchMatches: true,
   savedPropertyUpdates: true,
-  messageAndViewingUpdates: true,
+  savedPropertyReminders: true,
+  termsAndConditionsUpdates: true,
+  customerCareUpdates: true,
+  customerCareRequests: true,
+  ownerPropertyReviews: true,
+  ownerPropertySaves: true,
   promotionalEmails: false,
   savedSearchFrequency: "daily",
   locationRecommendations: false,
@@ -47,21 +63,49 @@ const parsePreferences = (value: unknown): GeneralSettingsPreferences => {
   const stored = value as Record<string, unknown>;
 
   return {
-    pushNotifications: isBoolean(stored.pushNotifications)
-      ? stored.pushNotifications
-      : DEFAULT_GENERAL_SETTINGS.pushNotifications,
+    notificationsEnabled: isBoolean(stored.notificationsEnabled)
+      ? stored.notificationsEnabled
+      : isBoolean(stored.pushNotifications)
+        ? stored.pushNotifications
+        : DEFAULT_GENERAL_SETTINGS.notificationsEnabled,
     emailNotifications: isBoolean(stored.emailNotifications)
       ? stored.emailNotifications
       : DEFAULT_GENERAL_SETTINGS.emailNotifications,
+    messageAndViewingUpdates: isBoolean(stored.messageAndViewingUpdates)
+      ? stored.messageAndViewingUpdates
+      : DEFAULT_GENERAL_SETTINGS.messageAndViewingUpdates,
+    deals: isBoolean(stored.deals)
+      ? stored.deals
+      : DEFAULT_GENERAL_SETTINGS.deals,
+    contactedOwnerListings: isBoolean(stored.contactedOwnerListings)
+      ? stored.contactedOwnerListings
+      : DEFAULT_GENERAL_SETTINGS.contactedOwnerListings,
     savedSearchMatches: isBoolean(stored.savedSearchMatches)
       ? stored.savedSearchMatches
       : DEFAULT_GENERAL_SETTINGS.savedSearchMatches,
     savedPropertyUpdates: isBoolean(stored.savedPropertyUpdates)
       ? stored.savedPropertyUpdates
-      : DEFAULT_GENERAL_SETTINGS.savedPropertyUpdates,
-    messageAndViewingUpdates: isBoolean(stored.messageAndViewingUpdates)
-      ? stored.messageAndViewingUpdates
-      : DEFAULT_GENERAL_SETTINGS.messageAndViewingUpdates,
+      : isBoolean(stored.savedPropertyPriceChanges)
+        ? stored.savedPropertyPriceChanges
+        : DEFAULT_GENERAL_SETTINGS.savedPropertyUpdates,
+    savedPropertyReminders: isBoolean(stored.savedPropertyReminders)
+      ? stored.savedPropertyReminders
+      : DEFAULT_GENERAL_SETTINGS.savedPropertyReminders,
+    termsAndConditionsUpdates: isBoolean(stored.termsAndConditionsUpdates)
+      ? stored.termsAndConditionsUpdates
+      : DEFAULT_GENERAL_SETTINGS.termsAndConditionsUpdates,
+    customerCareUpdates: isBoolean(stored.customerCareUpdates)
+      ? stored.customerCareUpdates
+      : DEFAULT_GENERAL_SETTINGS.customerCareUpdates,
+    customerCareRequests: isBoolean(stored.customerCareRequests)
+      ? stored.customerCareRequests
+      : DEFAULT_GENERAL_SETTINGS.customerCareRequests,
+    ownerPropertyReviews: isBoolean(stored.ownerPropertyReviews)
+      ? stored.ownerPropertyReviews
+      : DEFAULT_GENERAL_SETTINGS.ownerPropertyReviews,
+    ownerPropertySaves: isBoolean(stored.ownerPropertySaves)
+      ? stored.ownerPropertySaves
+      : DEFAULT_GENERAL_SETTINGS.ownerPropertySaves,
     promotionalEmails: isBoolean(stored.promotionalEmails)
       ? stored.promotionalEmails
       : DEFAULT_GENERAL_SETTINGS.promotionalEmails,
@@ -78,13 +122,29 @@ const parsePreferences = (value: unknown): GeneralSettingsPreferences => {
 };
 
 export const loadGeneralSettings = async (userId: string | null) => {
+  const { preferences } = await loadGeneralSettingsWithStatus(userId);
+  return preferences;
+};
+
+export const loadGeneralSettingsWithStatus = async (userId: string | null) => {
   const stored = await AsyncStorage.getItem(toStorageKey(userId));
-  if (!stored) return { ...DEFAULT_GENERAL_SETTINGS };
+  if (!stored) {
+    return {
+      preferences: { ...DEFAULT_GENERAL_SETTINGS },
+      hasStoredPreferences: false,
+    };
+  }
 
   try {
-    return parsePreferences(JSON.parse(stored));
+    return {
+      preferences: parsePreferences(JSON.parse(stored)),
+      hasStoredPreferences: true,
+    };
   } catch {
-    return { ...DEFAULT_GENERAL_SETTINGS };
+    return {
+      preferences: { ...DEFAULT_GENERAL_SETTINGS },
+      hasStoredPreferences: false,
+    };
   }
 };
 

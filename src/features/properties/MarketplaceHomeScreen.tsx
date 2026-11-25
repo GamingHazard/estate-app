@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   FlatList,
   Modal,
   RefreshControl,
@@ -36,45 +35,6 @@ type Purpose = (typeof PURPOSES)[number];
 
 type SortOption = "newest" | "price-low" | "price-high";
 
-type MockNotification = {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-};
-
-const MOCK_NOTIFICATIONS: MockNotification[] = [
-  {
-    id: "n1",
-    title: "New property match",
-    message: "3 homes near your preferred area just arrived.",
-    time: "2m ago",
-    read: false,
-  },
-  {
-    id: "n2",
-    title: "Offer reminder",
-    message: "Your saved apartment is still drawing interest.",
-    time: "30m ago",
-    read: true,
-  },
-  {
-    id: "n3",
-    title: "Tour scheduled",
-    message: "A viewing for your shortlisted home is confirmed tomorrow.",
-    time: "1d ago",
-    read: true,
-  },
-  {
-    id: "n4",
-    title: "Listing updated",
-    message: "One of your saved homes changed its asking price.",
-    time: "3d ago",
-    read: true,
-  },
-];
-
 const MarketplaceHomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<any>();
@@ -98,26 +58,9 @@ const MarketplaceHomeScreen = () => {
   const [category, setCategory] = useState("All");
   const [sort, setSort] = useState<SortOption>("newest");
   const [filtersVisible, setFiltersVisible] = useState(false);
-  const [notificationsVisible, setNotificationsVisible] = useState(false);
-  const [notifications, setNotifications] =
-    useState<MockNotification[]>(MOCK_NOTIFICATIONS);
-  const drawerTranslate = useRef(new Animated.Value(460)).current;
   const propertyListRef = useRef<FlatList<Property> | null>(null);
   const scrollToTopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
-
-  const unreadCount = notifications.filter(
-    (notification) => !notification.read,
-  ).length;
-
-  useEffect(() => {
-    Animated.spring(drawerTranslate, {
-      toValue: notificationsVisible ? 0 : 460,
-      useNativeDriver: true,
-      tension: 120,
-      friction: 12,
-    }).start();
-  }, [drawerTranslate, notificationsVisible]);
 
   useEffect(() => () => {
     if (scrollToTopTimer.current) {
@@ -147,16 +90,6 @@ const MarketplaceHomeScreen = () => {
 
   const scrollFeedToTop = () => {
     propertyListRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
-
-  const markAllNotificationsRead = () => {
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, read: true })),
-    );
-  };
-
-  const clearNotifications = () => {
-    setNotifications([]);
   };
 
   const handleToggleSaved = (propertyId: string) => {
@@ -268,23 +201,6 @@ const MarketplaceHomeScreen = () => {
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[
-              styles.notificationButton,
-              { backgroundColor: colors.card },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Open notifications"
-            onPress={() => setNotificationsVisible(true)}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={colors.text}
-            />
-            {unreadCount > 0 && <View style={styles.notificationBadge} />}
-          </TouchableOpacity>
-
           <View style={styles.headerAvatarWrap}>
             <TouchableOpacity
               style={[styles.headerButton, { backgroundColor: colors.card }]}
@@ -687,143 +603,6 @@ const MarketplaceHomeScreen = () => {
         </View>
       </Modal>
 
-      <Modal
-        visible={notificationsVisible}
-        transparent
-        animationType="none"
-        statusBarTranslucent={false}
-        onRequestClose={() => setNotificationsVisible(false)}
-      >
-        <Pressable
-          style={styles.notificationBackdrop}
-          onPress={() => setNotificationsVisible(false)}
-        />
-
-        <Animated.View
-          style={[
-            styles.notificationDrawer,
-            {
-              backgroundColor: colors.card,
-              top: insets.top,
-              bottom: insets.bottom,
-              paddingTop: Math.max(16, insets.top + 8),
-              paddingBottom: Math.max(18, insets.bottom + 8),
-              transform: [{ translateX: drawerTranslate }],
-            },
-          ]}
-        >
-          <View style={styles.notificationHeader}>
-            <View>
-              <Text style={[styles.notificationTitle, { color: colors.text }]}>
-                Notifications
-              </Text>
-              <Text
-                style={[styles.notificationCount, { color: colors.textMuted }]}
-              >
-                {notifications.length} total
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => setNotificationsVisible(false)}
-              accessibilityLabel="Close notifications"
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.notificationActions}>
-            <TouchableOpacity
-              style={[
-                styles.notificationActionButton,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.background,
-                },
-              ]}
-              onPress={markAllNotificationsRead}
-            >
-              <Text
-                style={[styles.notificationActionText, { color: colors.text }]}
-              >
-                Read all
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.notificationActionButton,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.background,
-                },
-              ]}
-              onPress={clearNotifications}
-            >
-              <Text
-                style={[styles.notificationActionText, { color: colors.text }]}
-              >
-                Clear
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={notifications}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.notificationList}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyNotifications}>
-                <Ionicons
-                  name="notifications-off-outline"
-                  size={30}
-                  color={colors.textMuted}
-                />
-                <Text style={[styles.emptyText, { color: colors.text }]}>
-                  No notifications
-                </Text>
-              </View>
-            }
-            renderItem={({ item }) => (
-              <View
-                style={[
-                  styles.notificationItem,
-                  {
-                    backgroundColor: item.read
-                      ? colors.background
-                      : colors.card,
-                    borderColor: item.read ? colors.border : colors.primary,
-                  },
-                ]}
-              >
-                {!item.read && <View style={styles.unreadDot} />}
-                <View style={styles.notificationContent}>
-                  <Text
-                    style={[
-                      styles.notificationItemTitle,
-                      { color: colors.text },
-                    ]}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.notificationItemMessage,
-                      { color: colors.textMuted },
-                    ]}
-                  >
-                    {item.message}
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.notificationTime, { color: colors.textMuted }]}
-                >
-                  {item.time}
-                </Text>
-              </View>
-            )}
-          />
-        </Animated.View>
-      </Modal>
     </View>
   );
 };
@@ -891,25 +670,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
-  },
-  notificationButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  notificationBadge: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#ef4444",
-    position: "absolute",
-    right: 8,
-    top: 7,
-    borderWidth: 2,
-    borderColor: "white",
   },
   searchBox: {
     height: 52,
@@ -1027,103 +787,6 @@ const styles = StyleSheet.create({
   sortOptionText: { fontSize: 14, fontWeight: "600" },
   clearButton: { alignItems: "center", paddingVertical: 14 },
   clearButtonText: { fontSize: 14, fontWeight: "700" },
-  notificationBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  notificationDrawer: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: "86%",
-    maxWidth: 440,
-    paddingTop: 28,
-    paddingHorizontal: 18,
-    paddingBottom: 18,
-    borderTopLeftRadius: 24,
-    borderBottomLeftRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: -6, height: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 10,
-  },
-  notificationHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  notificationTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  notificationCount: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  notificationActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  notificationActionButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  notificationActionText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  notificationList: {
-    paddingBottom: 12,
-    gap: 10,
-  },
-  notificationItem: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#3b82f6",
-    marginTop: 6,
-  },
-  notificationContent: {
-    flex: 1,
-  },
-  notificationItemTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  notificationItemMessage: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  notificationTime: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  emptyNotifications: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 30,
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 14,
-    fontWeight: "600",
-  },
 });
 
 export default MarketplaceHomeScreen;

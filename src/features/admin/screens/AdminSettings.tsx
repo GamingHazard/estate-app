@@ -23,11 +23,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useAuth } from "../../auth/AuthContext";
 import { useTheme } from "../../../shared/theme/ThemeContext";
-import {
-  GeneralSettingsPreferences,
-  loadGeneralSettings,
-  saveGeneralSettings,
-} from "../../settings/generalSettingsStore";
+import { useNotificationPreferences } from "../../settings/useNotificationPreferences";
 import { apiRequest } from "../../../shared/queryClient";
 
 type SettingsSection =
@@ -76,13 +72,22 @@ const sections: Array<{
 export function AdminSettings() {
   const { colors, theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const {
+    preferences,
+    preferencesLoading,
+    preferencesLoadError,
+    isSavingPreferences,
+    preferencesSaveError,
+    syncStatus,
+    updatePreference,
+    retrySync,
+    reloadPreferences,
+  } = useNotificationPreferences(user?.id ?? null, user?.role ?? null);
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const compact = width < 720;
   const [activeSection, setActiveSection] = useState<SettingsSection>("account");
   const [search, setSearch] = useState("");
-  const [preferences, setPreferences] = useState<GeneralSettingsPreferences | null>(null);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [devicePermissions, setDevicePermissions] = useState<DevicePermissions | null>(null);
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -203,10 +208,6 @@ export function AdminSettings() {
     setDeletePassword("");
   };
 
-  useEffect(() => {
-    void loadGeneralSettings(user?.id ?? null).then(setPreferences);
-  }, [user?.id]);
-
   const loadDevicePermissions = useCallback(async () => {
     try {
       const [camera, photos, location] = await Promise.all([
@@ -256,24 +257,6 @@ export function AdminSettings() {
       await Linking.openSettings();
     } catch {
       Alert.alert("Unable to open settings", "Open your device settings to manage app permissions.");
-    }
-  };
-
-  const updatePreference = async <Key extends keyof GeneralSettingsPreferences>(
-    key: Key,
-    value: GeneralSettingsPreferences[Key],
-  ) => {
-    if (!preferences) return;
-    const next = { ...preferences, [key]: value };
-    setPreferences(next);
-    setSaveState("saving");
-    try {
-      await saveGeneralSettings(user?.id ?? null, next);
-      setSaveState("saved");
-      setTimeout(() => setSaveState("idle"), 1400);
-    } catch {
-      Alert.alert("Unable to save preference", "Please try again.");
-      setSaveState("idle");
     }
   };
 
@@ -567,21 +550,85 @@ export function AdminSettings() {
           </View>
         );
       case "notifications":
-        if (!preferences) return null;
         return (
           <View style={styles.section}>
-            <SectionHeader title="Notifications" description="Choose administrative updates and how often they should be delivered." />
+            <SectionHeader
+              title="Notifications"
+              description="Choose which optional in-app and push notifications you receive. Push also requires device permission."
+            />
+            {preferencesLoading ? (
+              <View style={styles.row}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.rowDescription}>
+                  Loading saved preferences…
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.card}>
-              <SettingRow title="Push notifications" description="Receive important activity alerts on this device." value={preferences.pushNotifications} onValueChange={(value) => void updatePreference("pushNotifications", value)} />
-              <SettingRow title="Email notifications" description="Receive administrative and account alerts by email." value={preferences.emailNotifications} onValueChange={(value) => void updatePreference("emailNotifications", value)} />
-              <SettingRow title="Property updates" description="New submissions, approvals, listing changes, and publishing." value={preferences.savedPropertyUpdates} onValueChange={(value) => void updatePreference("savedPropertyUpdates", value)} />
-              <SettingRow title="Messages and inquiries" description="New customer messages and viewing requests." value={preferences.messageAndViewingUpdates} onValueChange={(value) => void updatePreference("messageAndViewingUpdates", value)} />
+              <SettingRow
+                title="Enable notifications"
+                description="Turn on optional in-app and push notifications."
+                value={preferences.notificationsEnabled}
+                onValueChange={(value) => void updatePreference("notificationsEnabled", value)}
+                disabled={preferencesLoading || preferencesLoadError || isSavingPreferences}
+              />
+              <SettingRow
+                title="Messages and inquiries"
+                description="New customer messages and viewing requests."
+                value={preferences.messageAndViewingUpdates}
+                onValueChange={(value) => void updatePreference("messageAndViewingUpdates", value)}
+                disabled={!preferences.notificationsEnabled || preferencesLoading || preferencesLoadError || isSavingPreferences}
+              />
+              <SettingRow
+                title="Customer care requests"
+                description="New support requests that need an administrator's response."
+                value={preferences.customerCareRequests}
+                onValueChange={(value) => void updatePreference("customerCareRequests", value)}
+                disabled={!preferences.notificationsEnabled || preferencesLoading || preferencesLoadError || isSavingPreferences}
+              />
+              <SettingRow
+                title="Terms and conditions updates"
+                description="Optional alerts about policy changes; required notices still appear."
+                value={preferences.termsAndConditionsUpdates}
+                onValueChange={(value) => void updatePreference("termsAndConditionsUpdates", value)}
+                disabled={!preferences.notificationsEnabled || preferencesLoading || preferencesLoadError || isSavingPreferences}
+              />
+              <SettingRow
+                title="Email notifications"
+                description="Receive administrative and account alerts by email."
+                value={preferences.emailNotifications}
+                onValueChange={(value) => void updatePreference("emailNotifications", value)}
+                disabled={preferencesLoading || preferencesLoadError || isSavingPreferences}
+              />
             </View>
+            {preferencesLoadError ? (
+              <View style={styles.row}>
+                <Text style={styles.rowDescription}>
+                  Preferences could not be loaded.
+                </Text>
+                <TouchableOpacity onPress={reloadPreferences}>
+                  <Text style={styles.statusText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
             <View style={styles.card}>
-              <ActionRow title="Notification digest" description="Daily or weekly summary delivery." status={preferences.savedSearchFrequency} />
               <ActionRow title="Quiet hours" description="Pause non-critical alerts overnight." status="Coming soon" />
             </View>
-            {saveState !== "idle" ? <Text style={styles.rowDescription}>{saveState === "saving" ? "Saving…" : "Preferences saved"}</Text> : null}
+            {syncStatus !== "idle" && !preferencesSaveError ? (
+              <Text style={styles.rowDescription}>
+                {syncStatus === "saving" ? "Saving…" : "Preferences synced"}
+              </Text>
+            ) : null}
+            {preferencesSaveError ? (
+              <View style={styles.row}>
+                <Text style={styles.rowDescription}>
+                  Changes are saved locally but could not sync.
+                </Text>
+                <TouchableOpacity onPress={() => void retrySync()}>
+                  <Text style={styles.statusText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         );
       case "security":

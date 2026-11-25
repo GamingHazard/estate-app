@@ -143,6 +143,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const [menuVisible, setMenuVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState<ChatImagePreview | null>(null);
   const [isSavingImage, setIsSavingImage] = useState(false);
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -248,6 +249,73 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
       );
     } finally {
       setIsSavingImage(false);
+    }
+  };
+
+  const downloadAttachment = async (
+    messageId: string,
+    attachment: ServerAttachment,
+  ) => {
+    if (downloadingAttachmentId) return;
+
+    setDownloadingAttachmentId(messageId);
+    try {
+      const originalFileName =
+        attachment.fileName?.split(/[\\/]/).pop()?.trim() ||
+        `chat-attachment-${Date.now()}`;
+      const extension = originalFileName.match(/\.[^.]+$/)?.[0] || "";
+      const fileName = `${Date.now()}-${originalFileName}`;
+      const mimeType =
+        attachment.mimeType ||
+        (extension.toLowerCase() === ".pdf"
+          ? "application/pdf"
+          : "application/octet-stream");
+      const cachedFile = await File.downloadFileAsync(
+        attachment.url,
+        new File(Paths.cache, fileName),
+      );
+
+      if (Platform.OS === "android") {
+        const directoryPermissions =
+          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(
+            FileSystem.StorageAccessFramework.getUriForDirectoryInRoot("Download"),
+          );
+        if (!directoryPermissions.granted) return;
+
+        const destinationUri =
+          await FileSystem.StorageAccessFramework.createFileAsync(
+            directoryPermissions.directoryUri,
+            fileName.replace(/\.[^.]+$/, ""),
+            mimeType,
+          );
+        await FileSystem.copyAsync({
+          from: cachedFile.uri,
+          to: destinationUri,
+        });
+        Alert.alert("Download complete", "The file was saved to Downloads.");
+        return;
+      }
+
+      if (Platform.OS === "ios") {
+        if (!(await Sharing.isAvailableAsync())) {
+          throw new Error("The system save menu is unavailable on this device.");
+        }
+        await Sharing.shareAsync(cachedFile.uri, {
+          dialogTitle: "Save attachment to Files",
+          mimeType,
+        });
+        return;
+      }
+
+      throw new Error("Downloading attachments is not supported on this platform.");
+    } catch (error) {
+      console.error("Unable to download chat attachment:", error);
+      Alert.alert(
+        "Unable to download file",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setDownloadingAttachmentId(null);
     }
   };
 
@@ -851,30 +919,58 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                 />
               </TouchableOpacity>
             ) : item.attachment ? (
-              <TouchableOpacity
-                style={styles.messageAttachmentFile}
-                onPress={() =>
-                  void Linking.openURL(item.attachment!.url).catch((error) => {
-                    console.error("Unable to open attachment:", error);
-                    Alert.alert("Unable to open attachment", "Please try again.");
-                  })
-                }
-              >
-                <Ionicons
-                  name={item.messageType === "video" ? "videocam-outline" : "document-outline"}
-                  size={20}
-                  color={isYourMessage ? "#ffffff" : colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.messageAttachmentName,
-                    { color: isYourMessage ? "#ffffff" : colors.text },
-                  ]}
-                  numberOfLines={1}
+              <View style={styles.messageAttachmentFile}>
+                <TouchableOpacity
+                  style={styles.messageAttachmentOpen}
+                  onPress={() =>
+                    void Linking.openURL(item.attachment!.url).catch((error) => {
+                      console.error("Unable to open attachment:", error);
+                      Alert.alert("Unable to open attachment", "Please try again.");
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${item.attachment.fileName || "attachment"}`}
                 >
-                  {item.attachment.fileName || "Open attachment"}
-                </Text>
-              </TouchableOpacity>
+                  <Ionicons
+                    name={item.messageType === "video" ? "videocam-outline" : "document-outline"}
+                    size={20}
+                    color={isYourMessage ? "#ffffff" : colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.messageAttachmentName,
+                      { color: isYourMessage ? "#ffffff" : colors.text },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.attachment.fileName || "Open attachment"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.messageAttachmentDownload}
+                  onPress={() => void downloadAttachment(item.id, item.attachment!)}
+                  disabled={downloadingAttachmentId !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Download ${item.attachment.fileName || "attachment"}`}
+                  accessibilityState={{
+                    disabled: downloadingAttachmentId !== null,
+                    busy: downloadingAttachmentId === item.id,
+                  }}
+                >
+                  {downloadingAttachmentId === item.id ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isYourMessage ? "#ffffff" : colors.primary}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="download-outline"
+                      size={20}
+                      color={isYourMessage ? "#ffffff" : colors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
             ) : item.pendingAttachment ? (
               <View style={styles.messageAttachmentFile}>
                 <Ionicons
@@ -1425,6 +1521,19 @@ const styles = StyleSheet.create({
     gap: 8,
     minWidth: 0,
     paddingVertical: 6,
+  },
+  messageAttachmentOpen: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
+  },
+  messageAttachmentDownload: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   messageAttachmentName: {
     flexShrink: 1,

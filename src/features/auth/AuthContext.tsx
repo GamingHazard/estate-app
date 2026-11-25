@@ -9,6 +9,7 @@ const TOKEN_STORAGE_KEY = "authToken";
 type AuthContextValue = {
   user: AuthUser | null;
   isGuest: boolean;
+  isRestoringSession: boolean;
   isLoading: boolean;
   login: (data: LoginInput) => Promise<AuthResult>;
   register: (data: RegisterInput) => Promise<AuthResult>;
@@ -27,6 +28,7 @@ type AuthProviderProps = {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isGuest, setIsGuest] = useState(true);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   const persistSession = async (user: AuthUser, token?: string) => {
@@ -42,6 +44,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   });
 
   useEffect(() => {
+    let active = true;
     const restoreUser = async () => {
       try {
         const [savedProfile, savedToken] = await Promise.all([
@@ -49,6 +52,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           AsyncStorage.getItem(TOKEN_STORAGE_KEY),
         ]);
 
+        if (!active) return;
         if (savedProfile && savedToken) {
           setUser(JSON.parse(savedProfile) as AuthUser);
           setIsGuest(false);
@@ -59,11 +63,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       } catch (error) {
         console.error("Unable to restore saved user profile:", error);
-        await AsyncStorage.removeItem(USER_STORAGE_KEY);
+        try {
+          await AsyncStorage.multiRemove([USER_STORAGE_KEY, TOKEN_STORAGE_KEY]);
+        } catch (cleanupError) {
+          console.error("Unable to clear the invalid saved session:", cleanupError);
+        }
+        if (active) {
+          setUser(null);
+          setIsGuest(true);
+        }
+      } finally {
+        if (active) setIsRestoringSession(false);
       }
     };
 
     void restoreUser();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const login = async (input: LoginInput): Promise<AuthResult> => {
@@ -173,6 +190,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       value={{
         user,
         isGuest,
+        isRestoringSession,
         isLoading,
         login,
         register,

@@ -42,7 +42,7 @@ const faqs = [
   {
     question: "How do I enable notifications?",
     answer:
-      "Open General Settings to save your notification preferences. Push and email delivery are not connected yet. Device notification permission can be managed from the Open device settings link.",
+      "Open General Settings to choose notification categories. These preferences are currently saved on this device; notification delivery is not connected yet. Push notifications will also require device permission.",
   },
 ];
 

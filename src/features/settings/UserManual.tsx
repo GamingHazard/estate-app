@@ -88,8 +88,8 @@ const UserManual: React.FC<UserManualProps> = () => {
         </Text>
         <Text style={{ color: colors.text }}>
           - Open the Settings tab for appearance and General Settings for
-          locally saved notification, search, and privacy preferences. Push and
-          email delivery are not connected yet.
+          notification, search, and privacy preferences. Notification choices
+          are currently saved on this device; delivery is not connected yet.
         </Text>
       </View>
 
