@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -76,6 +77,7 @@ const ListerProfileScreen = ({ route }: Props) => {
   const navigation = useNavigation<NavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { user: signedInUser, openAuth } = useAuth();
   const { isSaved, toggleSaved } = useSavedProperties();
   const [draftRating, setDraftRating] = React.useState(5);
@@ -92,6 +94,9 @@ const ListerProfileScreen = ({ route }: Props) => {
   const isConnected = useInternetConnection();
   const useMockProperties =
     process.env.EXPO_PUBLIC_USE_MOCK_PROPERTIES === "true";
+  const mockProfile = useMockProperties
+    ? mockListerProfiles.find((profile) => profile.id === userId)
+    : undefined;
   const {
     data: profileResponse,
     isLoading: profileLoading,
@@ -100,8 +105,11 @@ const ListerProfileScreen = ({ route }: Props) => {
     refetch: refetchProfile,
   } = useQuery({
     queryKey: ["users", userId, "public"],
-    queryFn: getQueryFn<PublicProfileResponse>({ on401: "throw" }),
-    enabled: Boolean(userId) && !useMockProperties,
+    queryFn: getQueryFn<PublicProfileResponse>({
+      on401: "throw",
+      path: `/users/${encodeURIComponent(userId)}/public`,
+    }),
+    enabled: Boolean(userId) && !mockProfile,
   });
   const {
     data: reviewResponse,
@@ -119,9 +127,7 @@ const ListerProfileScreen = ({ route }: Props) => {
     queryFn: getQueryFn<ReviewSummaryResponse>({ on401: "returnNull" }),
     enabled: Boolean(userId),
   });
-  const lister = useMockProperties
-    ? mockListerProfiles.find((profile) => profile.id === userId)
-    : profileResponse?.user;
+  const lister = mockProfile ?? profileResponse?.user;
   const listerProperties = properties.filter(
     (property) =>
       property.ownerId === userId &&
@@ -224,21 +230,36 @@ const ListerProfileScreen = ({ route }: Props) => {
   };
 
   const roleLabel =
-    lister?.role === "propertyManager" ? "Property manager" : "Landlord";
+    lister?.role === "propertyManager"
+      ? "Property manager"
+      : lister?.role === "admin"
+        ? "Property administrator"
+        : "Landlord";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
-        data={listerProperties}
-        keyExtractor={(property) => property.id}
-        renderItem={({ item }) => (
-          <PropertyListingCard
-            property={item}
-            saved={isSaved(item.id)}
-            onPress={() =>
-              navigation.navigate("PropertyDetails", { property: item })
-            }
-            onToggleSaved={() => handleToggleSaved(item.id)}
+        data={listerProperties.length > 0 ? [listerProperties] : []}
+        keyExtractor={(listings) => listings[0]?.id ?? userId}
+        renderItem={({ item: listings }) => (
+          <FlatList
+            horizontal
+            data={listings}
+            keyExtractor={(property) => property.id}
+            renderItem={({ item }) => (
+              <View style={{ width: Math.min(width * 0.84, 360) }}>
+                <PropertyListingCard
+                  property={item}
+                  saved={isSaved(item.id)}
+                  onPress={() =>
+                    navigation.navigate("PropertyDetails", { property: item })
+                  }
+                  onToggleSaved={() => handleToggleSaved(item.id)}
+                />
+              </View>
+            )}
+            contentContainerStyle={styles.listingCarouselContent}
+            showsHorizontalScrollIndicator={false}
           />
         )}
         ListHeaderComponent={
@@ -247,7 +268,7 @@ const ListerProfileScreen = ({ route }: Props) => {
               <View style={styles.state}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : !lister || profileError ? (
+            ) : !lister ? (
               <View style={styles.state}>
                 <Ionicons
                   name="person-circle-outline"
@@ -534,12 +555,14 @@ const ListerProfileScreen = ({ route }: Props) => {
                   )}
                 </View>
 
-                <View style={styles.listingsHeading}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Active listings
-                  </Text>
-                </View>
               </>
+            )}
+            {!isLoading && (lister || listerProperties.length > 0) && (
+              <View style={styles.listingsHeading}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Active listings
+                </Text>
+              </View>
             )}
           </>
         }
@@ -790,6 +813,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   listingsHeading: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 12 },
+  listingCarouselContent: { paddingHorizontal: 16, paddingTop: 12 },
   emptyListings: {
     textAlign: "center",
     paddingHorizontal: 20,

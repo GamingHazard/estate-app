@@ -217,8 +217,9 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
   timeout?: number; // optional timeout in ms
   authenticated?: boolean;
+  path?: string;
 }) => QueryFunction<T> =
-  ({ on401, timeout = 5000, authenticated = false }) =>
+  ({ on401, timeout = 5000, authenticated = false, path }) =>
   async ({ queryKey, signal }) => {
     // React Query passes its own abort signal
     const controller = new AbortController();
@@ -230,7 +231,7 @@ export const getQueryFn: <T>(options: {
     const timer = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const url = `/${queryKey.join("/")}`;
+      const url = path ?? `/${queryKey.join("/")}`;
       const headers: Record<string, string> = {};
       if (authenticated) {
         const token = await AsyncStorage.getItem("authToken");

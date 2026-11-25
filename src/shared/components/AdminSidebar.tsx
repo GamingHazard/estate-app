@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import {
+  ScrollView,
   View,
   Text,
   StyleSheet,
@@ -156,6 +157,9 @@ export function AdminSidebar({
       color: colors.text,
       opacity: isCollapsed ? 0 : 1,
     },
+    menuList: {
+      flex: 1,
+    },
     collapseButton: {
       borderRadius: 8,
       backgroundColor: colors.background,
@@ -201,30 +205,37 @@ export function AdminSidebar({
           />
         </TouchableOpacity>
       </View>
-      {menuItems.map((item, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[styles.menuItem]}
-          disabled={item.label === "Analytics"}
-          activeOpacity={item.label === "Analytics" ? 1 : 0.7}
-          onPress={() => {
-            (navigation.navigate(item.screen), onToggleCollapse());
-          }} // Auto expand on navigation if collapsed
-        >
-          <View style={styles.menuIcon}>
-            <Ionicons name={item.icon} size={24} color={colors.text} />
-          </View>
-          {!isCollapsed && (
-            <Text style={[
-              styles.menuLabel,
-              item.label === "Analytics" && { opacity: 0.5 },
-            ]}>
-              {item.label}
-              {item.label === "Analytics" ? " (coming soon...!)" : ""}
-            </Text>
-          )}
-        </TouchableOpacity>
-      ))}
+      <ScrollView
+        style={styles.menuList}
+        showsVerticalScrollIndicator={false}
+      >
+        {menuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.menuItem}
+            disabled={item.label === "Analytics"}
+            activeOpacity={item.label === "Analytics" ? 1 : 0.7}
+            onPress={() => {
+              (navigation.navigate(item.screen), onToggleCollapse());
+            }}
+          >
+            <View style={styles.menuIcon}>
+              <Ionicons name={item.icon} size={24} color={colors.text} />
+            </View>
+            {!isCollapsed && (
+              <Text
+                style={[
+                  styles.menuLabel,
+                  item.label === "Analytics" && { opacity: 0.5 },
+                ]}
+              >
+                {item.label}
+                {item.label === "Analytics" ? " (coming soon...!)" : ""}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </Animated.View>
   );
 }

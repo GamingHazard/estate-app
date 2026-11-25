@@ -225,7 +225,7 @@ const MarketplaceHomeScreen = () => {
       const matchesPurpose = purpose === "all" || listing?.purpose === purpose;
       const matchesCategory =
         category === "All" ||
-        property.category.toLowerCase() === category.toLowerCase();
+        (property.category ?? "").toLowerCase() === category.toLowerCase();
 
       return matchesSearch && matchesPurpose && matchesCategory;
     });

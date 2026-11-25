@@ -28,6 +28,7 @@ import {
 import { MarketplacePropertyCreation } from "./MarketplacePropertyCreation";
 import { useManagedProperties } from "../../properties/useProperties";
 import { getErrorMessage } from "../../../shared/queryClient";
+import { useAuth } from "../../auth/AuthContext";
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type ManagementProperty =
@@ -36,6 +37,7 @@ type ManagementProperty =
 
 export function PropertiesManagement() {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation<NavigationProp>();
   const [isCreationVisible, setCreationVisible] = useState(false);
   const properties = useSyncExternalStore(
@@ -49,7 +51,12 @@ export function PropertiesManagement() {
     adminPropertyStore.getMarketplaceSnapshot,
   );
   const managedPropertiesQuery = useManagedProperties();
-  const databaseProperties = managedPropertiesQuery.data ?? [];
+  const databaseProperties = user?.id
+    ? (managedPropertiesQuery.data ?? []).filter(
+        (property) =>
+          user.role === "admin" || property.ownerId === user.id,
+      )
+    : [];
   const databasePropertyIds = new Set(
     databaseProperties.map((property) => property.id),
   );
@@ -63,9 +70,19 @@ export function PropertiesManagement() {
       property,
     })),
     ...marketplaceProperties
-      .filter((property) => !databasePropertyIds.has(property.id))
+      .filter(
+        (property) =>
+          Boolean(user?.id) &&
+          property.ownerId === user?.id &&
+          !databasePropertyIds.has(property.id),
+      )
       .map((property) => ({ source: "marketplace" as const, property })),
-    ...properties.map((property) => ({ source: "local" as const, property })),
+    ...properties
+      .filter(
+        (property) =>
+          Boolean(user?.id) && property.ownerId === user?.id,
+      )
+      .map((property) => ({ source: "local" as const, property })),
   ];
 
   const styles = StyleSheet.create({
@@ -306,6 +323,7 @@ export function PropertiesManagement() {
                 ]}
               >
                 <Text style={styles.badgeText}>
+                  {property.property.isArchived ? "Archived · " : ""}
                   {property.property.moderationStatus ?? "pending"} ·{" "}
                   {property.property.listings[0]
                     ? getListingPriceLabel(property.property.listings[0])
@@ -316,7 +334,10 @@ export function PropertiesManagement() {
               <View
                 style={[styles.badge, getBadgeStyle(property.property.status)]}
               >
-                <Text style={styles.badgeText}>{property.property.status}</Text>
+                <Text style={styles.badgeText}>
+                  {property.property.isArchived ? "Archived · " : ""}
+                  {property.property.status}
+                </Text>
               </View>
             ) : null}
             {property.source === "local" && (

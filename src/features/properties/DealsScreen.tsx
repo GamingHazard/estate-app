@@ -1,322 +1,599 @@
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
+  ActivityIndicator,
+  FlatList,
   Image,
-  TouchableOpacity,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
   useWindowDimensions,
+  View,
 } from "react-native";
-import { useTheme } from "../../shared/theme/ThemeContext";
-import {
-  formatPropertyPrice,
-  getListingPriceLabel,
-  getPropertyDisplayLocation,
-  Property,
-} from "../../data/property";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Deal,
+  formatDealMoney,
+  getDealTimeRemaining,
+  parseDealListResponse,
+} from "../../data/deal";
+import { getPropertyDisplayLocation } from "../../data/property";
+import { getErrorMessage, getQueryFn } from "../../shared/queryClient";
 import { NavigationProp } from "../../shared/types";
-import SkeletonLoader from "../../shared/components/SkeletonLoader";
-import { useProperties } from "./useProperties";
-import { getErrorMessage } from "../../shared/queryClient";
+import { useTheme } from "../../shared/theme/ThemeContext";
+
+const NO_IMAGE =
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
+const DEAL_FILTERS = ["All", "Rent", "Sale"] as const;
+type DealFilter = (typeof DEAL_FILTERS)[number];
+
+const getDealPriceLabel = (deal: Deal) => {
+  const price = formatDealMoney(
+    deal.pricingSnapshot.dealPrice,
+    deal.pricingSnapshot.currency,
+  );
+  return deal.pricingSnapshot.billingPeriod
+    ? `${price} / ${deal.pricingSnapshot.billingPeriod}`
+    : price;
+};
+
+const getDealBasePriceLabel = (deal: Deal) => {
+  const price = formatDealMoney(
+    deal.pricingSnapshot.basePrice,
+    deal.pricingSnapshot.currency,
+  );
+  return deal.pricingSnapshot.billingPeriod
+    ? `${price} / ${deal.pricingSnapshot.billingPeriod}`
+    : price;
+};
+
+const getDiscountPercent = (deal: Deal) => {
+  const { basePrice, dealPrice } = deal.pricingSnapshot;
+  if (basePrice <= 0 || dealPrice >= basePrice) return null;
+  return Math.round(((basePrice - dealPrice) / basePrice) * 100);
+};
+
+const getEndDateLabel = (endsAt?: string | null) => {
+  if (!endsAt) return "No end date";
+  const date = new Date(endsAt);
+  if (!Number.isFinite(date.getTime())) return "End date unavailable";
+  return `Ends ${date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+};
 
 const DealsScreen = () => {
   const { colors } = useTheme();
-  const { width } = useWindowDimensions();
-  const dealCardWidth = Math.min(width * 0.78, 360);
   const navigation = useNavigation<NavigationProp>();
-  const {
-    data: properties = [],
-    isLoading,
-    isFetching,
-    isError,
-    error,
-    refetch,
-  } = useProperties();
-  const getPublishedOffer = (property: Property) =>
-    property.listings.find((listing) => listing.status === "published");
-  const getDisplayPrice = (property: Property) => {
-    const listing = getPublishedOffer(property);
-    return listing
-      ? getListingPriceLabel(listing)
-      : `${formatPropertyPrice(property.pricePerUnit)} / unit`;
+  const isFocused = useIsFocused();
+  const { width } = useWindowDimensions();
+  const [filter, setFilter] = useState<DealFilter>("All");
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const featuredIndexRef = useRef(0);
+  const featuredListRef = useRef<FlatList<Deal>>(null);
+
+  const dealsQuery = useQuery({
+    queryKey: ["deals", "marketplace"],
+    queryFn: async (context) =>
+      parseDealListResponse(
+        await getQueryFn<unknown>({
+          on401: "returnNull",
+          path: "/deals",
+        })(context),
+      ),
+    staleTime: 30_000,
+  });
+  const deals = dealsQuery.data?.deals ?? [];
+
+  const featuredDeals = useMemo(
+    () =>
+      deals
+        .filter((deal) => deal.featured)
+        .sort((a, b) => {
+          const aEnd = a.endsAt ? new Date(a.endsAt).getTime() : Infinity;
+          const bEnd = b.endsAt ? new Date(b.endsAt).getTime() : Infinity;
+          return aEnd - bEnd;
+        }),
+    [deals],
+  );
+  const visibleDeals = useMemo(
+    () =>
+      deals
+        .filter((deal) => {
+          if (deal.featured) return false;
+          if (filter === "All") return true;
+          return deal.listing?.purpose === filter.toLowerCase();
+        })
+        .sort((a, b) => {
+          const aEnd = a.endsAt ? new Date(a.endsAt).getTime() : Infinity;
+          const bEnd = b.endsAt ? new Date(b.endsAt).getTime() : Infinity;
+          return aEnd - bEnd;
+        }),
+    [deals, filter],
+  );
+
+  useEffect(() => {
+    featuredIndexRef.current = 0;
+    setFeaturedIndex(0);
+    featuredListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [featuredDeals.length]);
+
+  useEffect(() => {
+    if (!isFocused || featuredDeals.length < 2) return;
+    const timer = setInterval(() => {
+      const nextIndex = (featuredIndexRef.current + 1) % featuredDeals.length;
+      featuredIndexRef.current = nextIndex;
+      setFeaturedIndex(nextIndex);
+      featuredListRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [featuredDeals.length, isFocused]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const openDeal = (deal: Deal) => {
+    if (!deal.property) return;
+    navigation.navigate("PropertyDetails", {
+      property: deal.property,
+      deal,
+    });
   };
-  const visibleProperties = properties.filter(
-    (property) =>
-      property.listings.length === 0 || Boolean(getPublishedOffer(property)),
-  );
-  const propertiesWithUnits = visibleProperties.filter(
-    (property) => property.unitsAvailable > 0 || property.units.length > 0,
-  );
-  const lowestPriceProperties = [...visibleProperties]
-    .sort(
-      (a, b) =>
-        (getPublishedOffer(a)?.price ?? a.pricePerUnit) -
-        (getPublishedOffer(b)?.price ?? b.pricePerUnit),
-    )
-    .slice(0, 5);
 
-  const onRefresh = React.useCallback(() => {
-    void refetch();
-  }, [refetch]);
+  const onFeaturedScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const nextIndex = Math.max(
+      0,
+      Math.min(
+        featuredDeals.length - 1,
+        Math.round(event.nativeEvent.contentOffset.x / width),
+      ),
+    );
+    featuredIndexRef.current = nextIndex;
+    setFeaturedIndex(nextIndex);
+  };
 
-  const noImage =
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
+  const renderFeaturedDeal = ({ item }: { item: Deal }) => {
+    const discount = getDiscountPercent(item);
+    return (
+      <View style={{ width }}>
+        <TouchableOpacity
+          activeOpacity={0.92}
+          disabled={!item.property}
+          onPress={() => openDeal(item)}
+          style={styles.heroCard}
+        >
+          <Image
+            source={{ uri: item.property?.images?.[0]?.url || NO_IMAGE }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={["rgba(0,0,0,0.12)", "rgba(0,0,0,0.88)"]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroTopRow}>
+            <Text style={styles.featuredBadge}>FEATURED DEAL</Text>
+            {discount !== null && (
+              <Text style={styles.discountBadge}>{discount}% OFF</Text>
+            )}
+          </View>
+          <View style={styles.heroContent}>
+            <Text numberOfLines={1} style={styles.heroTitle}>
+              {item.property?.name ?? item.title}
+            </Text>
+            <Text numberOfLines={1} style={styles.heroLocation}>
+              {item.property
+                ? getPropertyDisplayLocation(item.property)
+                : item.title}
+            </Text>
+            <View style={styles.heroPriceRow}>
+              <Text style={styles.heroDealPrice}>{getDealPriceLabel(item)}</Text>
+              <Text style={styles.heroOriginalPrice}>
+                {getDealBasePriceLabel(item)}
+              </Text>
+            </View>
+            <View style={styles.heroDateRow}>
+              <View style={styles.heroMeta}>
+                <Ionicons name="time-outline" size={15} color="#fff" />
+                <Text style={styles.heroMetaText}>
+                  {getDealTimeRemaining(item.endsAt, now)}
+                </Text>
+              </View>
+              <Text style={styles.heroMetaText}>
+                {getEndDateLabel(item.endsAt)}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderDeal = ({ item }: { item: Deal }) => {
+    const discount = getDiscountPercent(item);
+    return (
+      <TouchableOpacity
+        activeOpacity={0.88}
+        disabled={!item.property}
+        onPress={() => openDeal(item)}
+        style={[
+          styles.dealCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <Image
+          source={{ uri: item.property?.images?.[0]?.url || NO_IMAGE }}
+          style={styles.dealImage}
+          resizeMode="cover"
+        />
+        <View style={styles.dealContent}>
+          <View style={styles.dealTitleRow}>
+            <Text
+              numberOfLines={1}
+              style={[styles.dealTitle, { color: colors.text }]}
+            >
+              {item.property?.name ?? item.title}
+            </Text>
+            {discount !== null && (
+              <Text style={[styles.dealDiscount, { color: colors.primary }]}>
+                {discount}% off
+              </Text>
+            )}
+          </View>
+          <Text
+            numberOfLines={1}
+            style={[styles.dealLocation, { color: colors.textMuted }]}
+          >
+            {item.property
+              ? getPropertyDisplayLocation(item.property)
+              : item.title}
+          </Text>
+          <View style={styles.dealPriceRow}>
+            <Text style={[styles.dealPrice, { color: colors.primary }]}>
+              {getDealPriceLabel(item)}
+            </Text>
+            <Text style={[styles.dealOriginalPrice, { color: colors.textMuted }]}>
+              {getDealBasePriceLabel(item)}
+            </Text>
+          </View>
+          <View style={styles.dealDateRow}>
+            <Text style={[styles.dealDate, { color: colors.textMuted }]}>
+              {getEndDateLabel(item.endsAt)}
+            </Text>
+            <Text style={[styles.dealRemaining, { color: colors.textMuted }]}>
+              {getDealTimeRemaining(item.endsAt, now)}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <ScrollView
+    <FlatList
       style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.listContent}
+      data={visibleDeals}
+      keyExtractor={(item) => item.id}
+      renderItem={renderDeal}
       refreshControl={
         <RefreshControl
-          refreshing={isFetching}
-          onRefresh={onRefresh}
+          refreshing={dealsQuery.isFetching && !dealsQuery.isLoading}
+          onRefresh={() => void dealsQuery.refetch()}
           tintColor={colors.text}
-          titleColor={colors.text}
-          title="Pull to refresh"
-          progressBackgroundColor={colors.card}
+          colors={[colors.primary]}
         />
       }
-    >
-      <View style={styles.header}>
-        <Text style={[styles.headerText, { color: colors.text }]}>
-          Properties
-        </Text>
-      </View>
-
-      {isLoading ? (
-        <View style={styles.section}>
-          <SkeletonLoader
-            style={{ width: 150, height: 24, marginBottom: 15 }}
-          />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <SkeletonLoader
-              style={{
-                width: 250,
-                height: 200,
-                borderRadius: 10,
-                marginRight: 15,
-              }}
-            />
-            <SkeletonLoader
-              style={{
-                width: 250,
-                height: 200,
-                borderRadius: 10,
-                marginRight: 15,
-              }}
-            />
-          </ScrollView>
-          <SkeletonLoader
-            style={{ width: 200, height: 24, marginTop: 20, marginBottom: 15 }}
-          />
-          <SkeletonLoader
-            style={{
-              width: "100%",
-              height: 100,
-              borderRadius: 10,
-              marginBottom: 15,
-            }}
-          />
-          <SkeletonLoader
-            style={{
-              width: "100%",
-              height: 100,
-              borderRadius: 10,
-              marginBottom: 15,
-            }}
-          />
-        </View>
-      ) : isError ? (
-        <View style={styles.section}>
-          <Text style={{ color: colors.text, marginBottom: 12 }}>
-            {getErrorMessage(error, "Unable to load properties. Please try again.")}
-          </Text>
-          <TouchableOpacity onPress={() => void refetch()}>
-            <Text style={{ color: colors.primary }}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Available Units
+      ListHeaderComponent={
+        <View>
+          <View style={styles.header}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Deals
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {propertiesWithUnits.map((property) => (
-                <TouchableOpacity
-                  key={property.id}
-                  style={[styles.card, { width: dealCardWidth }]}
-                  onPress={() =>
-                    navigation.navigate("PropertyDetails", { property })
-                  }
-                >
-                  <Image
-                    source={{ uri: property.images[0]?.url || noImage }}
-                    style={styles.cardImage}
-                  />
-                  <LinearGradient
-                    colors={["transparent", "rgba(0,0,0,0.8)"]}
-                    style={styles.gradient}
-                  />
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>{property.name}</Text>
-                    <View style={styles.priceContainer}>
-                      <Text style={styles.cardPrice}>
-                        {property.unitsAvailable} units · {getDisplayPrice(property)}
-                      </Text>
-                    </View>
-                    <Text style={{ color: "#fff", fontSize: 12 }}>
-                      {getPropertyDisplayLocation(property)}
+            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
+              Limited-time offers on handpicked properties
+            </Text>
+          </View>
+          {featuredDeals.length > 0 && (
+            <View style={styles.featuredSection}>
+              <View style={styles.sectionHeadingRow}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Featured
+                </Text>
+                <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+                  Swipe to explore
+                </Text>
+              </View>
+              <FlatList
+                ref={featuredListRef}
+                data={featuredDeals}
+                keyExtractor={(item) => item.id}
+                renderItem={renderFeaturedDeal}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onFeaturedScrollEnd}
+                getItemLayout={(_, index) => ({
+                  length: width,
+                  offset: width * index,
+                  index,
+                })}
+              />
+              {featuredDeals.length > 1 && (
+                <View style={styles.pagination}>
+                  {featuredDeals.map((deal, index) => (
+                    <TouchableOpacity
+                      key={deal.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Show featured deal ${index + 1}`}
+                      onPress={() => {
+                        featuredIndexRef.current = index;
+                        setFeaturedIndex(index);
+                        featuredListRef.current?.scrollToIndex({
+                          index,
+                          animated: true,
+                        });
+                      }}
+                      style={[
+                        styles.paginationDot,
+                        {
+                          backgroundColor:
+                            index === featuredIndex
+                              ? colors.primary
+                              : colors.border,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+          <View style={styles.dealsSectionHeader}>
+            <View style={styles.sectionHeadingRow}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {featuredDeals.length > 0 ? "More deals" : "All deals"}
+              </Text>
+              <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+                {visibleDeals.length} available
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterList}
+            >
+              {DEAL_FILTERS.map((item) => {
+                const selected = filter === item;
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => setFilter(item)}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: selected
+                          ? colors.primary
+                          : colors.card,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterText,
+                        { color: selected ? "#fff" : colors.text },
+                      ]}
+                    >
+                      {item}
                     </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
-            {propertiesWithUnits.length === 0 && (
-              <Text style={{ color: colors.textMuted }}>
-                No units currently listed.
-              </Text>
-            )}
           </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Lowest Price per Unit
+          {dealsQuery.isError && deals.length > 0 && (
+            <TouchableOpacity
+              onPress={() => void dealsQuery.refetch()}
+              style={[styles.inlineError, { backgroundColor: colors.card }]}
+            >
+              <Text style={[styles.errorText, { color: colors.text }]}>
+                {getErrorMessage(dealsQuery.error, "Could not refresh deals.")}
+              </Text>
+              <Text style={{ color: colors.primary }}>Tap to retry</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      }
+      ListEmptyComponent={
+        <View style={styles.emptyState}>
+          {dealsQuery.isLoading ? (
+            <ActivityIndicator size="large" color={colors.primary} />
+          ) : dealsQuery.isError ? (
+            <>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                Deals are unavailable
+              </Text>
+              <Text style={[styles.emptyMessage, { color: colors.textMuted }]}>
+                {getErrorMessage(dealsQuery.error, "Please try again.")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => void dealsQuery.refetch()}
+                style={[styles.retryButton, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.retryText}>Try again</Text>
+              </TouchableOpacity>
+            </>
+          ) : deals.length === 0 ? (
+            <>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                No active deals right now
+              </Text>
+              <Text style={[styles.emptyMessage, { color: colors.textMuted }]}>
+                Check back soon for new property offers.
+              </Text>
+            </>
+          ) : (
+            <Text style={[styles.emptyMessage, { color: colors.textMuted }]}>
+              No {filter.toLowerCase()} deals are available right now.
             </Text>
-            {lowestPriceProperties.length > 0 ? (
-              lowestPriceProperties.map((property) => (
-                <TouchableOpacity
-                  key={property.id}
-                  style={[styles.listItem, { backgroundColor: colors.card }]}
-                  onPress={() =>
-                    navigation.navigate("PropertyDetails", { property })
-                  }
-                >
-                  <Image
-                    source={{ uri: property.images[0]?.url || noImage }}
-                    style={styles.listItemImage}
-                  />
-                  <View style={styles.listItemContent}>
-                    <Text
-                      style={[styles.listItemTitle, { color: colors.text }]}
-                    >
-                      {property.name}
-                    </Text>
-                    <Text style={{ color: colors.textMuted }}>
-                      {getPropertyDisplayLocation(property)}
-                    </Text>
-                    <Text
-                      style={[styles.listItemPrice, { color: colors.primary }]}
-                    >
-                      {getDisplayPrice(property)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <Text style={{ color: colors.textMuted }}>
-                {properties.length === 0
-                  ? "No property profiles are available yet."
-                  : "No published property listings are available yet."}
-              </Text>
-            )}
-          </View>
-        </>
-      )}
-      <View style={{ height: 100 }} />
-    </ScrollView>
+          )}
+        </View>
+      }
+      ListFooterComponent={<View style={{ height: 24 }} />}
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  section: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  card: {
-    aspectRatio: 1.25,
-    borderRadius: 10,
-    marginRight: 15,
-    overflow: "hidden",
-  },
-  cardImage: {
-    width: "100%",
-    height: "100%",
-  },
-  gradient: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "50%",
-  },
-  cardContent: {
-    position: "absolute",
-    bottom: 10,
-    left: 10,
-  },
-  cardTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  cardPrice: {
-    color: "#fff",
-    fontSize: 14,
-  },
-  listItem: {
-    flexDirection: "row",
-    marginBottom: 15,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  listItemImage: {
-    width: 100,
-    height: 100,
-  },
-  listItemContent: {
-    flex: 1,
-    minWidth: 0,
-    padding: 10,
-    justifyContent: "center",
-  },
-  listItemTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  listItemPrice: {
-    fontSize: 14,
-    marginTop: 5,
-  },
-  priceContainer: {
+  container: { flex: 1 },
+  listContent: { paddingBottom: 20 },
+  header: { paddingHorizontal: 20, paddingTop: 22, paddingBottom: 18 },
+  headerTitle: { fontSize: 28, fontWeight: "700" },
+  headerSubtitle: { fontSize: 14, marginTop: 5 },
+  featuredSection: { marginBottom: 20 },
+  sectionHeadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 5,
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
-  oldPrice: {
-    fontSize: 14,
+  sectionTitle: { fontSize: 20, fontWeight: "700" },
+  sectionHint: { fontSize: 12 },
+  heroCard: {
+    height: 320,
+    marginHorizontal: 16,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: "#333",
+  },
+  heroTopRow: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  featuredBadge: {
+    color: "#fff",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 6,
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  discountBadge: {
+    color: "#fff",
+    backgroundColor: "#d94b3d",
+    borderRadius: 6,
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  heroContent: { position: "absolute", bottom: 18, left: 18, right: 18 },
+  heroTitle: { color: "#fff", fontSize: 22, fontWeight: "700" },
+  heroLocation: { color: "rgba(255,255,255,0.82)", fontSize: 13, marginTop: 3 },
+  heroPriceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+  heroDealPrice: { color: "#fff", fontSize: 21, fontWeight: "700" },
+  heroOriginalPrice: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    marginLeft: 9,
     textDecorationLine: "line-through",
-    marginRight: 10,
   },
+  heroDateRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 9,
+  },
+  heroMeta: { flexDirection: "row", alignItems: "center" },
+  heroMetaText: { color: "#fff", fontSize: 12, marginLeft: 5 },
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  paginationDot: { width: 7, height: 7, borderRadius: 4, marginHorizontal: 4 },
+  dealsSectionHeader: { paddingHorizontal: 20, paddingTop: 2, paddingBottom: 8 },
+  filterList: { paddingVertical: 2 },
+  filterChip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    marginRight: 9,
+  },
+  filterText: { fontSize: 14, fontWeight: "600" },
+  dealCard: {
+    flexDirection: "row",
+    minHeight: 128,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  dealImage: { width: 112, minHeight: 128 },
+  dealContent: { flex: 1, minWidth: 0, paddingHorizontal: 12, paddingVertical: 11 },
+  dealTitleRow: { flexDirection: "row", alignItems: "center" },
+  dealTitle: { flex: 1, fontSize: 15, fontWeight: "700" },
+  dealDiscount: { fontSize: 11, fontWeight: "700", marginLeft: 6 },
+  dealLocation: { fontSize: 12, marginTop: 4 },
+  dealPriceRow: { flexDirection: "row", alignItems: "baseline", marginTop: 9 },
+  dealPrice: { fontSize: 16, fontWeight: "700" },
+  dealOriginalPrice: {
+    fontSize: 11,
+    marginLeft: 7,
+    textDecorationLine: "line-through",
+  },
+  dealDateRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 7,
+  },
+  dealDate: { fontSize: 11, marginRight: 6 },
+  dealRemaining: { fontSize: 11 },
+  inlineError: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+  },
+  errorText: { fontSize: 13, marginBottom: 7 },
+  emptyState: { alignItems: "center", paddingHorizontal: 24, paddingVertical: 38 },
+  emptyTitle: { fontSize: 17, fontWeight: "700", textAlign: "center" },
+  emptyMessage: { fontSize: 14, textAlign: "center", marginTop: 7 },
+  retryButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 16 },
+  retryText: { color: "#fff", fontWeight: "700" },
 });
 
 export default DealsScreen;

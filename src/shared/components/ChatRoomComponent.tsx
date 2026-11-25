@@ -20,6 +20,9 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import { File, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -43,6 +46,12 @@ interface LocalAttachment {
   type: string;
   kind: "image" | "video" | "file";
   size?: number;
+}
+
+interface ChatImagePreview {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
 }
 
 interface ChatMessage {
@@ -80,6 +89,15 @@ const toChatMessage = (
   participantAvatar?: string,
 ): ChatMessage => {
   const isCurrentUser = String(message.sender) === String(currentUserId);
+  const attachment = message.deleted ? null : message.attachment;
+  const validAttachment =
+    attachment &&
+    typeof attachment === "object" &&
+    typeof attachment.url === "string" &&
+    attachment.url.trim().length > 0
+      ? attachment
+      : null;
+
   return {
     id: message._id,
     clientMessageId: message.clientMessageId,
@@ -92,7 +110,7 @@ const toChatMessage = (
     avatar: isCurrentUser ? currentUserAvatar || "" : participantAvatar || "",
     deliveryStatus: message.status,
     messageType: message.messageType,
-    attachment: message.deleted ? null : message.attachment,
+    attachment: validAttachment,
     replyTo: message.replyTo?.deleted
       ? { sender: "other", text: "This message was deleted.", deleted: true }
       : message.replyTo
@@ -118,11 +136,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const { colors } = useTheme();
   const { user, openAuth } = useAuth();
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const messageImageWidth = Math.min(220, screenWidth * 0.56);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [menuVisible, setMenuVisible] = useState(false);
+  const [previewImage, setPreviewImage] = useState<ChatImagePreview | null>(null);
+  const [isSavingImage, setIsSavingImage] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -135,6 +155,101 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressAutoScrollRef = useRef(false);
   const connectErrorShownRef = useRef(false);
+  const imagePreviewScale = useRef(new Animated.Value(0.9)).current;
+  const previewImageUri = previewImage?.uri ?? null;
+  const lastSeenMessage = messages
+    .slice()
+    .reverse()
+    .find((message) => message.sender === "other");
+
+  useEffect(() => {
+    if (!previewImageUri) return;
+    imagePreviewScale.setValue(0.9);
+    Animated.spring(imagePreviewScale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [imagePreviewScale, previewImageUri]);
+
+  const savePreviewImage = async () => {
+    if (!previewImage || isSavingImage) return;
+
+    setIsSavingImage(true);
+    try {
+      const mimeType = previewImage.mimeType || "image/jpeg";
+      const normalizedMimeType = mimeType.toLowerCase();
+      const extension =
+        normalizedMimeType === "image/png"
+          ? "png"
+          : normalizedMimeType === "image/webp"
+            ? "webp"
+            : normalizedMimeType === "image/gif"
+              ? "gif"
+              : normalizedMimeType === "image/heic"
+                ? "heic"
+                : normalizedMimeType === "image/heif"
+                  ? "heif"
+                  : "jpg";
+      const originalName = previewImage.fileName
+        ?.split(/[\\/]/)
+        .pop()
+        ?.replace(/\.[^.]+$/, "");
+      const baseName =
+        (originalName || "chat-image")
+          .replace(/[^a-zA-Z0-9_-]/g, "_")
+          .slice(0, 60) || "chat-image";
+      const fileName = `${baseName}-${Date.now()}.${extension}`;
+      const imageFile = previewImage.uri.startsWith("file://")
+        ? new File(previewImage.uri)
+        : await File.downloadFileAsync(
+            previewImage.uri,
+            new File(Paths.cache, fileName),
+          );
+
+      if (Platform.OS === "android") {
+        const directoryPermissions =
+          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(
+            FileSystem.StorageAccessFramework.getUriForDirectoryInRoot("Download"),
+          );
+        if (!directoryPermissions.granted) return;
+
+        const destinationUri =
+          await FileSystem.StorageAccessFramework.createFileAsync(
+            directoryPermissions.directoryUri,
+            fileName.replace(/\.[^.]+$/, ""),
+            mimeType,
+          );
+        await FileSystem.copyAsync({
+          from: imageFile.uri,
+          to: destinationUri,
+        });
+        Alert.alert("Image downloaded", "The image was saved to Downloads.");
+        return;
+      }
+
+      if (Platform.OS === "ios") {
+        if (!(await Sharing.isAvailableAsync())) {
+          throw new Error("The system save menu is unavailable on this device.");
+        }
+        await Sharing.shareAsync(imageFile.uri, {
+          dialogTitle: "Save image to Files",
+          mimeType,
+          UTI: "public.image",
+        });
+        return;
+      }
+
+      throw new Error("Saving images is not supported on this platform.");
+    } catch (error) {
+      console.error("Unable to save chat image:", error);
+      Alert.alert(
+        "Unable to save image",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSavingImage(false);
+    }
+  };
 
   useEffect(() => {
     if (!conversationId) return;
@@ -584,6 +699,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isYourMessage = item.sender === "you";
+    const imageUri =
+      item.pendingAttachment?.kind === "image"
+        ? item.pendingAttachment.uri
+        : item.messageType === "image" ||
+            item.attachment?.mimeType?.startsWith("image/")
+          ? item.attachment?.url
+          : undefined;
+    const isImageMessage = Boolean(imageUri);
     if (!replySwipeOffsets.current[item.id]) {
       replySwipeOffsets.current[item.id] = new Animated.Value(0);
     }
@@ -655,13 +778,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
         ) : null}
         <View style={isYourMessage ? styles.sentMessageColumn : undefined}>
           <View
-            style={[
-              styles.messageBubble,
-              isYourMessage && styles.sentMessageBubble,
-              isYourMessage
-                ? [styles.yourMessage, { backgroundColor: "#007BFF" }]
-                : [styles.otherMessage, { backgroundColor: colors.card }],
-            ]}
+            style={
+              isImageMessage
+                ? undefined
+                : [
+                    styles.messageBubble,
+                    isYourMessage && styles.sentMessageBubble,
+                    isYourMessage
+                      ? [styles.yourMessage, { backgroundColor: "#007BFF" }]
+                      : [styles.otherMessage, { backgroundColor: colors.card }],
+                  ]
+            }
           >
             {item.replyTo && (
               <View
@@ -695,17 +822,24 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                 </Text>
               </View>
             )}
-            {item.attachment?.mimeType?.startsWith("image/") ? (
+            {imageUri ? (
               <TouchableOpacity
                 onPress={() =>
-                  void Linking.openURL(item.attachment!.url).catch((error) => {
-                    console.error("Unable to open attachment:", error);
-                    Alert.alert("Unable to open attachment", "Please try again.");
+                  setPreviewImage({
+                    uri: imageUri,
+                    fileName:
+                      item.attachment?.fileName ??
+                      item.pendingAttachment?.name,
+                    mimeType:
+                      item.attachment?.mimeType ??
+                      item.pendingAttachment?.type,
                   })
                 }
+                accessibilityRole="button"
+                accessibilityLabel="View full image"
               >
                 <Image
-                  source={{ uri: item.attachment.url }}
+                  source={{ uri: imageUri }}
                   style={[
                     styles.messageAttachmentImage,
                     {
@@ -871,14 +1005,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                   <Ionicons name="person-outline" size={22} color={colors.textMuted} />
                 </View>
               )}
-              <Text style={[styles.headerText, { color: colors.text }]}>
-                {participantName}
-              </Text>
-              {isTyping && (
-                <Text style={[styles.typingText, { color: colors.textMuted }]}>
-                  typing...
+              <View style={styles.headerIdentity}>
+                <Text style={[styles.headerText, { color: colors.text }]}>
+                  {participantName}
                 </Text>
-              )}
+                {isTyping ? (
+                  <Text style={[styles.typingText, { color: colors.textMuted }]}>
+                    typing...
+                  </Text>
+                ) : lastSeenMessage ? (
+                  <Text
+                    style={[styles.lastSeenText, { color: colors.textMuted }]}
+                    numberOfLines={1}
+                  >
+                    Last seen at {lastSeenMessage.timestamp}
+                  </Text>
+                ) : null}
+              </View>
             </>
           )}
         </View>
@@ -917,6 +1060,78 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
               <Text style={[styles.menuActionText, { color: colors.text }]}>Hide from inbox</Text>
             </TouchableOpacity>
           </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={previewImageUri !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <Pressable
+          style={styles.imagePreviewBackdrop}
+          onPress={() => setPreviewImage(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Close image preview"
+        >
+          <Pressable
+            style={styles.imagePreviewContent}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <Pressable
+              style={[
+                styles.imagePreviewClose,
+                { top: insets.top + 12, right: 16 },
+              ]}
+              onPress={() => setPreviewImage(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close image preview"
+            >
+              <Ionicons name="close" size={28} color="#ffffff" />
+            </Pressable>
+            {previewImageUri && (
+              <Animated.Image
+                source={{ uri: previewImageUri }}
+                style={[
+                  styles.imagePreview,
+                  {
+                    width: screenWidth - 32,
+                    height: screenHeight - insets.top - insets.bottom - 32,
+                    transform: [{ scale: imagePreviewScale }],
+                  },
+                ]}
+                resizeMode="contain"
+                accessibilityLabel="Full-size chat image"
+              />
+            )}
+            {previewImage && (
+              <TouchableOpacity
+                style={[
+                  styles.imagePreviewDownloadButton,
+                  { bottom: insets.bottom + 24 },
+                ]}
+                onPress={() => void savePreviewImage()}
+                disabled={isSavingImage}
+                accessibilityRole="button"
+                accessibilityLabel="Download image"
+                accessibilityState={{
+                  disabled: isSavingImage,
+                  busy: isSavingImage,
+                }}
+              >
+                {isSavingImage ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="download-outline" size={20} color="#ffffff" />
+                )}
+                <Text style={styles.imagePreviewDownloadText}>
+                  {isSavingImage ? "Saving..." : "Save image"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -1067,6 +1282,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  headerIdentity: {
+    flex: 1,
+  },
+  lastSeenText: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   typingText: {
     marginLeft: 8,
     fontSize: 12,
@@ -1080,6 +1302,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.18)",
     alignItems: "flex-end",
+  },
+  imagePreviewBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.94)",
+  },
+  imagePreviewContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePreviewClose: {
+    position: "absolute",
+    zIndex: 1,
+    padding: 8,
+  },
+  imagePreviewDownloadButton: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 24,
+    backgroundColor: "rgba(45, 45, 45, 0.9)",
+  },
+  imagePreviewDownloadText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  imagePreview: {
+    borderRadius: 8,
   },
   menuDialog: {
     marginTop: 72,

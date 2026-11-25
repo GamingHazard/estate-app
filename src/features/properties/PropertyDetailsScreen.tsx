@@ -31,6 +31,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useSavedProperties } from "./SavedPropertiesContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getOrCreatePropertyConversation } from "../messaging/messagingApi";
+import { formatDealMoney, getDealTimeRemaining } from "../../data/deal";
 
 const NO_IMAGE =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -82,7 +83,21 @@ const PropertyDetailsScreen = ({ route }: Props) => {
   const { width } = useWindowDimensions();
   const galleryHeight = Math.min(360, Math.max(220, width * 0.72));
   const insets = useSafeAreaInsets();
-  const { property } = route.params;
+  const { property, deal: routeDeal } = route.params;
+  const dealNow = Date.now();
+  const dealStartsAt = routeDeal ? new Date(routeDeal.startsAt).getTime() : NaN;
+  const dealEndsAt = routeDeal?.endsAt
+    ? new Date(routeDeal.endsAt).getTime()
+    : null;
+  const displayDeal =
+    routeDeal?.propertyId === String(property.id) &&
+    routeDeal.isActive &&
+    Number.isFinite(dealStartsAt) &&
+    dealStartsAt <= dealNow &&
+    (dealEndsAt === null ||
+      (Number.isFinite(dealEndsAt) && dealEndsAt >= dealNow))
+      ? routeDeal
+      : undefined;
   const galleryRef = useRef<ScrollView | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(
@@ -107,6 +122,11 @@ const PropertyDetailsScreen = ({ route }: Props) => {
       (unit) => (unit.id ?? unit.unitNumber) === selectedUnitId,
     ) ?? null;
   const publishedListing = getPublishedListing(property);
+  const isPropertyOwner = Boolean(
+    user?.id &&
+      property.ownerId &&
+      String(user.id) === String(property.ownerId),
+  );
   const openPropertyChat = async () => {
     if (!user) {
       openAuth();
@@ -267,6 +287,7 @@ const PropertyDetailsScreen = ({ route }: Props) => {
   };
 
   const handleToggleSaved = () => {
+    if (isPropertyOwner) return;
     if (!user) {
       openAuth();
       return;
@@ -335,24 +356,26 @@ const PropertyDetailsScreen = ({ route }: Props) => {
           >
             <Ionicons name="arrow-back" size={22} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.galleryControl,
-              styles.bookmarkButton,
-              { top: insets.top + 12 },
-            ]}
-            onPress={handleToggleSaved}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isSaved(property.id) ? "Remove saved property" : "Save property"
-            }
-          >
-            <Ionicons
-              name={isSaved(property.id) ? "bookmark" : "bookmark-outline"}
-              size={22}
-              color="white"
-            />
-          </TouchableOpacity>
+          {!isPropertyOwner && (
+            <TouchableOpacity
+              style={[
+                styles.galleryControl,
+                styles.bookmarkButton,
+                { top: insets.top + 12 },
+              ]}
+              onPress={handleToggleSaved}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isSaved(property.id) ? "Remove saved property" : "Save property"
+              }
+            >
+              <Ionicons
+                name={isSaved(property.id) ? "bookmark" : "bookmark-outline"}
+                size={22}
+                color="white"
+              />
+            </TouchableOpacity>
+          )}
           <View style={styles.galleryCaption}>
             <Text style={styles.imageName}>
               {galleryImages[currentImageIndex]?.name}
@@ -410,13 +433,49 @@ const PropertyDetailsScreen = ({ route }: Props) => {
             </Text>
           </View>
 
-          <View style={styles.priceRow}>
-            <Text style={[styles.price, { color: colors.primary }]}>
-              {displayListing
-                ? getListingPriceLabel(displayListing)
-                : `${formatPropertyPrice(selectedUnit?.rent ?? property.pricePerUnit)} / unit`}
-            </Text>
-          </View>
+          {displayDeal ? (
+            <View
+              style={[
+                styles.dealDetails,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.dealLabel, { color: colors.primary }]}>
+                {displayDeal.title}
+              </Text>
+              <View style={styles.dealPriceRow}>
+                <Text style={[styles.dealOriginalPrice, { color: colors.textMuted }]}>
+                  {formatDealMoney(
+                    displayDeal.pricingSnapshot.basePrice,
+                    displayDeal.pricingSnapshot.currency,
+                  )}
+                  {displayDeal.pricingSnapshot.billingPeriod
+                    ? ` / ${displayDeal.pricingSnapshot.billingPeriod}`
+                    : ""}
+                </Text>
+                <Text style={[styles.price, { color: colors.primary }]}>
+                  {formatDealMoney(
+                    displayDeal.pricingSnapshot.dealPrice,
+                    displayDeal.pricingSnapshot.currency,
+                  )}
+                  {displayDeal.pricingSnapshot.billingPeriod
+                    ? ` / ${displayDeal.pricingSnapshot.billingPeriod}`
+                    : ""}
+                </Text>
+              </View>
+              <Text style={[styles.dealRemaining, { color: colors.textMuted }]}>
+                {getDealTimeRemaining(displayDeal.endsAt)}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.priceRow}>
+              <Text style={[styles.price, { color: colors.primary }]}>
+                {displayListing
+                  ? getListingPriceLabel(displayListing)
+                  : `${formatPropertyPrice(selectedUnit?.rent ?? property.pricePerUnit)} / unit`}
+              </Text>
+            </View>
+          )}
           {(displayListing?.serviceFee ?? property.serviceFee ?? 0) > 0 && (
             <Text style={[styles.serviceFee, { color: colors.textMuted }]}>
               Service fee:{" "}
@@ -731,64 +790,66 @@ const PropertyDetailsScreen = ({ route }: Props) => {
         </View>
       )}
 
-      <View
-        style={[
-          styles.actionBar,
-          {
-            backgroundColor: colors.background,
-            borderColor: colors.border,
-            paddingBottom: Math.max(insets.bottom, 12),
-          },
-        ]}
-      >
-        {property.ownerId ? (
-          <>
-            <TouchableOpacity
-              style={[styles.contactButton, { backgroundColor: colors.primary, marginBottom: 8 }]}
-              onPress={() => void openPropertyChat()}
-              accessibilityRole="button"
-            >
-              <Ionicons name="chatbubble-outline" size={21} color="white" />
-              <Text style={styles.contactButtonText}>Message owner</Text>
-              <Ionicons name="arrow-forward" size={18} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.contactButton, { backgroundColor: colors.card }]}
-              onPress={() =>
-                navigation.navigate("Lister Profile", {
-                  userId: String(property.ownerId),
-                })
-              }
-              accessibilityRole="button"
-            >
-              <Ionicons name="person-circle-outline" size={21} color={colors.text} />
-              <Text style={[styles.contactButtonText, { color: colors.text }]}>View lister</Text>
-              <Ionicons name="arrow-forward" size={18} color={colors.text} />
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View
-            style={[
-              styles.contactUnavailable,
-              { backgroundColor: colors.card },
-            ]}
-          >
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color={colors.textMuted}
-            />
-            <Text
+      {!isPropertyOwner && (
+        <View
+          style={[
+            styles.actionBar,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              paddingBottom: Math.max(insets.bottom, 12),
+            },
+          ]}
+        >
+          {property.ownerId ? (
+            <>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: colors.primary, marginBottom: 8 }]}
+                onPress={() => void openPropertyChat()}
+                accessibilityRole="button"
+              >
+                <Ionicons name="chatbubble-outline" size={21} color="white" />
+                <Text style={styles.contactButtonText}>Message owner</Text>
+                <Ionicons name="arrow-forward" size={18} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactButton, { backgroundColor: colors.card }]}
+                onPress={() =>
+                  navigation.navigate("Lister Profile", {
+                    userId: String(property.ownerId),
+                  })
+                }
+                accessibilityRole="button"
+              >
+                <Ionicons name="person-circle-outline" size={21} color={colors.text} />
+                <Text style={[styles.contactButtonText, { color: colors.text }]}>View lister</Text>
+                <Ionicons name="arrow-forward" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View
               style={[
-                styles.contactUnavailableText,
-                { color: colors.textMuted },
+                styles.contactUnavailable,
+                { backgroundColor: colors.card },
               ]}
             >
-              Lister profile unavailable
-            </Text>
-          </View>
-        )}
-      </View>
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.contactUnavailableText,
+                  { color: colors.textMuted },
+                ]}
+              >
+                Lister profile unavailable
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <Modal
         animationType="slide"
@@ -942,6 +1003,31 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 27,
     fontWeight: "700",
+  },
+  dealDetails: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 18,
+  },
+  dealLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  dealPriceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 5,
+  },
+  dealOriginalPrice: {
+    fontSize: 14,
+    textDecorationLine: "line-through",
+  },
+  dealRemaining: {
+    fontSize: 12,
+    marginTop: 5,
   },
   priceUnit: {
     fontSize: 14,

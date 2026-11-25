@@ -1,6 +1,5 @@
 import React, {
   useEffect,
-  useRef,
   useSyncExternalStore,
   useState,
 } from "react";
@@ -9,15 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useTheme } from "../../../shared/theme/ThemeContext";
@@ -43,6 +40,7 @@ import {
   PropertySource,
   RootStackParamList,
 } from "../../../shared/types/navigation";
+import { managedPropertiesQueryKey } from "../../properties/useProperties";
 
 type Props = {
   propertyId: string;
@@ -75,10 +73,16 @@ export function MarketplacePropertyDetails({
     adminPropertyStore.getMarketplaceSnapshot,
     adminPropertyStore.getMarketplaceSnapshot,
   );
-  const legacyProperty = localProperties.find((item) => item.id === propertyId);
-  const cachedMarketplaceProperty = marketplaceProperties.find(
-    (item) => item.id === propertyId,
-  );
+  const legacyProperty = user?.id
+    ? localProperties.find(
+        (item) => item.id === propertyId && item.ownerId === user.id,
+      )
+    : undefined;
+  const cachedMarketplaceProperty = user?.id
+    ? marketplaceProperties.find(
+        (item) => item.id === propertyId && item.ownerId === user.id,
+      )
+    : undefined;
   const resolvedSource =
     propertySource ??
     (cachedMarketplaceProperty
@@ -100,60 +104,47 @@ export function MarketplacePropertyDetails({
   )
     ? adaptAdminPropertyForMarketplace(propertySnapshot)
     : propertySnapshot;
+  const ownedSnapshotProperty =
+    resolvedSource === "server-marketplace" &&
+    user?.id &&
+    snapshotProperty?.ownerId === user.id
+      ? snapshotProperty
+      : undefined;
   const serverQuery = useQuery({
-    queryKey: ["properties", "marketplace", "manage"],
-    queryFn: getQueryFn({ on401: "throw", authenticated: true }),
-    enabled: resolvedSource === "server-marketplace",
+    queryKey: managedPropertiesQueryKey(user?.id),
+    queryFn: getQueryFn({
+      on401: "throw",
+      authenticated: true,
+      path: "/properties/marketplace/manage",
+    }),
+    enabled: resolvedSource === "server-marketplace" && Boolean(user?.id),
     select: (response: unknown) =>
       parsePropertyListResponse(response).properties,
   });
   const serverProperty = serverQuery.data?.find(
-    (item) => item.id === propertyId,
+    (item) => item.id === propertyId && item.ownerId === user?.id,
   );
   const property =
     resolvedSource === "server-marketplace"
-      ? (serverProperty ?? snapshotProperty)
-      : (localProperty ?? snapshotProperty);
+      ? (serverProperty ?? ownedSnapshotProperty)
+      : (localProperty ?? ownedSnapshotProperty);
   const [draft, setDraft] = useState<
     MarketplacePropertyRecord | Property | null
   >(property ?? null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteError, setDeleteError] = useState("");
-  const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   useEffect(() => {
-    if (property) setDraft(property);
+    setDraft(property ?? null);
   }, [property]);
 
   useEffect(() => {
     setSelectedImageIndex(0);
   }, [propertyId]);
 
-  useEffect(
-    () => () => {
-      if (deleteTimer.current) clearTimeout(deleteTimer.current);
-    },
-    [],
-  );
-
-  const clearDeleteTimer = () => {
-    if (deleteTimer.current) clearTimeout(deleteTimer.current);
-    deleteTimer.current = null;
-  };
-  const cancelDeletion = () => {
-    clearDeleteTimer();
-    setDeleteCountdown(null);
-    setDeletePassword("");
-    setDeleteError("");
-    setDeleteDialogVisible(false);
-  };
-
   if (!property || !draft) {
-    if (serverQuery.isLoading && !propertySnapshot) return null;
+    if (serverQuery.isLoading && !ownedSnapshotProperty) return null;
     return (
       <View
         style={[
@@ -185,117 +176,95 @@ export function MarketplacePropertyDetails({
 
   const listing = draft.listings[0];
   const isLocalProperty = resolvedSource !== "server-marketplace";
-  const canManage =
-    isLocalProperty || ["admin", "propertyManager"].includes(user?.role ?? "");
-  const updateModeration = (
-    status: NonNullable<MarketplacePropertyRecord["moderationStatus"]>,
-  ) => {
-    void (async () => {
-      try {
-        if (resolvedSource === "local") {
-          adminPropertyStore.updateStatus(
-            draft.id,
-            status === "approved" ? "active" : status,
-          );
-        } else if (resolvedSource === "marketplace") {
-          adminPropertyStore.updateMarketplaceModeration(draft.id, status);
-        } else {
-          await apiRequest(
-            "PATCH",
-            `/properties/marketplace/${draft.id}/moderation`,
-            { status },
-          );
-          await queryClient.invalidateQueries({
-            queryKey: ["properties", "marketplace", "manage"],
-          });
-          await queryClient.invalidateQueries({ queryKey: ["properties"] });
-        }
-      } catch (error) {
-        Alert.alert(
-          "Moderation failed",
-          getErrorMessage(error, "Unable to update status. Please try again."),
-        );
-      }
-    })();
-  };
-  const editProperty = () => {
-    const snapshot =
-      resolvedSource === "local" ? (legacyProperty ?? propertySnapshot) : draft;
-    if (!snapshot) {
-      Alert.alert("Unable to edit", "The property data is unavailable.");
-      return;
-    }
-    navigation.navigate("PropertyCreation", {
-      mode: "edit",
-      propertyId: draft.id,
-      propertySource: resolvedSource,
-      propertySnapshot: snapshot,
-    });
-  };
-  const completeDeletion = async (password: string) => {
-    setIsDeleting(true);
-    setDeleteError("");
+  const canModerate =
+    isLocalProperty ||
+    ["admin", "propertyManager", "landlord"].includes(user?.role ?? "");
+  const approveProperty = async () => {
+    if (isApproving || draft.moderationStatus === "approved") return;
+    setIsApproving(true);
     try {
-      if (resolvedSource === "server-marketplace") {
-        await apiRequest("DELETE", `/properties/marketplace/${draft.id}`, {
-          currentPassword: password,
+      if (resolvedSource === "local") {
+        adminPropertyStore.updateStatus(draft.id, "active");
+      } else if (resolvedSource === "marketplace") {
+        adminPropertyStore.updateMarketplaceModeration(draft.id, "approved");
+      } else {
+        await apiRequest(
+          "PATCH",
+          `/properties/marketplace/${draft.id}/moderation`,
+          { status: "approved" },
+        );
+        await queryClient.invalidateQueries({
+          queryKey: managedPropertiesQueryKey(user?.id),
+        });
+        await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      }
+    } catch (error) {
+      Alert.alert(
+        "Approval failed",
+        getErrorMessage(error, "Unable to approve this property. Please try again."),
+      );
+    } finally {
+      setIsApproving(false);
+    }
+  };
+  const updateArchiveStatus = async (isArchived: boolean) => {
+    if (isArchiving || Boolean(draft.isArchived) === isArchived) return;
+    setIsArchiving(true);
+    try {
+      const archivedAt = isArchived ? new Date().toISOString() : null;
+      if (resolvedSource === "local") {
+        adminPropertyStore.update(draft.id, { isArchived, archivedAt });
+      } else if (resolvedSource === "marketplace") {
+        adminPropertyStore.updateMarketplace(draft.id, {
+          isArchived,
+          archivedAt,
         });
       } else {
-        await apiRequest("POST", "/users/me/verify-password", {
-          currentPassword: password,
-        });
-        if (resolvedSource === "marketplace") {
-          adminPropertyStore.removeMarketplace(draft.id);
-        } else {
-          adminPropertyStore.remove(draft.id);
-        }
+        await apiRequest(
+          "PATCH",
+          `/properties/marketplace/${draft.id}/${isArchived ? "archive" : "unarchive"}`,
+          {},
+        );
       }
 
-      await queryClient.invalidateQueries({
-        queryKey: ["properties", "marketplace", "manage"],
-      });
-      await queryClient.invalidateQueries({ queryKey: ["properties"] });
-      cancelDeletion();
-      navigation.goBack();
-      Alert.alert("Property deleted", "The property has been removed.");
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: managedPropertiesQueryKey(user?.id),
+        }),
+        queryClient.invalidateQueries({ queryKey: ["properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["deals"] }),
+      ]);
     } catch (error) {
-      clearDeleteTimer();
-      setDeleteCountdown(null);
-      setDeletePassword("");
-      setDeleteError(
+      Alert.alert(
+        isArchived ? "Archive failed" : "Restore failed",
         getErrorMessage(
           error,
-          "Unable to delete this property. Please try again.",
+          isArchived
+            ? "Unable to archive this property. Please try again."
+            : "Unable to restore this property. Please try again.",
         ),
       );
     } finally {
-      setIsDeleting(false);
+      setIsArchiving(false);
     }
   };
-  const startDeleteCountdown = () => {
-    if (!deletePassword) {
-      setDeleteError("Enter your current password to continue.");
-      return;
-    }
-
-    clearDeleteTimer();
-    setDeleteError("");
-    setDeleteCountdown(5);
-    let remaining = 5;
-    const tick = () => {
-      remaining -= 1;
-      if (remaining === 0) {
-        deleteTimer.current = null;
-        setDeleteCountdown(0);
-        void completeDeletion(deletePassword);
-        return;
-      }
-      setDeleteCountdown(remaining);
-      deleteTimer.current = setTimeout(tick, 1000);
-    };
-    deleteTimer.current = setTimeout(tick, 1000);
+  const confirmArchiveChange = () => {
+    const shouldArchive = !draft.isArchived;
+    Alert.alert(
+      shouldArchive ? "Archive property?" : "Unarchive property?",
+      shouldArchive
+        ? "This will hide the property from public listings."
+        : "This will show the property in public listings again if it is approved and published.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: shouldArchive ? "Archive" : "Unarchive",
+          style: shouldArchive ? "destructive" : "default",
+          onPress: () => void updateArchiveStatus(shouldArchive),
+        },
+      ],
+    );
   };
-
   const images = (draft.images ?? []).filter((image) => Boolean(image.url));
   const selectedImage = images[selectedImageIndex] ?? images[0];
   const specifications = (draft.specifications ?? []).filter(
@@ -392,42 +361,6 @@ export function MarketplacePropertyDetails({
           </Text>
           <View style={styles.headerSpacer} />
         </View>
-        {canManage && (
-          <View style={styles.detailActions}>
-            <Pressable
-              style={[styles.detailAction, { borderColor: colors.border }]}
-              onPress={editProperty}
-              accessibilityRole="button"
-            >
-              <MaterialIcons name="edit" size={18} color={colors.primary} />
-              <Text style={[styles.editText, { color: colors.text }]}>
-                Edit Property
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.detailAction,
-                styles.deleteAction,
-                { borderColor: colors.destructive },
-              ]}
-              onPress={() => {
-                setDeleteError("");
-                setDeleteDialogVisible(true);
-              }}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="trash-outline"
-                size={18}
-                color={colors.destructive}
-              />
-              <Text style={[styles.editText, { color: colors.destructive }]}>
-                Delete Property
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
         <View
           style={[
             styles.card,
@@ -757,31 +690,76 @@ export function MarketplacePropertyDetails({
                 Visibility
               </Text>
               <Text style={[styles.value, { color: colors.text }]}>
-                {listing.status}
+                {draft.isArchived ? "Archived" : listing.status}
               </Text>
             </View>
-            {canManage && (
+            {canModerate && (
               <View style={styles.actions}>
                 <Pressable
-                  style={[styles.action, { backgroundColor: colors.primary }]}
-                  onPress={() => updateModeration("approved")}
+                  style={[
+                    styles.action,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity:
+                        isApproving || draft.moderationStatus === "approved"
+                          ? 0.75
+                          : 1,
+                    },
+                  ]}
+                  onPress={() => void approveProperty()}
+                  disabled={
+                    isApproving || draft.moderationStatus === "approved"
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    busy: isApproving,
+                    disabled:
+                      isApproving || draft.moderationStatus === "approved",
+                  }}
                 >
-                  <Text style={styles.actionText}>Approve</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.action, { backgroundColor: colors.warning }]}
-                  onPress={() => updateModeration("pending")}
-                >
-                  <Text style={styles.actionText}>Pending</Text>
+                  {isApproving ? (
+                    <View style={styles.approvingContent}>
+                      <ActivityIndicator size="small" color="white" />
+                      <Text style={styles.actionText}>Approving...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.actionText}>
+                      {draft.moderationStatus === "approved"
+                        ? "Approved"
+                        : "Approve"}
+                    </Text>
+                  )}
                 </Pressable>
                 <Pressable
                   style={[
                     styles.action,
-                    { backgroundColor: colors.destructive },
+                    {
+                      backgroundColor: draft.isArchived
+                        ? colors.primary
+                        : colors.warning,
+                      opacity: isArchiving ? 0.75 : 1,
+                    },
                   ]}
-                  onPress={() => updateModeration("rejected")}
+                  onPress={confirmArchiveChange}
+                  disabled={isArchiving}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    busy: isArchiving,
+                    disabled: isArchiving,
+                  }}
                 >
-                  <Text style={styles.actionText}>Reject</Text>
+                  {isArchiving ? (
+                    <View style={styles.approvingContent}>
+                      <ActivityIndicator size="small" color="white" />
+                      <Text style={styles.actionText}>
+                        {draft.isArchived ? "Unarchiving..." : "Archiving..."}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.actionText}>
+                      {draft.isArchived ? "Unarchive" : "Archive"}
+                    </Text>
+                  )}
                 </Pressable>
               </View>
             )}
@@ -790,106 +768,6 @@ export function MarketplacePropertyDetails({
           </>,
         )}
       </ScrollView>
-      <Modal
-        visible={deleteDialogVisible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent={false}
-        onRequestClose={() => {
-          if (!isDeleting) cancelDeletion();
-        }}
-      >
-        <View style={styles.dialogBackdrop}>
-          <View
-            style={[
-              styles.dialog,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.dialogHeading}>
-              <Ionicons
-                name="warning-outline"
-                size={24}
-                color={colors.destructive}
-              />
-              <Text style={[styles.dialogTitle, { color: colors.text }]}>
-                Delete property?
-              </Text>
-            </View>
-            <Text style={[styles.dialogCopy, { color: colors.textMuted }]}>
-              Enter your current password to confirm. A five-second countdown
-              starts next, and you can cancel it before deletion.
-            </Text>
-            <TextInput
-              style={[
-                styles.passwordInput,
-                {
-                  color: colors.text,
-                  borderColor: colors.border,
-                  backgroundColor: colors.background,
-                },
-              ]}
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={deleteCountdown === null && !isDeleting}
-              placeholder="Current password"
-              placeholderTextColor={colors.textMuted}
-              accessibilityLabel="Current password"
-            />
-            {deleteCountdown !== null && (
-              <Text style={[styles.countdown, { color: colors.destructive }]}>
-                {isDeleting
-                  ? "Deleting property..."
-                  : `Deleting in ${deleteCountdown} seconds`}
-              </Text>
-            )}
-            {deleteError ? (
-              <Text style={[styles.deleteError, { color: colors.destructive }]}>
-                {deleteError}
-              </Text>
-            ) : null}
-            <View style={styles.dialogActions}>
-              <Pressable
-                style={[styles.dialogButton, { borderColor: colors.border }]}
-                onPress={cancelDeletion}
-                disabled={isDeleting}
-              >
-                <Text style={[styles.dialogButtonText, { color: colors.text }]}>
-                  {deleteCountdown === null ? "Cancel" : "Cancel deletion"}
-                </Text>
-              </Pressable>
-              {deleteCountdown === null ? (
-                <Pressable
-                  style={[
-                    styles.dialogButton,
-                    { backgroundColor: colors.destructive },
-                  ]}
-                  onPress={startDeleteCountdown}
-                  disabled={isDeleting}
-                >
-                  <Text style={styles.confirmDeleteText}>Continue</Text>
-                </Pressable>
-              ) : (
-                <View
-                  style={[
-                    styles.dialogButton,
-                    styles.countdownButton,
-                    { backgroundColor: colors.destructive },
-                  ]}
-                >
-                  <ActivityIndicator size="small" color="white" />
-                  <Text style={styles.confirmDeleteText}>
-                    {isDeleting ? "Deleting..." : "Please wait"}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }
@@ -904,18 +782,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerSpacer: { width: 24 },
-  detailActions: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  detailAction: {
-    flex: 1,
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    borderWidth: 1,
-    borderRadius: 8,
-  },
-  deleteAction: { backgroundColor: "transparent" },
   title: { fontSize: 21, fontWeight: "800" },
   card: { borderWidth: 1, borderRadius: 10, padding: 16, marginBottom: 14 },
   hero: { width: "100%", height: 230, borderRadius: 8 },
@@ -1006,6 +872,12 @@ const styles = StyleSheet.create({
   availability: { fontSize: 12, fontWeight: "700" },
   unitSpecification: { fontSize: 13, lineHeight: 19, marginTop: 6 },
   actions: { flexDirection: "row", gap: 8, marginTop: 10 },
+  approvingContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
   action: {
     flex: 1,
     alignItems: "center",
@@ -1013,53 +885,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   actionText: { color: "white", fontWeight: "800" },
-  editText: { fontWeight: "700" },
   unit: { borderTopWidth: 1, marginTop: 12, paddingTop: 12 },
   firstUnit: { borderTopWidth: 0, marginTop: 0, paddingTop: 0 },
-  dialogBackdrop: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  dialog: {
-    width: "100%",
-    maxWidth: 420,
-    padding: 20,
-    borderWidth: 1,
-    borderRadius: 14,
-  },
-  dialogHeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    marginBottom: 8,
-  },
-  dialogTitle: { fontSize: 18, fontWeight: "800" },
-  dialogCopy: { fontSize: 14, lineHeight: 21, marginBottom: 14 },
-  passwordInput: {
-    minHeight: 46,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 10,
-  },
-  countdown: { fontSize: 14, fontWeight: "700", marginVertical: 6 },
-  deleteError: { fontSize: 13, lineHeight: 19, marginVertical: 6 },
-  dialogActions: { flexDirection: "row", gap: 10, marginTop: 12 },
-  dialogButton: {
-    flex: 1,
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: "transparent",
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-  },
-  countdownButton: { flexDirection: "row", gap: 8 },
-  dialogButtonText: { fontSize: 14, fontWeight: "700", textAlign: "center" },
-  confirmDeleteText: { color: "white", fontSize: 14, fontWeight: "800" },
 });

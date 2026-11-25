@@ -1,5 +1,6 @@
 import { ParamListBase } from "@react-navigation/native";
 import { AdminProperty } from "../../data/adminPropertyStore";
+import type { Deal } from "../../data/deal";
 import { Property } from "../../data/property";
 
 export type PropertySource = "local" | "marketplace" | "server-marketplace";
@@ -47,7 +48,7 @@ export interface RootStackParamList extends ParamListBase {
   TermsAndConditions: undefined;
   History: undefined;
   CustomerCare: undefined;
-  PropertyDetails: { property: Property };
+  PropertyDetails: { property: Property; deal?: Deal };
   "Lister Profile": { userId: string };
   NoInternet: undefined;
   PaymentMethod: undefined;

@@ -247,7 +247,7 @@ const MessagesScreen = ({ navigation }: any) => {
             { color: colors.textMuted },
             item.unreadCount > 0 && [
               styles.unreadTimestamp,
-              { color: colors.primary, textShadowColor: colors.primary },
+              { color: colors.primary },
             ],
           ]}
         >
@@ -432,8 +432,6 @@ const styles = StyleSheet.create({
   },
   unreadTimestamp: {
     fontWeight: "700",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
   },
   unreadBadge: {
     minWidth: 22,

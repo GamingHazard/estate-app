@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -8,8 +9,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../shared/theme/ThemeContext";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { AdminSidebar } from "../../../shared/components/AdminSidebar";
+import { useAuth } from "../../auth/AuthContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -29,8 +31,18 @@ export function AdminLayout({
   onToggleSidebar,
 }: AdminLayoutProps) {
   const { colors } = useTheme();
+  const { logout, isLoading } = useAuth();
   const insets = useSafeAreaInsets();
   const [headerActions, setHeaderActions] = useState<React.ReactNode | null>(null);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Unable to sign out:", error);
+      Alert.alert("Unable to sign out", "Please try again.");
+    }
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -61,6 +73,7 @@ export function AdminLayout({
     headerContent: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       minWidth: 0,
     },
     headerActions: {
@@ -75,6 +88,12 @@ export function AdminLayout({
       padding: 8,
       borderRadius: 8,
       backgroundColor: colors.background,
+    },
+    logoutButton: {
+      padding: 8,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+      marginLeft: 12,
     },
 
     title: {
@@ -120,6 +139,20 @@ export function AdminLayout({
                   <Text style={styles.title}>{title}</Text>
                 </>
               )}
+              <Pressable
+                style={styles.logoutButton}
+                onPress={() => void handleLogout()}
+                disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
+                accessibilityState={{ disabled: isLoading, busy: isLoading }}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={22}
+                  color={isLoading ? colors.textMuted : colors.destructive}
+                />
+              </Pressable>
             </View>
           </View>
           <View style={styles.mainContent}>{children}</View>

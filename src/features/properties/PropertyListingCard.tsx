@@ -10,6 +10,7 @@ import {
   getPublishedListing,
   Property,
 } from "../../data/property";
+import { useAuth } from "../auth/AuthContext";
 
 const NO_IMAGE =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/624px-No-Image-Placeholder.svg.png";
@@ -28,6 +29,12 @@ export default function PropertyListingCard({
   onToggleSaved,
 }: Props) {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const isPropertyOwner = Boolean(
+    user?.id &&
+      property.ownerId &&
+      String(user.id) === String(property.ownerId),
+  );
   const listing = getPublishedListing(property);
   const facts = getPropertyCardFacts(property);
   const location = [property.estate, property.city].filter(Boolean).join(", ");
@@ -58,20 +65,22 @@ export default function PropertyListingCard({
               {(listing?.purpose ?? "rent").toUpperCase()}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={onToggleSaved}
-            accessibilityRole="button"
-            accessibilityLabel={
-              saved ? "Remove saved property" : "Save property"
-            }
-          >
-            <Ionicons
-              name={saved ? "bookmark" : "bookmark-outline"}
-              size={20}
-              color="white"
-            />
-          </TouchableOpacity>
+          {!isPropertyOwner && (
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={onToggleSaved}
+              accessibilityRole="button"
+              accessibilityLabel={
+                saved ? "Remove saved property" : "Save property"
+              }
+            >
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={20}
+                color="white"
+              />
+            </TouchableOpacity>
+          )}
         </View>
         {property.images.length > 1 && (
           <View style={styles.photoCount}>

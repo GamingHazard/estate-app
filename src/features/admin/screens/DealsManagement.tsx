@@ -5,13 +5,17 @@ import {
   FlatList,
   Modal,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
+import type { DateTimePickerChangeEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -21,31 +25,23 @@ import {
   queryClient,
 } from "../../../shared/queryClient";
 import { useTheme } from "../../../shared/theme/ThemeContext";
+import { useAuth } from "../../auth/AuthContext";
+import { managedPropertiesQueryKey } from "../../properties/useProperties";
+import { formatDealMoney } from "../../../data/deal";
+import type {
+  Deal,
+  DealListResponse,
+  DealStatus,
+} from "../../../data/deal";
 import {
   getPropertyDisplayLocation,
+  parsePropertyListResponse,
   Property,
   PropertyListing,
 } from "../../../data/property";
 
-type DealStatus = "draft" | "published" | "paused" | "removed";
 type DealViewStatus = DealStatus | "scheduled" | "active" | "expired" | "all";
-type Deal = {
-  id: string;
-  propertyId: string;
-  listingId: string;
-  title: string;
-  description?: string;
-  discount: { type: "percentage" | "fixed"; value: number };
-  pricingSnapshot: { basePrice: number; dealPrice: number; currency: string; billingPeriod?: string };
-  status: DealStatus;
-  startsAt: string;
-  endsAt?: string | null;
-  isActive: boolean;
-  property?: Property;
-  listing?: PropertyListing;
-};
-type DealsResponse = { deals: Deal[] };
-type PropertiesResponse = { properties: Property[] };
+type DealsResponse = DealListResponse;
 type DealFilter = "all" | DealViewStatus;
 type DateTarget = "startsAt" | "endsAt";
 
@@ -73,8 +69,7 @@ const emptyDraft = (): DealDraft => ({
   status: "draft",
 });
 
-const formatMoney = (amount: number, currency = "USD") =>
-  new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+const formatMoney = formatDealMoney;
 
 const getViewStatus = (deal: Deal, now = Date.now()): DealViewStatus => {
   if (deal.status !== "published") return deal.status;
@@ -98,6 +93,7 @@ const statusLabel: Record<DealViewStatus, string> = {
 
 const DealsManagement: React.FC = () => {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<DealFilter>("all");
   const [isFormVisible, setFormVisible] = useState(false);
@@ -106,33 +102,60 @@ const DealsManagement: React.FC = () => {
   const [propertyPickerVisible, setPropertyPickerVisible] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<DateTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [featuredCurationVisible, setFeaturedCurationVisible] = useState(false);
+  const [updatingFeaturedDealId, setUpdatingFeaturedDealId] = useState<
+    string | null
+  >(null);
 
   const dealsQuery = useQuery({
-    queryKey: ["deals", "manage"],
+    queryKey: ["deals", "manage", user?.id ?? null],
     queryFn: getQueryFn<DealsResponse>({
       on401: "throw",
       authenticated: true,
+      path: "/deals/manage",
     }),
+    enabled: Boolean(user?.id),
   });
   const propertiesQuery = useQuery({
-    queryKey: ["properties", "marketplace", "manage"],
-    queryFn: getQueryFn<PropertiesResponse>({
+    queryKey: managedPropertiesQueryKey(user?.id),
+    queryFn: getQueryFn<unknown>({
       on401: "throw",
       authenticated: true,
+      path: "/properties/marketplace/manage",
     }),
+    enabled: Boolean(user?.id),
+    select: (response: unknown) => parsePropertyListResponse(response),
+  });
+  const featuredCandidatesQuery = useQuery({
+    queryKey: ["deals", "featured-management"],
+    queryFn: getQueryFn<DealsResponse>({
+      on401: "throw",
+      authenticated: true,
+      path: "/deals/featured-management",
+    }),
+    enabled: user?.role === "admin",
   });
 
-  const deals = dealsQuery.data?.deals ?? [];
+  const deals = (dealsQuery.data?.deals ?? []).filter(
+    (deal) =>
+      Boolean(user?.id) && deal.property?.ownerId === user?.id,
+  );
   const eligibleListings = useMemo(
     () =>
       (propertiesQuery.data?.properties ?? [])
-        .filter((property) => property.moderationStatus === "approved")
+        .filter(
+          (property) =>
+            Boolean(user?.id) &&
+            property.ownerId === user?.id &&
+            !property.isArchived &&
+            property.moderationStatus === "approved",
+        )
         .flatMap((property) =>
           (property.listings ?? [])
             .filter((listing) => listing.status === "published")
             .map((listing) => ({ property, listing })),
         ),
-    [propertiesQuery.data?.properties],
+    [propertiesQuery.data?.properties, user?.id],
   );
   const selectedTarget = eligibleListings.find(
     ({ property, listing }) => property.id === draft.propertyId && listing.id === draft.listingId,
@@ -189,6 +212,24 @@ const DealsManagement: React.FC = () => {
     setFormVisible(true);
   };
 
+  const updateFeaturedStatus = async (deal: Deal) => {
+    if (updatingFeaturedDealId) return;
+    setUpdatingFeaturedDealId(deal.id);
+    try {
+      await apiRequest("PATCH", `/deals/${deal.id}/featured`, {
+        featured: !deal.featured,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["deals"] });
+    } catch (error) {
+      Alert.alert(
+        "Unable to update featured deal",
+        getErrorMessage(error, "Please try again."),
+      );
+    } finally {
+      setUpdatingFeaturedDealId(null);
+    }
+  };
+
   const openEditForm = (deal: Deal) => {
     setEditingDeal(deal);
     setDraft({
@@ -207,13 +248,19 @@ const DealsManagement: React.FC = () => {
 
   const invalidateDealQueries = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["deals", "manage"] }),
+      queryClient.invalidateQueries({
+        queryKey: ["deals", "manage", user?.id ?? null],
+      }),
       queryClient.invalidateQueries({ queryKey: ["deals"] }),
     ]);
   };
 
   const saveDeal = async () => {
-    if (!draft.title.trim() || !draft.propertyId || !draft.listingId || !draft.discountValue.trim()) {
+    if (
+      !draft.title.trim() ||
+      (!editingDeal && (!draft.propertyId || !draft.listingId)) ||
+      !draft.discountValue.trim()
+    ) {
       Alert.alert("Complete required fields", "Choose a listing, enter a title, and set a discount.");
       return;
     }
@@ -296,10 +343,76 @@ const DealsManagement: React.FC = () => {
     await runStatusChange();
   };
 
-  const showDatePicker = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (event.type === "set" && selectedDate && datePickerTarget) {
-      setDraft((current) => ({ ...current, [datePickerTarget]: selectedDate }));
+  const closeDatePicker = () => setDatePickerTarget(null);
+
+  const showPickerError = (error: Error) => {
+    closeDatePicker();
+    Alert.alert(
+      "Unable to select deal date",
+      error.message || "Please try again.",
+    );
+  };
+
+  const openAndroidTimePicker = (target: DateTarget, date: Date) => {
+    DateTimePickerAndroid.open({
+      value: date,
+      mode: "time",
+      onValueChange: (_event, selectedTime) => {
+        const selectedDateTime = new Date(date);
+        selectedDateTime.setHours(
+          selectedTime.getHours(),
+          selectedTime.getMinutes(),
+          0,
+          0,
+        );
+        setDraft((current) => ({ ...current, [target]: selectedDateTime }));
+      },
+      onDismiss: closeDatePicker,
+      onError: showPickerError,
+    });
+  };
+
+  const openDatePicker = (target: DateTarget) => {
+    const currentDate =
+      target === "startsAt" ? draft.startsAt : draft.endsAt ?? new Date();
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: currentDate,
+        mode: "date",
+        onValueChange: (_event, selectedDate) => {
+          const dateWithExistingTime = new Date(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate(),
+            currentDate.getHours(),
+            currentDate.getMinutes(),
+            0,
+            0,
+          );
+          openAndroidTimePicker(target, dateWithExistingTime);
+        },
+        onDismiss: closeDatePicker,
+        onError: showPickerError,
+      });
+      return;
     }
+
+    setDatePickerTarget(target);
+  };
+
+  const handleIosDatePickerValueChange = (
+    _event: DateTimePickerChangeEvent,
+    selectedDate: Date,
+  ) => {
+    if (datePickerTarget) {
+      setDraft((current) => ({
+        ...current,
+        [datePickerTarget]: selectedDate,
+      }));
+    }
+  };
+
+  const handleIosDatePickerDismiss = () => {
     setDatePickerTarget(null);
   };
 
@@ -386,7 +499,12 @@ const DealsManagement: React.FC = () => {
       <View style={styles.dealCard}>
         <View style={styles.dealTop}>
           <Text style={styles.dealTitle} numberOfLines={2}>{item.title}</Text>
-          <View style={styles.statusBadge}><Text style={styles.statusText}>{statusLabel[viewStatus]}</Text></View>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>
+              {statusLabel[viewStatus]}
+              {item.featured ? " · Featured" : ""}
+            </Text>
+          </View>
         </View>
         <Text style={styles.dealTarget} numberOfLines={2}>
           {relatedProperty?.name ?? "Property unavailable"} · {listing?.purpose ?? "listing"} · {relatedProperty?.city ?? relatedProperty?.address ?? ""}
@@ -441,6 +559,21 @@ const DealsManagement: React.FC = () => {
           </Pressable>
         ))}
       </ScrollView>
+      {user?.role === "admin" && (
+        <Pressable
+          style={[styles.actionButton, { alignSelf: "flex-start", marginBottom: 12 }]}
+          onPress={() => {
+            setFeaturedCurationVisible(true);
+            void featuredCandidatesQuery.refetch();
+          }}
+          accessibilityRole="button"
+        >
+          <Ionicons name="star-outline" size={16} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.primary }]}>
+            Curate featured deals
+          </Text>
+        </Pressable>
+      )}
       {dealsQuery.isError && (
         <Pressable onPress={() => void dealsQuery.refetch()}>
           <Text style={{ color: colors.error, marginBottom: 10 }}>
@@ -523,7 +656,7 @@ const DealsManagement: React.FC = () => {
               )}
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Starts</Text>
-                <Pressable style={styles.dateButton} onPress={() => setDatePickerTarget("startsAt")}>
+                <Pressable style={styles.dateButton} onPress={() => openDatePicker("startsAt")}>
                   <Text style={{ color: colors.text }}>{draft.startsAt.toLocaleString()}</Text>
                   <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
                 </Pressable>
@@ -531,7 +664,7 @@ const DealsManagement: React.FC = () => {
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Ends (optional)</Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  <Pressable style={[styles.dateButton, { flex: 1 }]} onPress={() => setDatePickerTarget("endsAt")}>
+                  <Pressable style={[styles.dateButton, { flex: 1 }]} onPress={() => openDatePicker("endsAt")}>
                     <Text style={{ color: draft.endsAt ? colors.text : colors.textMuted }}>{draft.endsAt?.toLocaleString() ?? "No end date"}</Text>
                     <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
                   </Pressable>
@@ -597,13 +730,161 @@ const DealsManagement: React.FC = () => {
         </Pressable>
       </Modal>
 
-      {datePickerTarget && (
-        <DateTimePicker
-          value={datePickerTarget === "startsAt" ? draft.startsAt : draft.endsAt ?? new Date()}
-          mode="datetime"
-          onChange={showDatePicker}
-        />
-      )}
+      <Modal
+        visible={featuredCurationVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setFeaturedCurationVisible(false)}
+      >
+        <View style={styles.formBackdrop}>
+          <View style={styles.formSheet}>
+            <View style={styles.formHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.formTitle}>Curate featured deals</Text>
+                <Text style={styles.subtitle}>
+                  Published, eligible deals appear in the marketplace hero.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setFeaturedCurationVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close featured deal curation"
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={23} color={colors.text} />
+              </Pressable>
+            </View>
+            {featuredCandidatesQuery.isLoading ? (
+              <View style={styles.state}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.stateText}>Loading eligible deals…</Text>
+              </View>
+            ) : featuredCandidatesQuery.isError ? (
+              <View style={styles.state}>
+                <Text style={styles.stateText}>
+                  {getErrorMessage(
+                    featuredCandidatesQuery.error,
+                    "Unable to load deals for curation.",
+                  )}
+                </Text>
+                <Pressable
+                  style={styles.actionButton}
+                  onPress={() => void featuredCandidatesQuery.refetch()}
+                >
+                  <Text style={[styles.actionText, { color: colors.primary }]}>
+                    Try again
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <FlatList
+                data={featuredCandidatesQuery.data?.deals ?? []}
+                keyExtractor={(deal) => deal.id}
+                contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+                ListEmptyComponent={
+                  <View style={styles.state}>
+                    <Text style={styles.stateText}>
+                      No eligible published deals are available to feature.
+                    </Text>
+                  </View>
+                }
+                renderItem={({ item }) => (
+                  <View style={styles.dealCard}>
+                    <View style={styles.dealTop}>
+                      <Text style={styles.dealTitle} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      {item.featured && (
+                        <View style={styles.statusBadge}>
+                          <Text style={styles.statusText}>Featured</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.dealTarget} numberOfLines={2}>
+                      {item.property?.name ?? "Property unavailable"} ·{" "}
+                      {item.listing?.purpose ?? "Listing"} ·{" "}
+                      {statusLabel[getViewStatus(item)]}
+                    </Text>
+                    <View style={styles.priceLine}>
+                      <Text style={styles.basePrice}>
+                        {formatMoney(
+                          item.pricingSnapshot.basePrice,
+                          item.pricingSnapshot.currency,
+                        )}
+                      </Text>
+                      <Text style={styles.dealPrice}>
+                        {formatMoney(
+                          item.pricingSnapshot.dealPrice,
+                          item.pricingSnapshot.currency,
+                        )}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={styles.actionButton}
+                      onPress={() => void updateFeaturedStatus(item)}
+                      disabled={updatingFeaturedDealId !== null}
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        disabled: updatingFeaturedDealId !== null,
+                        busy: updatingFeaturedDealId === item.id,
+                      }}
+                    >
+                      {updatingFeaturedDealId === item.id ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.actionText,
+                            { color: item.featured ? colors.destructive : colors.primary },
+                          ]}
+                        >
+                          {item.featured ? "Remove from featured" : "Feature deal"}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={Platform.OS === "ios" && datePickerTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDatePicker}
+      >
+        <Pressable
+          style={styles.pickerBackdrop}
+          onPress={closeDatePicker}
+        >
+          <Pressable
+            style={styles.pickerSheet}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <Text style={styles.pickerTitle}>Select date and time</Text>
+            <DateTimePicker
+              value={
+                datePickerTarget === "startsAt"
+                  ? draft.startsAt
+                  : draft.endsAt ?? new Date()
+              }
+              mode="datetime"
+              onValueChange={handleIosDatePickerValueChange}
+              onDismiss={handleIosDatePickerDismiss}
+            />
+            <Pressable
+              style={styles.primaryButton}
+              onPress={closeDatePicker}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryButtonText}>Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };

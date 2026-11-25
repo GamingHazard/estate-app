@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { parsePropertyListResponse } from "../../data/property";
+import { useAuth } from "../auth/AuthContext";
 import { getQueryFn } from "../../shared/queryClient";
+
+export const managedPropertiesQueryKey = (userId?: string | null) =>
+  ["properties", "marketplace", "manage", userId ?? null] as const;
 
 export function useProperties() {
   return useQuery({
@@ -12,9 +16,16 @@ export function useProperties() {
 }
 
 export function useManagedProperties() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ["properties", "marketplace", "manage"],
-    queryFn: getQueryFn({ on401: "throw", authenticated: true }),
+    queryKey: managedPropertiesQueryKey(user?.id),
+    queryFn: getQueryFn({
+      on401: "throw",
+      authenticated: true,
+      path: "/properties/marketplace/manage",
+    }),
+    enabled: Boolean(user?.id),
     staleTime: 0,
     refetchOnMount: "always",
     select: (response: unknown) =>

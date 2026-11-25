@@ -1,9 +1,10 @@
 import { StackNavigationProp } from "@react-navigation/stack";
+import type { Deal } from "../../data/deal";
 import { Property } from "../../data/property";
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  PropertyDetails: { property: Property };
+  PropertyDetails: { property: Property; deal?: Deal };
   Account: undefined;
   "General settings": undefined;
   "User Guide": undefined;

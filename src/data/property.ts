@@ -82,6 +82,8 @@ export type ApiProperty = {
   listings?: ApiPropertyListing[];
   owner?: string;
   ownerId?: string;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   moderationStatus?: ModerationStatus;
   moderationReason?: string;
   createdAt?: string;
@@ -157,6 +159,8 @@ export type Property = {
   units: PropertyUnit[];
   listings: PropertyListing[];
   ownerId?: string;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   moderationStatus?: ModerationStatus;
   moderationReason?: string;
   createdAt?: string;
@@ -255,7 +259,9 @@ const mapProperty = (property: ApiProperty): Property => {
   customizeUnits: property.customizeUnits ?? false,
   units: (property.units ?? []).map(mapUnit),
   listings,
-  ownerId: property.ownerId ?? property.owner,
+  ownerId: property.ownerId,
+  isArchived: property.isArchived === true,
+  archivedAt: property.archivedAt ?? null,
   moderationStatus: property.moderationStatus,
   moderationReason: property.moderationReason,
   createdAt: property.createdAt,

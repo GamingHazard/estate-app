@@ -15,6 +15,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 
 import { useTheme } from "../../../shared/theme/ThemeContext";
 import { useAuth } from "../AuthContext";
@@ -23,6 +26,11 @@ import { apiRequest } from "../../../shared/queryClient";
 import { useQuery } from "@tanstack/react-query";
 
 type AuthScreenType = "login" | "register" | "verify" | "recovery";
+
+const formatDateOfBirth = (date: Date) =>
+  `${String(date.getDate()).padStart(2, "0")}/${String(
+    date.getMonth() + 1,
+  ).padStart(2, "0")}/${date.getFullYear()}`;
 
 interface AuthScreensProps {
   // Add props here if needed
@@ -42,7 +50,10 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
 
   const handleLogin = async () => {
     setError("");
-    const result = await login({ identifier, password });
+    const result = await login({
+      identifier: identifier.trim(),
+      password: password.trim(),
+    });
     if (!result.success) {
       setError(result.message);
     }
@@ -181,8 +192,8 @@ const LoginForm: React.FC<{ colors: any; onForgotPassword: () => void }> = ({
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.formTitle}>Welcome Back!</Text>
-      <Text style={styles.description}>Sign in to continue to Estate App</Text>
+      <Text style={styles.formTitle}>Property Fit</Text>
+      <Text style={styles.description}>Sign in to continue</Text>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <View style={styles.inputContainer}>
@@ -292,23 +303,29 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateOfBirthPickerValue, setDateOfBirthPickerValue] = useState(
+    new Date(),
+  );
   const [registrationError, setRegistrationError] = useState("");
 
   const handleRegister = async () => {
     setRegistrationError("");
+    const password = formData.password.trim();
+    const confirmPassword = formData.confirmPassword.trim();
 
     if (
       !formData.firstName.trim() ||
       !formData.lastName.trim() ||
       !formData.email.trim() ||
       !formData.contact.trim() ||
-      !formData.password
+      !password
     ) {
       setRegistrationError("Please complete all required fields.");
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       setRegistrationError("Passwords do not match.");
       return;
     }
@@ -318,12 +335,12 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim(),
-        password: formData.password,
+        password,
         role: formData.role,
         phone: formData.contact.trim(),
-        dob: formData.dateOfBirth,
+        dob: formData.dateOfBirth.trim(),
         gender: formData.gender,
-        ...(formData.role !== "user" ? { nin: formData.nin } : {}),
+        ...(formData.role !== "user" ? { nin: formData.nin.trim() } : {}),
       };
 
       const result = await register(registrationData);
@@ -344,6 +361,8 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
         password: "",
         confirmPassword: "",
       });
+      setDateOfBirthPickerValue(new Date());
+      setShowDatePicker(false);
 
       navigation.navigate("Home");
     } catch (error) {
@@ -357,6 +376,21 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDateOfBirthChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    if (event.type === "set" && selectedDate) {
+      setDateOfBirthPickerValue(selectedDate);
+      updateField("dateOfBirth", formatDateOfBirth(selectedDate));
+    }
+
+    if (Platform.OS === "android" || event.type === "dismissed") {
+      setShowDatePicker(false);
+      setFocusedInput(null);
+    }
   };
 
   const styles = StyleSheet.create({
@@ -508,17 +542,52 @@ const RegistrationForm: React.FC<{ colors: any }> = ({ colors }) => {
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Date of Birth</Text>
-        <TextInput
+        <TouchableOpacity
           style={[
             styles.input,
             focusedInput === "dateOfBirth" && styles.inputFocused,
           ]}
-          placeholder="DD/MM/YYYY"
-          value={formData.dateOfBirth}
-          onChangeText={(value) => updateField("dateOfBirth", value)}
-          onFocus={() => setFocusedInput("dateOfBirth")}
-          onBlur={() => setFocusedInput(null)}
-        />
+          onPress={() => {
+            setFocusedInput("dateOfBirth");
+            setShowDatePicker(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Choose date of birth"
+        >
+          <Text
+            style={{
+              color: formData.dateOfBirth ? colors.text : colors.textMuted,
+              fontSize: 16,
+            }}
+          >
+            {formData.dateOfBirth || "Select your date of birth"}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <View>
+            <DateTimePicker
+              value={dateOfBirthPickerValue}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              maximumDate={new Date()}
+              onChange={handleDateOfBirthChange}
+            />
+            {Platform.OS === "ios" && (
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDatePicker(false);
+                  setFocusedInput(null);
+                }}
+                accessibilityRole="button"
+                style={{ alignSelf: "flex-end", padding: 12 }}
+              >
+                <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                  Done
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       <View style={styles.inputContainer}>

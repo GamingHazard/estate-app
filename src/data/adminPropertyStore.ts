@@ -84,6 +84,9 @@ export type AdminProperty = {
   payments: string[];
   units: Array<string | PropertyUnit>;
   owner?: string;
+  ownerId?: string;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   status: "active" | "pending" | "rejected";
   createdAt: string;
   updatedAt: string;
@@ -130,6 +133,9 @@ export const adaptAdminPropertyForMarketplace = (
 
   return {
     id: property.id,
+    ownerId: property.ownerId,
+    isArchived: property.isArchived === true,
+    archivedAt: property.archivedAt ?? null,
     name: property.name,
     address: property.address,
     city: property.city,

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "property fit",
+    "name": "Property Fit",
     "slug": "property-fit",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,9 +11,7 @@
       "backgroundColor": "#1F2937",
       "resizeMode": "cover"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },

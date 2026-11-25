@@ -16,6 +16,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "../../../shared/theme/ThemeContext";
+import { useAuth } from "../../auth/AuthContext";
 import {
   BillingPeriod,
   MarketplacePropertyRecord,
@@ -39,6 +40,7 @@ import {
   normalizePropertyType,
   PROPERTY_CATEGORIES,
 } from "../../../data/propertyTypes";
+import { managedPropertiesQueryKey } from "../../properties/useProperties";
 
 type PropertySource = "local" | "marketplace" | "server-marketplace";
 type PropertySnapshot = Property | MarketplacePropertyRecord | AdminProperty;
@@ -238,11 +240,32 @@ export const MarketplacePropertyCreation = ({
   route,
 }: Props) => {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const propertySource = route?.params?.propertySource;
-  const propertySnapshot = route?.params?.propertySnapshot;
   const isEditing = route?.params?.mode === "edit";
+  const suppliedPropertySnapshot = route?.params?.propertySnapshot;
+  const sourcePropertyId =
+    route?.params?.propertyId ?? suppliedPropertySnapshot?.id;
+  const localSourceProperty =
+    propertySource === "local"
+      ? adminPropertyStore.getById(sourcePropertyId ?? "")
+      : propertySource === "marketplace"
+        ? adminPropertyStore
+            .getMarketplaceSnapshot()
+            .find((property) => property.id === sourcePropertyId)
+        : undefined;
+  const hasOwnedSourceProperty =
+    propertySource === "server-marketplace" ||
+    (Boolean(user?.id) && localSourceProperty?.ownerId === user?.id);
+  const propertySnapshot =
+    !isEditing ||
+    (Boolean(user?.id) &&
+      suppliedPropertySnapshot?.ownerId === user?.id &&
+      hasOwnedSourceProperty)
+      ? suppliedPropertySnapshot
+      : undefined;
   const propertyId = route?.params?.propertyId ?? propertySnapshot?.id;
   const editablePropertyId = propertyId ?? "";
   const [stepIndex, setStepIndex] = useState(0);
@@ -881,7 +904,7 @@ export const MarketplacePropertyCreation = ({
 
       await queryClient.invalidateQueries({ queryKey: ["properties"] });
       await queryClient.invalidateQueries({
-        queryKey: ["properties", "marketplace", "manage"],
+        queryKey: managedPropertiesQueryKey(user?.id),
       });
       Alert.alert(
         isEditing ? "Property updated" : "Submitted for review",

@@ -4,7 +4,7 @@ export type PublicListerProfile = {
   id: string;
   firstName: string;
   lastName: string;
-  role: Exclude<UserRole, "user">;
+  role: Exclude<UserRole, "user"> | "admin";
   avatar?: { url?: string };
   bio: string;
   phoneNumber?: string;
